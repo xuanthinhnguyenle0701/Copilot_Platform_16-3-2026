@@ -1,0 +1,20 @@
+﻿FUNCTION_BLOCK "FB_DelayReady"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT
+      i_Enable : BOOL;   // Enable input for the delay timer
+      i_DelayTime : TIME;   // Preset time for the ON-delay timer
+   END_VAR
+
+   VAR_OUTPUT
+      q_Ready : BOOL;   // Output becomes TRUE after i_DelayTime when i_Enable is TRUE
+   END_VAR
+
+   VAR
+      stat_Timer : TON;   // Internal ON-delay timer instance
+   END_VAR
+
+BEGIN
+	#stat_Timer(IN := #i_Enable, PT := #i_DelayTime);
+	#q_Ready := #stat_Timer.Q;
+END_FUNCTION_BLOCK

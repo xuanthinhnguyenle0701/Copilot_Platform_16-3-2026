@@ -1,0 +1,33 @@
+{
+  "block_info": {
+    "name": "FB_Standard",
+    "type": "FUNCTION_BLOCK",
+    "description": "Standard Block"
+  },
+  "interface": [
+    {
+      "name": "i_Enable",
+      "type": "BOOL",
+      "direction": "VAR_INPUT",
+      "description": "Enable input"
+    },
+    {
+      "name": "q_Ready",
+      "type": "BOOL",
+      "direction": "VAR_OUTPUT",
+      "description": "Ready output"
+    },
+    {
+      "name": "stat_Timer",
+      "type": "TON",
+      "direction": "VAR",
+      "description": "Internal Timer"
+    }
+  ],
+  "body_code": "#stat_Timer(IN := #i_Enable, PT := T#1s);\\n #q_Ready := #stat_Timer.Q;",
+  "global_tags": [
+            { "name": "TAG_StartBtn_01", "type": "BOOL", "comment": "Input" },
+            { "name": "TAG_MotorSpeed_01", "type": "REAL", "comment": "Output" },
+            { "name": "TAG_SystemFlag", "type": "BOOL", "comment": "Memory" }
+          ]
+}

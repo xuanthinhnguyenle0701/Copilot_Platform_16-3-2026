@@ -1,0 +1,51 @@
+C:\Users\holog\Downloads\Translator_CLI\bin\Debug\net9.0\Translator_CLI.exe
+C:\Users\holog\Downloads\Translator_CLI\bin\Debug\net9.0\Translator_CLI.deps.json
+C:\Users\holog\Downloads\Translator_CLI\bin\Debug\net9.0\Translator_CLI.runtimeconfig.json
+C:\Users\holog\Downloads\Translator_CLI\bin\Debug\net9.0\Translator_CLI.dll
+C:\Users\holog\Downloads\Translator_CLI\bin\Debug\net9.0\Translator_CLI.pdb
+C:\Users\holog\Downloads\Translator_CLI\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translator_CLI.csproj.AssemblyReference.cache
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translator_CLI.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translator_CLI.AssemblyInfoInputs.cache
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translator_CLI.AssemblyInfo.cs
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translator_CLI.csproj.CoreCompileInputs.cache
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translat.BB6ACB5A.Up2Date
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translator_CLI.dll
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\refint\Translator_CLI.dll
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translator_CLI.pdb
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\Translator_CLI.genruntimeconfig.cache
+C:\Users\holog\Downloads\Translator_CLI\obj\Debug\net9.0\ref\Translator_CLI.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\Translator_CLI.exe
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\Translator_CLI.deps.json
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\Translator_CLI.runtimeconfig.json
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\Translator_CLI.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\Translator_CLI.pdb
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translator_CLI.csproj.AssemblyReference.cache
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translator_CLI.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translator_CLI.AssemblyInfoInputs.cache
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translator_CLI.AssemblyInfo.cs
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translator_CLI.csproj.CoreCompileInputs.cache
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translat.BB6ACB5A.Up2Date
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translator_CLI.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\refint\Translator_CLI.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translator_CLI.pdb
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\Translator_CLI.genruntimeconfig.cache
+C:\Users\holog\Downloads\Middleware\Translator_CLI\obj\Debug\net9.0\ref\Translator_CLI.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\ClosedXML.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\ClosedXML.Parser.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\DocumentFormat.OpenXml.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\DocumentFormat.OpenXml.Framework.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\ExcelNumberFormat.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\RBush.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\SixLabors.Fonts.dll
+C:\Users\holog\Downloads\Middleware\Translator_CLI\bin\Debug\net9.0\System.IO.Packaging.dll
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\Translator_CLI.csproj.AssemblyReference.cache
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\Translator_CLI.GeneratedMSBuildEditorConfig.editorconfig
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\Translator_CLI.AssemblyInfoInputs.cache
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\Translator_CLI.AssemblyInfo.cs
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\Translator_CLI.csproj.CoreCompileInputs.cache
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\Translator_CLI.sourcelink.json
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\Translator_CLI.dll
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\refint\Translator_CLI.dll
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net9.0\Translator_CLI.pdb

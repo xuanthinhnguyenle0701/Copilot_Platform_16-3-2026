@@ -1,0 +1,14 @@
+﻿ORGANIZATION_BLOCK "OB_Main"
+TITLE = "Main Program Sweep (Cycle)"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+BEGIN
+	"Inst_FB_Standard__MyStandardBlock"(i_Enable := "TAG_EnableStandardBlock", q_Ready => "TAG_StandardBlockReady");
+END_ORGANIZATION_BLOCK
+
+DATA_BLOCK "Inst_FB_Standard__MyStandardBlock"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+"FB_Standard"
+BEGIN
+END_DATA_BLOCK

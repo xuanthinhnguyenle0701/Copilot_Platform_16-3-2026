@@ -1,0 +1,19 @@
+﻿FUNCTION_BLOCK "FB_Standard"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT
+      i_Enable : BOOL;   // Enable input
+   END_VAR
+
+   VAR_OUTPUT
+      q_Ready : BOOL;   // Ready output
+   END_VAR
+
+   VAR
+      stat_Timer : TON;   // Internal Timer
+   END_VAR
+
+BEGIN
+	#stat_Timer(IN := #i_Enable, PT := T#1s);
+	#q_Ready := #stat_Timer.Q;
+END_FUNCTION_BLOCK
