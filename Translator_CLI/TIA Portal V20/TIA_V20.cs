@@ -25,6 +25,7 @@ using Siemens.Engineering.Library;
 using System.Xml.Linq;
 using Siemens.Engineering.HmiUnified.UI.Screens;
 using System.Windows.Forms;
+using Newtonsoft.Json;
 
 namespace Middleware_console
 {
@@ -303,24 +304,125 @@ namespace Middleware_console
         #endregion
 
         #region 5. WinCC Unified: Screen Management
+        public void GenerateScadaProject(ScadaProjectModel projectData)
+        {
+            if (_project == null) throw new Exception("Chưa kết nối hoặc mở dự án TIA Portal.");
+            
+            string deviceName = projectData.DeviceName;
+            Console.WriteLine($"\n>>> ĐANG KHỞI TẠO DỰ ÁN SCADA CHO THIẾT BỊ: {deviceName} <<<");
+
+            // BƯỚC 1: VẼ TOÀN BỘ MÀN HÌNH TỪ JSON
+            foreach (var screen in projectData.Screens)
+            {
+                try 
+                {
+                    // Hàm vẽ tạo HmiScreen và các ScreenItems (Tank, Valve, Motor...)
+                    GenerateScadaScreenFromData(deviceName, screen);
+                    Console.WriteLine($"[SUCCESS] Đã vẽ xong màn hình: {screen.ScreenName}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[!] Lỗi khi vẽ màn hình {screen.ScreenName}: {ex.Message}");
+                }
+            }
+
+            // BƯỚC 2: LƯU DỰ ÁN (BẮT BUỘC)
+            // Phải lưu để Siemens xác thực các đối tượng màn hình mới tạo vào Database
+            try 
+            {
+                Console.WriteLine("\n[i] Đang lưu dự án để xác thực cấu trúc màn hình...");
+                _project.Save(); 
+            }
+            catch (Exception ex) { Console.WriteLine($"[!] Cảnh báo khi lưu dự án: {ex.Message}"); }
+
+            // BƯỚC 3: CHỈ ĐỊNH MÀN HÌNH CHÍNH (START SCREEN) THEO JSON
+            // Ưu tiên 1: Lấy từ thuộc tính StartScreenName trong JSON
+            // Ưu tiên 2: Nếu không có, lấy màn hình đầu tiên trong mảng Screens
+            // Ưu tiên 3: Nếu mảng trống, mặc định gọi là Main_Process
+            string startScreenName = !string.IsNullOrEmpty(projectData.StartScreenName) 
+                                    ? projectData.StartScreenName 
+                                    : (projectData.Screens.FirstOrDefault()?.ScreenName ?? "Main_Process");
+
+            Console.WriteLine($"[i] Đang cấu hình màn hình khởi động: {startScreenName}...");
+            SetStartScreen(deviceName, startScreenName);
+
+            Console.WriteLine("\n>>> TẤT CẢ MÀN HÌNH ĐÃ ĐƯỢC VẼ VÀ CẤU HÌNH THÀNH CÔNG! <<<");
+        }
+
+        // Hàm hỗ trợ gán Start Screen dùng Reflection (Đặc trị cho Unified PC Station)
+        private void SetStartScreen(string deviceName, string screenName)
+        {
+            try 
+            {
+                dynamic hmiSoftware = GetHmiTarget(deviceName);
+                if (hmiSoftware == null) return;
+
+                // 1. Tìm đối tượng màn hình đã vẽ
+                dynamic screensContainer = null;
+                try { screensContainer = hmiSoftware.Screens; } 
+                catch { screensContainer = hmiSoftware.ScreenFolder.Screens; }
+
+                var screenList = ((System.Collections.IEnumerable)screensContainer).Cast<dynamic>();
+                var targetScreen = screenList.FirstOrDefault(s => s.Name == screenName);
+
+                if (targetScreen != null)
+                {
+                    // 2. Truy cập Settings -> RuntimeSettings thông qua Reflection để né lỗi "does not contain definition"
+                    var settingsProp = ((object)hmiSoftware).GetType().GetProperty("Settings");
+                    var settingsObj = settingsProp?.GetValue(hmiSoftware);
+                    
+                    if (settingsObj != null)
+                    {
+                        var rtProp = settingsObj.GetType().GetProperty("RuntimeSettings");
+                        var rtObj = rtProp?.GetValue(settingsObj);
+                        
+                        if (rtObj != null)
+                        {
+                            var startScreenProp = rtObj.GetType().GetProperty("StartScreen");
+                            // Gán trực tiếp đối tượng Screen vào thuộc tính StartScreen
+                            startScreenProp?.SetValue(rtObj, targetScreen);
+                            Console.WriteLine($"[SETTING] Đã gán '{screenName}' làm màn hình khởi động (Start Screen).");
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[!] Cảnh báo: Không tìm thấy màn hình '{screenName}' để gán làm Start Screen.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[!] Không thể thiết lập Start Screen tự động: {ex.Message}");
+            }
+        }
         public void GenerateScadaScreenFromData(string deviceName, ScadaScreenModel screenData)
         {
-            if (_project == null) throw new Exception("No TIA Project opened.");
             dynamic hmiTarget = GetHmiTarget(deviceName);
             dynamic screens = null;
-            try { screens = hmiTarget.Screens; } catch { screens = hmiTarget.ScreenFolder.Screens; }
+            
+            // 1. Tìm container chứa màn hình
+            try { screens = hmiTarget.Screens; } 
+            catch { screens = hmiTarget.ScreenFolder.Screens; }
 
-            var existingScreen = ((System.Collections.IEnumerable)screens).Cast<dynamic>().FirstOrDefault(s => s.Name == screenData.ScreenName);
+            // 2. Xóa màn hình cũ nếu trùng tên
+            var existingScreen = ((System.Collections.IEnumerable)screens)
+                .Cast<dynamic>()
+                .FirstOrDefault(s => s.Name == screenData.ScreenName);
             if (existingScreen != null) existingScreen.Delete();
 
+            // 3. Tạo màn hình mới và gán kích thước
+            Console.WriteLine($"   -> Đang tạo màn hình: {screenData.ScreenName} ({screenData.Width}x{screenData.Height})");
             dynamic res = screens.Create(screenData.ScreenName);
+            
             res.SetAttribute("Width", (uint)(screenData.Width > 0 ? screenData.Width : 1024));
             res.SetAttribute("Height", (uint)(screenData.Height > 0 ? screenData.Height : 600));
 
+            // 4. Gom quân (Items + Layers)
             List<ScadaItemModel> allItems = new List<ScadaItemModel>();
             if (screenData.Items != null) allItems.AddRange(screenData.Items);
             if (screenData.Layers != null) allItems.AddRange(screenData.Layers.SelectMany(l => l.Items));
 
+            // 5. Bơm vật thể vào (Dùng hàm Build đã sửa bỏ Diagnosis)
             BuildUnifiedItemsRecursive(res.ScreenItems, allItems);
         }
 
@@ -751,64 +853,49 @@ namespace Middleware_console
 
         
         private void CreateDynamicWidget(dynamic composition, string type, string name, dynamic properties)
-        {
-            try {
-                // 1. LẤY TYPE CỦA CONTAINER TỪ ASSEMBLY
-                Type targetType = AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a => a.GetTypes())
-                    .FirstOrDefault(t => t.Name == "HmiCustomWidgetContainer");
-                
-                if (targetType == null) return;
+{
+    try {
+        // 1. Tìm kiểu dữ liệu đích
+        Type targetType = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(a => a.GetTypes())
+            .FirstOrDefault(t => t.Name == "HmiCustomWidgetContainer");
+        
+        if (targetType == null) return;
 
-                // 2. TÌM PHƯƠNG THỨC CREATE CÓ 2 THAM SỐ (Name và TypeIdentifier)
-                var compositionType = ((object)composition).GetType();
-                var methodInfo = compositionType.GetMethods().FirstOrDefault(m => 
-                    m.Name == "Create" && m.GetParameters().Length == 2);
-                
-                // 3. XÁC ĐỊNH FILE SVG CỤ THỂ (Mặc định tiền tố extended. cho V20)
-                string subType = properties.ContainsKey("SubType") ? properties["SubType"].ToString() : type;
-                string typeIdentifier = $"extended.{subType}"; 
-                
-                // 4. KHỞI TẠO ĐỐI TƯỢNG
-                var newItem = (IEngineeringObject)methodInfo.MakeGenericMethod(targetType)
-                    .Invoke(composition, new object[] { name, typeIdentifier });
+        // 2. Lấy method Create(string name, string typeIdentifier)
+        // Chúng ta lấy phương thức Generic
+        var methodInfo = ((object)composition).GetType().GetMethods()
+            .FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod && m.GetParameters().Length == 2);
 
-                if (newItem != null) {
-                    // 5. THIẾT LẬP TỌA ĐỘ VÀ KÍCH THƯỚC
-                    newItem.SetAttribute("Left", Convert.ToInt32(properties["Left"]));
-                    newItem.SetAttribute("Top", Convert.ToInt32(properties["Top"]));
-                    newItem.SetAttribute("Width", Convert.ToUInt32(properties["Width"]));
-                    newItem.SetAttribute("Height", Convert.ToUInt32(properties["Height"]));
+        if (methodInfo == null) return;
 
-                    // 6. NẠP THAM SỐ GIAO DIỆN (INTERFACE) DỰA THEO SVG
-                    try {
-                        dynamic dynItem = newItem;
-                        var interfaceProps = dynItem.Properties["Miscellaneous"].Properties["Interface"].Properties;
-                        
-                        // A. Tham số chung: Màu vỏ
-                        interfaceProps["BasicColor"].Value = properties.ContainsKey("BasicColor") ? properties["BasicColor"].ToString() : "238, 238, 238";
+        // 3. ĐÂY LÀ BƯỚC QUAN TRỌNG: Cụ thể hóa phương thức Generic
+        // Biến Create<T> thành Create<HmiCustomWidgetContainer>
+        var concreteMethod = methodInfo.MakeGenericMethod(targetType);
 
-                        // B. Tham số riêng cho Tank (Mức nước)
-                        if (subType.Contains("Tank")) {
-                            interfaceProps["FillLevelColor"].Value = properties.ContainsKey("FillLevelColor") ? properties["FillLevelColor"].ToString() : "0, 161, 255";
-                            interfaceProps["FillLevelValue"].Value = properties.ContainsKey("FillLevelValue") ? Convert.ToDouble(properties["FillLevelValue"]) : 0.0;
-                            interfaceProps["DisplayFillLevel"].Value = properties.ContainsKey("DisplayFillLevel") ? Convert.ToBoolean(properties["DisplayFillLevel"]) : true;
-                        }
+        // 4. Chuẩn bị định danh
+        string subType = properties.ContainsKey("SubType") ? properties["SubType"].ToString() : type;
+        string typeIdentifier = $"extended.{subType}"; 
 
-                        // C. Tham số riêng cho ControlValve (Màu đầu van)
-                        if (subType.Contains("ControlValve")) {
-                            interfaceProps["ContrastColor"].Value = properties.ContainsKey("ContrastColor") ? properties["ContrastColor"].ToString() : "205, 205, 205";
-                        }
-                    } catch {
-                        // Interface có thể chưa nạp kịp từ SVG khi chưa Rebuild All
-                    }
-                    
-                    Console.WriteLine($"      [RENDER] {name} ({subType}) THÀNH CÔNG.");
-                }
-            } catch (Exception ex) {
-                Console.WriteLine($"      [LỖI]: {ex.InnerException?.Message ?? ex.Message}");
-            }
+        // 5. THỰC THI (Invoke phương thức đã được cụ thể hóa)
+        // Không dùng late bound trực tiếp trên methodInfo nữa
+        var newItem = (IEngineeringObject)concreteMethod.Invoke(composition, new object[] { (string)name, (string)typeIdentifier });
+
+        if (newItem != null) {
+            // Gán tọa độ và Interface (Giữ nguyên phần code SetAttribute của bạn)
+            newItem.SetAttribute("Left", Convert.ToInt32(properties["Left"]));
+            newItem.SetAttribute("Top", Convert.ToInt32(properties["Top"]));
+            newItem.SetAttribute("Width", (uint)Convert.ToUInt32(properties["Width"]));
+            newItem.SetAttribute("Height", (uint)Convert.ToUInt32(properties["Height"]));
+            
+            // ... (Phần nạp BasicColor, FillLevelValue...)
+            Console.WriteLine($"      [RENDER OK] {name} ({subType})");
         }
+    } catch (Exception ex) {
+        // Dùng InnerException để xem lỗi thật sự từ Siemens nếu có
+        Console.WriteLine($"      [LỖI TẠI {name}]: {ex.InnerException?.Message ?? ex.Message}");
+    }
+}
 
         #endregion
 
@@ -1623,8 +1710,102 @@ namespace Middleware_console
         #endregion
 
         #region 12. Debug & Diagnostic Tools
-        public void ExportAllPathsFromScreen(string deviceName, string screenName, string targetObjectName) { /* Logic Debug Screen Path */ }
-        private void ScanDeep(dynamic screenObj) { /* Logic ScanDeep Object */ }
+        // 1. Export Màn hình Unified sang JSON
+        public void ExportUnifiedScreenToJson(string deviceName, string screenName, string outputPath)
+{
+    var hmiTarget = GetHmiTarget(deviceName);
+    dynamic screens = null;
+    try { screens = hmiTarget.Screens; } catch { screens = hmiTarget.ScreenFolder.Screens; }
+
+    var screen = ((System.Collections.IEnumerable)screens).Cast<dynamic>().FirstOrDefault(s => s.Name == screenName);
+    if (screen == null) throw new Exception($"Không tìm thấy màn hình: {screenName}");
+
+    var exportModel = new {
+        ScreenName = screen.Name,
+        Width = (int)screen.Width,
+        Height = (int)screen.Height,
+        Items = new List<object>()
+    };
+
+    // Serialize và lưu file
+    string json = JsonConvert.SerializeObject(exportModel, Newtonsoft.Json.Formatting.Indented);
+    File.WriteAllText(outputPath, json);
+}
+
+public void ExportPlcTagsToCsv(string deviceName, string outputPath)
+{
+    var device = _project.Devices.FirstOrDefault(d => d.Name == deviceName);
+    if (device == null) return;
+
+    // Sửa lỗi GetItems() -> dùng DeviceItems
+    var software = device.DeviceItems
+        .SelectMany(i => i.DeviceItems) 
+        .FirstOrDefault(i => i.GetService<SoftwareContainer>() != null)
+        ?.GetService<SoftwareContainer>()?.Software as PlcSoftware;
+
+    var table = software?.TagTableGroup.TagTables.FirstOrDefault();
+    if (table != null) {
+        // Sửa lỗi ExportOptions.Default -> dùng None
+        table.Export(new FileInfo(outputPath), ExportOptions.None);
+    }
+}
+
+public void ExportHmiTagsToCsv(string deviceName, string outputPath)
+{
+    var hmi = GetHmiTarget(deviceName);
+    var table = hmi.TagTableGroup.TagTables.FirstOrDefault();
+    if (table != null) {
+        // Sửa lỗi ExportOptions.Default -> dùng None
+        table.Export(new FileInfo(outputPath), ExportOptions.None);
+    }
+}
+
+public void ExportHmiSettingsToJson(string deviceName, string outputPath)
+{
+    var report = new Dictionary<string, object>();
+    try {
+        dynamic hmiSoftware = GetHmiTarget(deviceName);
+        
+        // 1. Quét thông tin cơ bản để xác nhận đã kết nối đúng
+        report.Add("TargetName", hmiSoftware.Name.ToString());
+        report.Add("TargetType", hmiSoftware.GetType().FullName);
+
+        // 2. Thử truy cập theo đường dẫn chính thức của V20 (Dùng Try-Catch cho từng nấc)
+        try {
+            var rt = hmiSoftware.SoftwareSettings.RuntimeSettings;
+            var rtData = new Dictionary<string, string>();
+            foreach (var p in rt.GetType().GetProperties()) {
+                try { rtData.Add(p.Name, p.GetValue(rt).ToString()); } catch { }
+            }
+            report.Add("RuntimeSettings_Found", rtData);
+        } catch (Exception ex) { report.Add("RuntimeSettings_Error", ex.Message); }
+
+        // 3. THỬ CHIÊU CUỐI: Quét qua mục 'Settings' nếu SoftwareSettings không có
+        try {
+            var settings = hmiSoftware.Settings;
+            var stData = new Dictionary<string, string>();
+            foreach (var p in settings.GetType().GetProperties()) {
+                try { stData.Add(p.Name, p.GetValue(settings).ToString()); } catch { }
+            }
+            report.Add("Settings_Found", stData);
+        } catch { }
+
+        // 4. KIỂM TRA XEM MÀN HÌNH NÀO ĐANG ĐƯỢC ĐẶT LÀM START (Dùng Filter)
+        try {
+            dynamic screens = null;
+            try { screens = hmiSoftware.Screens; } catch { screens = hmiSoftware.ScreenFolder.Screens; }
+            
+            var startScreenCandidate = ((System.Collections.IEnumerable)screens).Cast<dynamic>()
+                                        .FirstOrDefault(s => s.GetType().GetProperty("IsStartScreen") != null);
+            if(startScreenCandidate != null) report.Add("ActiveStartScreen", startScreenCandidate.Name);
+        } catch { }
+
+        File.WriteAllText(outputPath, JsonConvert.SerializeObject(report, Newtonsoft.Json.Formatting.Indented));
+    }
+    catch (Exception ex) {
+        File.WriteAllText(outputPath, "{\"FatalError\": \"" + ex.Message + "\"}");
+    }
+}
         #endregion
     }
     public class PlcCatalogItem

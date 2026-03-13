@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using System.Threading;
 using System.Collections.Generic;
 
+
 namespace TIA_Copilot_CLI
 {
     class Program
@@ -182,13 +183,28 @@ namespace TIA_Copilot_CLI
                     if (!string.IsNullOrEmpty(hTagPath)) _tiaEngine.ImportHmiTagsFromCsv("PC-System_1", hTagPath);
                     break;
 
-                case "draw":
+              case "draw":
                     string jPath = GetPathOrOpenDialog(args, 2, "JSON SCADA (*.json)|*.json");
                     if (!string.IsNullOrEmpty(jPath)) {
-                        var data = JsonConvert.DeserializeObject<ScadaScreenModel>(File.ReadAllText(jPath));
-                        _tiaEngine.CreateUnifiedScreen("PC-System_1", data.ScreenName);
-                        _tiaEngine.GenerateScadaScreenFromData("PC-System_1", data);
-                        PrintIcon("√", $"Đã vẽ xong: {data.ScreenName}", ConsoleColor.Green);
+                        try {
+                            // 1. Đọc toàn bộ nội dung file JSON
+                            string jsonContent = File.ReadAllText(jPath);
+                            
+                            // 2. Deserializer về ScadaProjectModel (Model mới chứa mảng Screens)
+                            var projectData = JsonConvert.DeserializeObject<ScadaProjectModel>(jsonContent);
+
+                            if (projectData != null && projectData.Screens != null) {
+                                // 3. Gọi hàm tổng chỉ huy để vẽ tất cả các màn hình
+                                // Sử dụng DeviceName từ chính file JSON
+                                _tiaEngine.GenerateScadaProject(projectData);
+
+                                PrintIcon("√", $"Đã vẽ xong toàn bộ dự án: {projectData.ProjectName ?? "N/A"}", ConsoleColor.Green);
+                            } else {
+                                PrintIcon("!", "Cấu trúc JSON không hợp lệ hoặc thiếu mảng Screens.", ConsoleColor.Red);
+                            }
+                        } catch (Exception ex) {
+                            PrintIcon("X", $"Lỗi khi thực hiện lệnh draw: {ex.Message}", ConsoleColor.Red);
+                        }
                     }
                     break;
 
@@ -201,6 +217,54 @@ namespace TIA_Copilot_CLI
 
                 case "run": case "stop": case "download": case "check":
                     HandleOnlineAction(action, args);
+                    break;
+                case "export":
+                    // 1. Lấy loại export (mặc định là screen nếu không nhập)
+                    string exportType = args.Length > 2 ? args[2].ToLower() : "screen";
+                    // 2. Tên màn hình hoặc tên thiết bị cần export
+                    string exportName = args.Length > 3 ? args[3] : "Main_Process"; 
+
+                    PrintIcon("i", $"Đang chuẩn bị xuất dữ liệu {exportType}...", ConsoleColor.Cyan);
+
+                    try {
+                        string saveFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
+                        if (!Directory.Exists(saveFolder)) Directory.CreateDirectory(saveFolder);
+
+                        string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                        
+                        switch (exportType) {
+                            case "settings":
+                                // MỤC TIÊU CHÍNH: Xuất cấu trúc Settings để tìm Start Screen
+                                string setPath = Path.Combine(saveFolder, $"HmiSettings_{timeStamp}.json");
+                                _tiaEngine.ExportHmiSettingsToJson(_currentDeviceName, setPath);
+                                PrintIcon("√", $"Đã xuất HmiSettings ra: {Path.GetFileName(setPath)}", ConsoleColor.Green);
+                                break;
+
+                            case "screen":
+                                string screenPath = Path.Combine(saveFolder, $"{exportName}_{timeStamp}.json");
+                                _tiaEngine.ExportUnifiedScreenToJson(_currentDeviceName, exportName, screenPath);
+                                PrintIcon("√", $"Đã xuất màn hình ra: {Path.GetFileName(screenPath)}", ConsoleColor.Green);
+                                break;
+
+                            case "tag-plc":
+                                string plcTagPath = Path.Combine(saveFolder, $"{exportName}_PLCTags_{timeStamp}.csv");
+                                _tiaEngine.ExportPlcTagsToCsv(_currentDeviceName, plcTagPath);
+                                PrintIcon("√", $"Đã xuất PLC Tags ra: {Path.GetFileName(plcTagPath)}", ConsoleColor.Green);
+                                break;
+
+                            case "tag-hmi":
+                                string hmiTagPath = Path.Combine(saveFolder, $"{_currentDeviceName}_HMITags_{timeStamp}.csv");
+                                _tiaEngine.ExportHmiTagsToCsv(_currentDeviceName, hmiTagPath);
+                                PrintIcon("√", $"Đã xuất HMI Tags ra: {Path.GetFileName(hmiTagPath)}", ConsoleColor.Green);
+                                break;
+
+                            default:
+                                PrintIcon("!", $"Loại export '{exportType}' chưa được hỗ trợ. (Hỗ trợ: settings, screen, tag-plc, tag-hmi)", ConsoleColor.Yellow);
+                                break;
+                        }
+                    } catch (Exception ex) {
+                        PrintIcon("X", $"Lỗi khi export: {ex.Message}", ConsoleColor.Red);
+                    }
                     break;
 
                 default:
