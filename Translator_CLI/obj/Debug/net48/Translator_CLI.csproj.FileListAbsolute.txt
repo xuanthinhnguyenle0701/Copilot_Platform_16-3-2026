@@ -29,3 +29,4 @@ C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\bin\Debug\n
 C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net48\Translat.BB6ACB5A.Up2Date
 C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net48\Translator_CLI.exe
 C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net48\Translator_CLI.pdb
+C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\bin\Debug\net48\PLcCatalog.json

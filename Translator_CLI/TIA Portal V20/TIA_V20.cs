@@ -290,15 +290,213 @@ namespace Middleware_console
             else throw new Exception($"{targetPlcName} is not a valid PLC.");
         }
 
-        public string CompileSpecific(string targetPlcName, bool compileHW, bool compileSW)
+        // Đảm bảo các hàm này nằm TRONG class TIA_V20
+        public string CompileSpecific(string targetPlcName, bool compileHW, bool compileSW, bool rebuildAll = false)
         {
-            if (_project == null) return "Not connected.";
+            if (_project == null) return "Lớp 0: Chưa kết nối Project.";
             Device device = FindDeviceRecursive(_project, targetPlcName);
-            if (device == null) return "Device not found.";
+            if (device == null) return $"Lớp 1: Không tìm thấy thiết bị '{targetPlcName}'.";
+
             StringBuilder sb = new StringBuilder();
-            if (compileHW) sb.AppendLine("HW: " + ((IEngineeringServiceProvider)device).GetService<ICompilable>()?.Compile().State);
-            if (compileSW) sb.AppendLine("SW: " + ((IEngineeringServiceProvider)GetSoftware(device)).GetService<ICompilable>()?.Compile().State);
+            sb.AppendLine($"--- Đang kiểm tra thiết bị: {targetPlcName} ---");
+
+            // 1. DÒ LỚP PHẦN CỨNG (HW)
+            if (compileHW)
+            {
+                sb.AppendLine("> Đang dò lớp HW...");
+                object hwTarget = FindCompilableInDevice(device); 
+                if (hwTarget != null)
+                    sb.AppendLine(InternalInvoke(hwTarget, "HW", rebuildAll));
+                else
+                    sb.AppendLine("[!] Lớp HW: Thiết bị này không có thực thể biên dịch phần cứng.");
+            }
+
+            // 2. DÒ LỚP PHẦN MỀM (SW)
+            if (compileSW)
+            {
+                sb.AppendLine("> Đang dò lớp SW...");
+                object swTarget = FindSoftwareInDevice(device);
+                if (swTarget != null)
+                    sb.AppendLine(InternalInvoke(swTarget, "SW", rebuildAll));
+                else
+                    sb.AppendLine("[!] Lớp SW: Không tìm thấy khối phần mềm (Software) có thể biên dịch.");
+            }
+
             return sb.ToString();
+        }
+
+        // --- HÀM BỔ TRỢ DÒ TỪNG LỚP ---
+
+        private object FindCompilableInDevice(Device device)
+        {
+            if (HasCompilableService(device)) return device;
+
+            foreach (var item in device.DeviceItems)
+            {
+                if (HasCompilableService(item)) return item;
+                foreach (var sub in item.DeviceItems)
+                {
+                    if (HasCompilableService(sub)) return sub;
+                }
+            }
+            return null;
+        }
+
+        private object FindSoftwareInDevice(Device device)
+        {
+            var sw = GetSoftware(device);
+            if (HasCompilableService(sw)) return sw;
+            return FindCompilableInDevice(device); 
+        }
+
+        private bool HasCompilableService(object obj)
+        {
+            if (obj == null) return false;
+            var provider = obj as IServiceProvider;
+            // Kiểm tra xem đối tượng có cung cấp dịch vụ ICompilable không
+            return provider?.GetService(typeof(ICompilable)) != null;
+        }
+
+        private string InternalInvoke(object target, string label, bool rebuild)
+        {
+            try
+            {
+                var provider = (IServiceProvider)target;
+                object service = provider.GetService(typeof(ICompilable));
+                
+                // CHIẾN THUẬT V20: Lấy chính xác Type của Interface ICompilable
+                Type interfaceType = typeof(ICompilable);
+                
+                // Lấy Method Compile(CompilerOptions) trực tiếp từ Interface
+                // Vì ICompilable chỉ có 2 overload: Compile() và Compile(options)
+                // Chúng ta lấy hàm có 1 tham số.
+                var method = interfaceType.GetMethods()
+                    .FirstOrDefault(m => m.Name == "Compile" && m.GetParameters().Length == 1);
+
+                if (method != null)
+                {
+                    // Lấy kiểu dữ liệu Enum CompilerOptions từ tham số đầu tiên
+                    var enumType = method.GetParameters()[0].ParameterType;
+                    // Chuyển 1 (RebuildAll) hoặc 0 (None) thành Enum
+                    object optionValue = Enum.ToObject(enumType, rebuild ? 1 : 0);
+
+                    // THỰC THI: Gọi thông qua Interface Mapping
+                    var result = method.Invoke(service, new object[] { optionValue });
+                    
+                    // Lấy State và in lỗi nếu có
+                    return FormatCompileResult(result, label);
+                }
+                
+                // Nếu vẫn không thấy, thử gọi hàm Compile() không tham số (Changes only)
+                var simpleMethod = interfaceType.GetMethod("Compile", Type.EmptyTypes);
+                if (simpleMethod != null)
+                {
+                    var result = simpleMethod.Invoke(service, null);
+                    return FormatCompileResult(result, label);
+                }
+
+                return $"{label}: Lỗi ánh xạ Interface (V20 Method Hidden).";
+            }
+            catch (Exception ex)
+            {
+                return $"{label} System Error: {ex.InnerException?.Message ?? ex.Message}";
+            }
+        }
+
+        // Hàm format lỗi để in ra màn hình cho Otis
+        private string FormatCompileResult(object result, string label)
+        {
+            if (result == null) return $"{label}: \u001b[31mResult object is null\u001b[0m";
+
+            // Đợi 1 chút để TIA Portal đổ dữ liệu Messages vào (Fix lỗi mất tin nhắn khi Rebuild)
+            System.Threading.Thread.Sleep(200);
+
+            var stateProp = result.GetType().GetProperty("State");
+            string state = stateProp?.GetValue(result)?.ToString() ?? "Unknown";
+            
+            string stateColor = state == "Success" ? "\u001b[32m" : "\u001b[31m"; 
+            string reset = "\u001b[0m";
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"{label}: {stateColor}{state}{reset}");
+
+            // Lấy Messages một cách an toàn hơn
+            var messagesProp = result.GetType().GetProperty("Messages");
+            object messagesObj = messagesProp?.GetValue(result);
+
+            if (messagesObj is System.Collections.IEnumerable messages)
+            {
+                bool hasMessages = false;
+                foreach (var m in messages)
+                {
+                    hasMessages = true;
+                    PrintMessagesRecursive(m, sb, 1);
+                }
+                if (!hasMessages && state == "Error") 
+                    sb.AppendLine("   \u001b[33mℹ [!] Lỗi hệ thống nhưng không có tin nhắn chi tiết (Kiểm tra Log TIA).\u001b[0m");
+            }
+            
+            return sb.ToString();
+        }
+
+        private void PrintMessagesRecursive(object msg, StringBuilder sb, int indentLevel)
+        {
+            if (msg == null) return;
+
+            var typeProp = msg.GetType().GetProperty("Type");
+            var descProp = msg.GetType().GetProperty("Description");
+            var pathProp = msg.GetType().GetProperty("Path");
+
+            string type = typeProp?.GetValue(msg)?.ToString();
+            string desc = descProp?.GetValue(msg)?.ToString();
+            string path = pathProp?.GetValue(msg)?.ToString();
+            
+            string indent = new string(' ', indentLevel * 3);
+
+            if (!string.IsNullOrEmpty(desc))
+            {
+                string colorCode = "";
+                string icon = "";
+
+                // Định nghĩa màu ANSI
+                switch (type)
+                {
+                    case "Error":
+                        colorCode = "\u001b[31m"; // Màu đỏ
+                        icon = "✘";
+                        break;
+                    case "Warning":
+                        colorCode = "\u001b[33m"; // Màu vàng
+                        icon = "⚠";
+                        break;
+                    case "Information":
+                        colorCode = "\u001b[34m"; // Màu xanh dương
+                        icon = "ℹ";
+                        break;
+                    default:
+                        colorCode = "\u001b[37m"; // Màu trắng
+                        icon = "•";
+                        break;
+                }
+
+                string resetCode = "\u001b[0m";
+
+                // Format dòng tin nhắn: [Icon] Path: Description (Có màu)
+                sb.AppendLine($"{indent}{colorCode}{icon} {path}{resetCode}: {desc}");
+            }
+
+            try 
+            {
+                var subMessagesProp = msg.GetType().GetProperty("Messages");
+                var subMessages = (System.Collections.IEnumerable)subMessagesProp?.GetValue(msg);
+                if (subMessages != null)
+                {
+                    foreach (var sm in subMessages)
+                    {
+                        PrintMessagesRecursive(sm, sb, indentLevel + 1);
+                    }
+                }
+            } catch { }
         }
         
         #endregion
