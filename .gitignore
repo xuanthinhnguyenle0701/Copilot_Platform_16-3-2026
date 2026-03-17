@@ -658,6 +658,7 @@ FodyWeavers.xsd
 # =================================================================
 # CUSTOM TIA COPILOT IGNORE (DO NOT REMOVE)
 # =================================================================
+bin/
 app_secrets.py
 chat_memory.db
 # 2. CHỈ bỏ qua thư mục ChromaDB nằm trong Translator_CLI
