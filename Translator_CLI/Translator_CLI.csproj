@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>    
-    <None Update="PlcCatalog.json">
+    <None Update="PLcCatalog.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>   
   </ItemGroup>

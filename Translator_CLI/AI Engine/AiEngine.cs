@@ -77,18 +77,28 @@ namespace TIA_Copilot_CLI
 
                     string jsonInput = JsonConvert.SerializeObject(payload);
 
-                    // Gửi data bất đồng bộ
-                    using (StreamWriter writer = process.StandardInput)
+                    // 1. [KHẮC PHỤC BOM & FLUSH]
+                    // Dùng UTF8Encoding(false) để tắt BOM, ngăn Python bị ngáo JSON
+                    using (StreamWriter writer = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false)))
                     {
                         await writer.WriteAsync(jsonInput);
+                        await writer.FlushAsync(); // ÉP XẢ BỘ ĐỆM NGAY LẬP TỨC
                     }
 
-                    // Đọc data bất đồng bộ để tránh kẹt luồng (Deadlock)
-                    string result = await process.StandardOutput.ReadToEndAsync();
-                    string error = await process.StandardError.ReadToEndAsync();
+                    // 2. TUYỆT KỸ PHÁ DEADLOCK: Đọc 2 luồng CÙNG MỘT LÚC!
+                    var outputTask = process.StandardOutput.ReadToEndAsync();
+                    var errorTask = process.StandardError.ReadToEndAsync();
+                    
+                    await Task.WhenAll(outputTask, errorTask); // Chờ cả 2 đọc xong
+
+                    // 3. [KHẮC PHỤC DOUBLE READ]
+                    // Lấy kết quả trực tiếp từ cái phễu đã hứng (Task.Result), KHÔNG đọc lại luồng nữa!
+                    string result = outputTask.Result;
+                    string error = errorTask.Result;
 
                     await Task.Run(() => process.WaitForExit());
 
+                    // Kiểm tra lỗi nếu Error có chữ mà Result trống trơn
                     if (!string.IsNullOrEmpty(error) && string.IsNullOrWhiteSpace(result))
                     {
                         return JsonConvert.SerializeObject(new { status = "error", message = error });

@@ -11,7 +11,7 @@ logging.getLogger("chromadb").setLevel(logging.ERROR)
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("langchain").setLevel(logging.ERROR)
 
-# --- IMPORT LANGCHAIN & CHROMA ---
+        # --- IMPORT LANGCHAIN & CHROMA ---
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import HuggingFaceEmbeddings 
 from langchain_community.vectorstores import Chroma
@@ -87,9 +87,16 @@ def main():
 
         # region XỬ LÝ LỆNH ĐẶC BIỆT (KHÔNG PHẢI CHAT) - LIST SESSIONS, RESET SESSION, UPDATE SPEC, CHECK SPEC
 
+        
+
         if command_type == "list_sessions":
             sessions = memory.list_all_sessions()
             print(json.dumps({"status": "success", "sessions": sessions}, ensure_ascii=False))
+            return
+
+        if command_type == "create_session":
+            memory.init_session(session_id)
+            print(json.dumps({"status": "success", "message": f"Created {session_id}"}, ensure_ascii=False))
             return
 
         if command_type == "reset":
@@ -317,17 +324,21 @@ def main():
         try:
             data_dict = json.loads(final_json_str)
             data_dict["token_usage"] = token_count
-            final_json_str = json.dumps(data_dict, ensure_ascii=False, indent=2)
+            final_json_str = json.dumps(data_dict,flush=True, ensure_ascii=False, indent=2)
         except Exception:
             pass
 
         # 4. Lưu lịch sử và in kết quả
         memory.save_turn(session_id, user_query, final_json_str)
-        print(final_json_str)
+        output_bytes = (final_json_str + "\n").encode('utf-8')
+        sys.stdout.buffer.write(output_bytes)
+        sys.stdout.buffer.flush()
 
     except Exception as e:
         error_res = {"status": "error", "message": str(e)}
-        print(json.dumps(error_res, ensure_ascii=False))
+        err_bytes = (json.dumps(error_res, ensure_ascii=False) + "\n").encode('utf-8')
+        sys.stdout.buffer.write(err_bytes)
+        sys.stdout.buffer.flush()
 
 if __name__ == "__main__":
     main()

@@ -64,3 +64,14 @@ def list_all_sessions():
         return [row[0] for row in rows]
     except Exception as e:
         return [] # Trả về rỗng nếu DB chưa tồn tại hoặc lỗi
+    
+def init_session(session_id):
+    """
+    Ép DB tạo một Session bằng cách chèn một tin nhắn hệ thống ẩn.
+    Giúp Session hiển thị ngay lập tức trong lệnh list_sessions.
+    """
+    history = get_session_history(session_id)
+    # Nếu session đã có tin nhắn thì không cần mồi thêm
+    if len(history.messages) == 0:
+        history.add_ai_message("[SYSTEM_INIT] Session created.")
+    return True

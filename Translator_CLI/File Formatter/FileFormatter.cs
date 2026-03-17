@@ -113,8 +113,10 @@ namespace TIA_Copilot_CLI
                 }
 
                 // --- LƯU FILE SCL ---
-                string fileName = $"{data.Name}.scl";
-                string fullPath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+                string safeName = string.IsNullOrWhiteSpace(data.Name) ? "AI_Generated_Block" : data.Name;
+                string fileName = $"{safeName}.scl";
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string fullPath = Path.Combine(baseDir, fileName);
                 File.WriteAllText(fullPath, sb.ToString(), Encoding.UTF8);
 
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -196,8 +198,11 @@ namespace TIA_Copilot_CLI
                 }
 
                 // ---> SỬ DỤNG data.Name ĐỂ ĐẶT TÊN FILE
-                string fileName = $"{data.Name}_Tags.csv";
-                string fullPath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+                string safeName = string.IsNullOrWhiteSpace(data.Name) ? "AI_Generated" : data.Name;
+                string fileName = $"{safeName}_Tags.csv";
+                
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string fullPath = Path.Combine(baseDir, fileName);
 
                 File.WriteAllText(fullPath, csv.ToString(), Encoding.UTF8);
 
@@ -313,7 +318,6 @@ namespace TIA_Copilot_CLI
         public string BodyCode { get; set; }
         public List<VariableInfo> Variables { get; set; } = new List<VariableInfo>();
 
-        // ---> [CHÈN THÊM DÒNG NÀY ĐỂ HỨNG TAG TỪ JSON]
         public List<GlobalTag> GlobalTags { get; set; } = new List<GlobalTag>();
     }
 }

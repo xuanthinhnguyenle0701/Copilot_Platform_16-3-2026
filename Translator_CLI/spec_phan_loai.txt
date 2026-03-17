@@ -1,19 +1,13 @@
-TÊN DỰ ÁN: HỆ THỐNG PHÂN LOẠI SẢN PHẨM THEO TRỌNG LƯỢNG (QUALITY SORTING SYSTEM)
-
-YÊU CẦU LOGIC VẬN HÀNH CHO KHỐI FB_QualitySorter:
-Hệ thống sử dụng State Machine (biến stat_Step) với các trạng thái sau:
-
-- DỪNG KHẨN / LỖI (Highest Priority): Bất cứ khi nào i_EmergencyStop = TRUE, tắt toàn bộ cơ cấu chấp hành (băng tải, xilanh), đưa stat_Step về 0.
-
-- State 0 (Idle/Chờ): Hệ thống chờ lệnh. Bật đèn q_ReadyLight = TRUE. Nếu i_StartBtn = TRUE thì chuyển sang State 1.
-
-- State 1 (Chạy Băng tải): Tắt đèn q_ReadyLight. Bật băng tải q_MainConveyor = TRUE. Chờ sản phẩm đi vào khu vực cân. Nếu cảm biến i_ItemSensor = TRUE thì tắt băng tải và chuyển sang State 2 để cân.
-
-- State 2 (Cân & Đánh giá): 
-  + Đọc giá trị cân thô i_WeightRaw (0 - 27648) và Scale ra trọng lượng thực tế (0.0 kg - 50.0 kg).
-  + Nếu trọng lượng >= 10.0 kg VÀ <= 20.0 kg (Hàng Chuẩn): Kích một xung để tăng bộ đếm Hàng Tốt (Good Counter). Sau đó tự động quay về State 1.
-  + Nếu trọng lượng < 10.0 kg HOẶC > 20.0 kg (Hàng Lỗi): Kích một xung để tăng bộ đếm Hàng Lỗi (Bad Counter). Sau đó chuyển sang State 3.
-
-- State 3 (Loại bỏ hàng lỗi): Bật xilanh q_RejectCylinder = TRUE. Dùng một Timer (TON) đếm đúng 3 giây (T#3S). Khi Timer đếm xong, tắt xilanh và quay về State 1.
-
-- Xử lý Fault (Lỗi quá nhiều): Nếu bộ đếm Hàng Lỗi đếm đến 3 sản phẩm, hệ thống lập tức nhảy sang State 99. Ở State 99, bật đèn q_FaultLight = TRUE. Hệ thống bị khóa ở đây cho đến khi nút i_ResetFaultBtn = TRUE thì mới reset toàn bộ Counter và quay về State 0.
+Yêu cầu vận hành:
+•	Đầu tiên: hệ thống standby (3 bơm đều dừng)
+•	Nhấn Start → vào chế độ nạp. P_1 chạy trước.
+•	Sau 10 s, nếu chưa đạt Hi → P_2 chạy thêm (hai bơm cùng nạp).
+•	Khi đạt Hi → dừng nạp, chuyển sang xả: P_3 chạy đến Lo.
+•	Khi về Lo → quá trình được lặp lại: P_1 chạy, ....
+•	Stop bất kỳ lúc nào → staby .
+•	Ban đầu: hệ thống ở chế độ standby (cả 3 bơm dừng).
+•	Nhấn Start → vào chế độ nạp: P_1 chạy trước.
+•	Sau 10 s kể từ khi P_1 chạy → P_2 chạy bổ sung (hai bơm cùng nạp).
+•	Khi đạt Hi → dừng nạp, chuyển sang xả: P_3 chạy cho đến khi về Lo.
+•	Khi về Lo → tự động lặp lại chu trình nạp: P_1 chạy trước; nếu sau 10s thì P_2 chạy thêm.
+•	Stop ở bất kỳ thời điểm nào → dừng toàn bộ và trở về standby.

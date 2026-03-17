@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Linq;
+using System.Diagnostics;
 using Newtonsoft.Json;
 using Middleware_console;
 using System.Windows.Forms;
@@ -21,6 +22,7 @@ namespace TIA_Copilot_CLI
         private static string _currentDeviceType = "None";
         private static string _currentIp = "0.0.0.0";
         private static string _lastGeneratedFilePath = "";
+        public static string _currentSessionId = "default";
 
         [STAThread] // Bắt buộc để chạy OpenFileDialog
         static async Task Main(string[] args)
@@ -88,7 +90,7 @@ namespace TIA_Copilot_CLI
         {
             if (args.Length == 0) return;
             string command = args[0].ToLower();
-            string sessionId = CommandHandler.DefaultSessionID;
+            string sessionId = _currentSessionId;
 
             try
             {
@@ -101,32 +103,73 @@ namespace TIA_Copilot_CLI
                 switch (command)
                 {
                     case "chat":
-                        string targetType = args.Length > 1 ? CommandHandler.GetBlockType(args[1]) : "AUTO";
-                        string query = args.Length > 2 ? args[2] : "";
-                        if (args.Length > 3) sessionId = args[3];
-
-                        if (string.IsNullOrEmpty(query))
+                        if (args.Length < 2)
                         {
-                            Console.WriteLine("LỖI: Bạn phải truyền câu lệnh yêu cầu (query).");
+                            Console.WriteLine("LỖI: Bạn phải truyền hành động sau 'chat' (fb/fc/ob/load-tags/load-spec/clear-data).");
                             return;
                         }
-                        await CommandHandler.HandleChatAsync(targetType, query, sessionId);
-                        break;
 
-                    case "load-tags":
-                        string tagFile = args.Length > 1 ? args[1] : "";
-                        await CommandHandler.HandleLoadTagsAsync(tagFile);
-                        break;
+                        string chatAction = args[1].ToLower();
+                        switch (chatAction)
+                        {
+                            case "session":
+                                // TÍNH NĂNG 1 & 2: Giao diện Menu quản lý Session
+                                await CommandHandler.HandleSessionMenuAsync();
+                                //PrintIcon("i", "Tính năng 'session' đang được thi công...", ConsoleColor.Cyan);
+                                break;
 
-                    case "load-spec":
-                        string specFile = args.Length > 1 ? args[1] : "";
-                        if (args.Length > 2) sessionId = args[2];
-                        await CommandHandler.HandleLoadSpecAsync(specFile, sessionId);
-                        break;
+                            case "status":
+                                // TÍNH NĂNG 4: Báo cáo Radar
+                                await CommandHandler.HandleCheckStatusAsync(sessionId);
+                                //PrintIcon("i", "Tính năng 'status' đang được thi công...", ConsoleColor.Cyan);
+                                break;
 
-                    case "clear-data":
-                        if (args.Length > 1) sessionId = args[1];
-                        await CommandHandler.HandleClearDataAsync(sessionId);
+                            case "check-data":
+                                // TÍNH NĂNG 3: Xuất file và mở Notepad (Ta sẽ code phần này ở hiệp sau)
+                                //PrintIcon("i", "Tính năng 'check-data' đang được thi công...", ConsoleColor.Cyan);
+                                await CommandHandler.HandleCheckDataAsync(sessionId);
+                                break;
+                                
+
+                            case "fb":
+                            case "fc":
+                            case "ob":
+                                string targetType = CommandHandler.GetBlockType(chatAction);
+                                string query = args.Length > 2 ? args[2] : "";
+                                if (args.Length > 3) sessionId = args[3];
+
+                                if (string.IsNullOrEmpty(query))
+                                {
+                                    Console.WriteLine("LỖI: Bạn phải truyền câu lệnh yêu cầu (query).");
+                                    return;
+                                }
+
+                                await CommandHandler.HandleChatAsync(targetType, query, sessionId);
+                                break;
+
+                            case "load-tags":
+                                string tagFile = GetPathOrOpenDialog(args, 2, "Excel Files (*.xlsx;*.xls)|*.xlsx;*.xls|CSV Files (*.csv)|*.csv|All Files (*.*)|*.*");
+                                if (!string.IsNullOrEmpty(tagFile))
+                                    await CommandHandler.HandleLoadTagsAsync(tagFile);
+                                break;
+
+                            case "load-spec":
+                                string specFile = GetPathOrOpenDialog(args, 2, "Spec Files (*.md;*.txt;*.json)|*.md;*.txt;*.json|All Files (*.*)|*.*");
+                                if (args.Length > 3) sessionId = args[3];
+                                if (!string.IsNullOrEmpty(specFile))
+                                    await CommandHandler.HandleLoadSpecAsync(specFile, sessionId);
+                                break;
+
+                            case "clear-data":
+                                if (args.Length > 2) sessionId = args[2];
+                                await CommandHandler.HandleClearDataAsync(sessionId);
+                                break;
+
+
+                            default:
+                                PrintIcon("?", $"Không tìm thấy lệnh 'chat {chatAction}'. Gõ 'help' để xem.", ConsoleColor.Yellow);
+                                break;
+                        }
                         break;
                     case "help":
                         PrintHelp();
@@ -140,122 +183,133 @@ namespace TIA_Copilot_CLI
         }
 
         public static void HandleTiaCommand(string[] args)
-{
-    if (args.Length < 2)
-    {
-        PrintIcon("!", "Cần nhập action (VD: tia connect, tia draw...)", ConsoleColor.Yellow);
-        return;
-    }
-
-    string action = args[1].ToLower();
-
-    switch (action)
-    {
-        // --- NHÓM 1: PROJECT & CONNECTION ---
-        case "connect":
-            PrintIcon("i", "Đang kết nối TIA Portal...", ConsoleColor.Cyan);
-            if (_tiaEngine.ConnectToTIA()) {
-                _currentProjectName = _tiaEngine.GetProjectName();
-                PrintIcon("√", $"Đã kết nối: {_currentProjectName}", ConsoleColor.Green);
-            } else PrintIcon("×", "Không thấy TIA Portal đang chạy.", ConsoleColor.Red);
-            break;
-
-        case "open":
-            string openPath = GetPathOrOpenDialog(args, 2, "TIA Project (*.ap*)|*.ap*");
-            if (!string.IsNullOrEmpty(openPath)) {
-                PrintIcon("i", $"Mở dự án: {Path.GetFileName(openPath)}...", ConsoleColor.Cyan);
-                if (_tiaEngine.CreateTIAproject(openPath, "", false)) {
-                    _currentProjectName = Path.GetFileNameWithoutExtension(openPath);
-                    PrintIcon("√", $"Đã mở: {_currentProjectName}", ConsoleColor.Green);
-                }
+        {
+            if (args.Length < 2)
+            {
+                PrintIcon("!", "Cần nhập action (VD: tia connect, tia draw...)", ConsoleColor.Yellow);
+                return;
             }
-            break;
 
-        case "create": // BỔ SUNG
-            if (args.Length < 4) { PrintIcon("!", "Cú pháp: tia create <Thư mục> <Tên>", ConsoleColor.Yellow); break; }
-            if (_tiaEngine.CreateTIAproject(args[2], args[3], true)) {
-                _currentProjectName = args[3];
-                PrintIcon("√", $"Đã tạo dự án: {args[3]}", ConsoleColor.Green);
-            }
-            break;
+            string action = args[1].ToLower();
 
-        case "save":
-            PrintIcon("i", "Đang lưu project...", ConsoleColor.Cyan);
-            _tiaEngine.SaveProject();
-            PrintIcon("√", "Lưu thành công.", ConsoleColor.Green);
-            break;
+            switch (action)
+            {
+                // --- NHÓM 1: PROJECT & CONNECTION ---
+                case "connect":
+                    PrintIcon("i", "Đang kết nối TIA Portal...", ConsoleColor.Cyan);
+                    if (_tiaEngine.ConnectToTIA())
+                    {
+                        _currentProjectName = _tiaEngine.GetProjectName();
+                        PrintIcon("√", $"Đã kết nối: {_currentProjectName}", ConsoleColor.Green);
+                    }
+                    else PrintIcon("×", "Không thấy TIA Portal đang chạy.", ConsoleColor.Red);
+                    break;
 
-        case "close":
-            _tiaEngine.CloseTIA();
-            _currentProjectName = "None";
-            PrintIcon("√", "Đã đóng TIA.", ConsoleColor.DarkGray);
-            break;
+                case "open":
+                    string openPath = GetPathOrOpenDialog(args, 2, "TIA Project (*.ap*)|*.ap*");
+                    if (!string.IsNullOrEmpty(openPath))
+                    {
+                        PrintIcon("i", $"Mở dự án: {Path.GetFileName(openPath)}...", ConsoleColor.Cyan);
+                        if (_tiaEngine.CreateTIAproject(openPath, "", false))
+                        {
+                            _currentProjectName = Path.GetFileNameWithoutExtension(openPath);
+                            PrintIcon("√", $"Đã mở: {_currentProjectName}", ConsoleColor.Green);
+                        }
+                    }
+                    break;
 
-        // --- NHÓM 2: DEVICE & CONFIG ---
-        case "device":
-    // Logic: Nếu gõ 'tia device' không tham số -> Hiện Wizard chọn JSON/Manual
-    // Nếu gõ 'tia device Name IP Type' -> Chạy thẳng lệnh tạo
-    if (args.Length >= 5) 
-    {
-        _tiaEngine.CreateDev(args[2], args[4], args[3], "");
-        _currentDeviceName = args[2];
-        _currentIp = args[3];
-        PrintIcon("√", $"Đã tạo PLC: {args[2]} ({args[3]})", ConsoleColor.Green);
-    } 
-    else 
-    {
-        // GỌI WIZARD (Giống Navigator cũ)
-        HandleCreateDeviceWizard(); 
-    }
-    break;
+                case "create": // BỔ SUNG
+                    if (args.Length < 4) { PrintIcon("!", "Cú pháp: tia create <Thư mục> <Tên>", ConsoleColor.Yellow); break; }
+                    if (_tiaEngine.CreateTIAproject(args[2], args[3], true))
+                    {
+                        _currentProjectName = args[3];
+                        PrintIcon("√", $"Đã tạo dự án: {args[3]}", ConsoleColor.Green);
+                    }
+                    break;
 
-        case "choose":
-            HandleChooseDevice(args);
-            break;
+                case "save":
+                    PrintIcon("i", "Đang lưu project...", ConsoleColor.Cyan);
+                    _tiaEngine.SaveProject();
+                    PrintIcon("√", "Lưu thành công.", ConsoleColor.Green);
+                    break;
 
-        case "hmi-conn": // BỔ SUNG
-            if (args.Length < 4) { PrintIcon("!", "Cú pháp: tia hmi-conn <HMI_IP> <PLC_IP>", ConsoleColor.Yellow); break; }
-            _tiaEngine.CreateUnifiedConnectionCombined("PC-System_1", args[2], args[3], "HMI_PLC_Conn");
-            PrintIcon("√", "Đã thiết lập Connection HMI-PLC.", ConsoleColor.Green);
-            break;
+                case "close":
+                    _tiaEngine.CloseTIA();
+                    _currentProjectName = "None";
+                    PrintIcon("√", "Đã đóng TIA.", ConsoleColor.DarkGray);
+                    break;
 
-        // --- NHÓM 3: LOGIC & DATA ---
-        case "fb": case "fc": case "ob":
-            string sclPath = GetPathOrOpenDialog(args, 2, "SCL Files (*.scl)|*.scl");
-            TiaImportLogic(action.ToUpper(), sclPath);
-            break;
+                // --- NHÓM 2: DEVICE & CONFIG ---
+                case "device":
+                    // Logic: Nếu gõ 'tia device' không tham số -> Hiện Wizard chọn JSON/Manual
+                    // Nếu gõ 'tia device Name IP Type' -> Chạy thẳng lệnh tạo
+                    if (args.Length >= 5)
+                    {
+                        _tiaEngine.CreateDev(args[2], args[4], args[3], "");
+                        _currentDeviceName = args[2];
+                        _currentIp = args[3];
+                        PrintIcon("√", $"Đã tạo PLC: {args[2]} ({args[3]})", ConsoleColor.Green);
+                    }
+                    else
+                    {
+                        // GỌI WIZARD (Giống Navigator cũ)
+                        HandleCreateDeviceWizard();
+                    }
+                    break;
 
-        case "tag-plc":
-            string pTagPath = GetPathOrOpenDialog(args, 2, "CSV Tags (*.csv)|*.csv");
-            if (!string.IsNullOrEmpty(pTagPath)) _tiaEngine.ImportPlcTagsFromCsv(_currentDeviceName, pTagPath);
-            break;
+                case "choose":
+                    HandleChooseDevice(args);
+                    break;
 
-        case "tag-hmi":
-            string hTagPath = GetPathOrOpenDialog(args, 2, "CSV Tags (*.csv)|*.csv");
-            if (!string.IsNullOrEmpty(hTagPath)) _tiaEngine.ImportHmiTagsFromCsv("PC-System_1", hTagPath);
-            break;
+                case "hmi-conn": // BỔ SUNG
+                    if (args.Length < 4) { PrintIcon("!", "Cú pháp: tia hmi-conn <HMI_IP> <PLC_IP>", ConsoleColor.Yellow); break; }
+                    _tiaEngine.CreateUnifiedConnectionCombined("PC-System_1", args[2], args[3], "HMI_PLC_Conn");
+                    PrintIcon("√", "Đã thiết lập Connection HMI-PLC.", ConsoleColor.Green);
+                    break;
 
-        // --- NHÓM 4: SCADA & GRAPHICS ---
-        case "draw":
-            string jPath = GetPathOrOpenDialog(args, 2, "JSON SCADA (*.json)|*.json");
-            if (!string.IsNullOrEmpty(jPath)) {
-                try {
-                    var projectData = JsonConvert.DeserializeObject<ScadaProjectModel>(File.ReadAllText(jPath));
-                    _tiaEngine.GenerateScadaProject(projectData);
-                    PrintIcon("√", "Vẽ SCADA hoàn tất!", ConsoleColor.Green);
-                } catch (Exception ex) { PrintIcon("X", $"Lỗi vẽ: {ex.Message}", ConsoleColor.Red); }
-            }
-            break;
+                // --- NHÓM 3: LOGIC & DATA ---
+                case "fb":
+                case "fc":
+                case "ob":
+                    string sclPath = GetPathOrOpenDialog(args, 2, "SCL Files (*.scl)|*.scl");
+                    TiaImportLogic(action.ToUpper(), sclPath);
+                    break;
 
-        case "img": // BỔ SUNG
-            string imgPath = GetPathOrOpenDialog(args, 2, "Images|*.png;*.jpg;*.svg");
-            if (!string.IsNullOrEmpty(imgPath)) {
-                _tiaEngine.AddPngToProjectGraphics(imgPath, Path.GetFileNameWithoutExtension(imgPath));
-                PrintIcon("√", "Đã nạp ảnh vào Graphics Folder.", ConsoleColor.Green);
-            }
-            break;
+                case "tag-plc":
+                    string pTagPath = GetPathOrOpenDialog(args, 2, "CSV Tags (*.csv)|*.csv");
+                    if (!string.IsNullOrEmpty(pTagPath)) _tiaEngine.ImportPlcTagsFromCsv(_currentDeviceName, pTagPath);
+                    break;
 
-        case "export":
+                case "tag-hmi":
+                    string hTagPath = GetPathOrOpenDialog(args, 2, "CSV Tags (*.csv)|*.csv");
+                    if (!string.IsNullOrEmpty(hTagPath)) _tiaEngine.ImportHmiTagsFromCsv("PC-System_1", hTagPath);
+                    break;
+
+                // --- NHÓM 4: SCADA & GRAPHICS ---
+                case "draw":
+                    string jPath = GetPathOrOpenDialog(args, 2, "JSON SCADA (*.json)|*.json");
+                    if (!string.IsNullOrEmpty(jPath))
+                    {
+                        try
+                        {
+                            var projectData = JsonConvert.DeserializeObject<ScadaProjectModel>(File.ReadAllText(jPath));
+                            _tiaEngine.GenerateScadaProject(projectData);
+                            PrintIcon("√", "Vẽ SCADA hoàn tất!", ConsoleColor.Green);
+                        }
+                        catch (Exception ex) { PrintIcon("X", $"Lỗi vẽ: {ex.Message}", ConsoleColor.Red); }
+                    }
+                    break;
+
+                case "img": // BỔ SUNG
+                    string imgPath = GetPathOrOpenDialog(args, 2, "Images|*.png;*.jpg;*.svg");
+                    if (!string.IsNullOrEmpty(imgPath))
+                    {
+                        _tiaEngine.AddPngToProjectGraphics(imgPath, Path.GetFileNameWithoutExtension(imgPath));
+                        PrintIcon("√", "Đã nạp ảnh vào Graphics Folder.", ConsoleColor.Green);
+                    }
+                    break;
+
+                case "export":
 
                     // 1. Lấy loại export (mặc định là screen nếu không nhập)
 
@@ -263,7 +317,7 @@ namespace TIA_Copilot_CLI
 
                     // 2. Tên màn hình hoặc tên thiết bị cần export
 
-                    string exportName = args.Length > 3 ? args[3] : "Main_Process"; 
+                    string exportName = args.Length > 3 ? args[3] : "Main_Process";
 
 
 
@@ -271,7 +325,8 @@ namespace TIA_Copilot_CLI
 
 
 
-                    try {
+                    try
+                    {
 
                         string saveFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
 
@@ -281,9 +336,10 @@ namespace TIA_Copilot_CLI
 
                         string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
-                        
 
-                        switch (exportType) {
+
+                        switch (exportType)
+                        {
 
                             case "settings":
 
@@ -343,7 +399,9 @@ namespace TIA_Copilot_CLI
 
                         }
 
-                    } catch (Exception ex) {
+                    }
+                    catch (Exception ex)
+                    {
 
                         PrintIcon("X", $"Lỗi khi export: {ex.Message}", ConsoleColor.Red);
 
@@ -351,30 +409,34 @@ namespace TIA_Copilot_CLI
 
                     break;
 
-        // --- NHÓM 5: ONLINE & COMMISSIONING ---
-        case "compile":
-            bool isRebuild = args.Any(a => a.ToLower() == "rebuild");
-            string cMode = (args.Length > 2 && !isRebuild) ? args[2] : "both";
-            PrintIcon("i", isRebuild ? "Rebuilding all..." : "Compiling...", ConsoleColor.Cyan);
-            string cRes = _tiaEngine.CompileSpecific(_currentDeviceName, cMode == "hw" || cMode == "both", cMode == "sw" || cMode == "both", isRebuild);
-            Console.WriteLine(cRes);
-            break;
+                // --- NHÓM 5: ONLINE & COMMISSIONING ---
+                case "compile":
+                    bool isRebuild = args.Any(a => a.ToLower() == "rebuild");
+                    string cMode = (args.Length > 2 && !isRebuild) ? args[2] : "both";
+                    PrintIcon("i", isRebuild ? "Rebuilding all..." : "Compiling...", ConsoleColor.Cyan);
+                    string cRes = _tiaEngine.CompileSpecific(_currentDeviceName, cMode == "hw" || cMode == "both", cMode == "sw" || cMode == "both", isRebuild);
+                    Console.WriteLine(cRes);
+                    break;
 
-        case "run": case "stop": case "download": case "check":
-            HandleOnlineAction(action, args);
-            break;
+                case "run":
+                case "stop":
+                case "download":
+                case "check":
+                    HandleOnlineAction(action, args);
+                    break;
 
-        default:
-            PrintIcon("×", $"Lệnh 'tia {action}' không xác định.", ConsoleColor.Red);
-            break;
-    }
-}
+                default:
+                    PrintIcon("×", $"Lệnh 'tia {action}' không xác định.", ConsoleColor.Red);
+                    break;
+            }
+        }
 
         private static string GetPathOrOpenDialog(string[] args, int index, string filter)
         {
             if (args.Length > index && !string.IsNullOrWhiteSpace(args[index])) return args[index];
             string selectedPath = "";
-            Thread t = new Thread(() => {
+            Thread t = new Thread(() =>
+            {
                 using (OpenFileDialog ofd = new OpenFileDialog { Filter = filter, Title = "Chọn file dữ liệu" })
                     if (ofd.ShowDialog(new Form { TopMost = true }) == DialogResult.OK) selectedPath = ofd.FileName;
             });
@@ -389,7 +451,8 @@ namespace TIA_Copilot_CLI
 
             if (args.Length > 2 && devs.Any(d => d.Equals(args[2], StringComparison.OrdinalIgnoreCase)))
                 _currentDeviceName = devs.First(d => d.Equals(args[2], StringComparison.OrdinalIgnoreCase));
-            else {
+            else
+            {
                 Console.WriteLine("\n" + new string('-', 45) + "\n ID | DANH SÁCH PLC TRONG DỰ ÁN\n" + new string('-', 45));
                 for (int i = 0; i < devs.Count; i++) Console.WriteLine($" {i + 1,-2} | {devs[i]}");
                 Console.Write("\nNhập ID: ");
@@ -433,7 +496,7 @@ namespace TIA_Copilot_CLI
 
                 for (int i = 0; i < adapters.Count; i++)
                     Console.WriteLine($" {i + 1,-2} | {adapters[i]}");
-                
+
                 Console.WriteLine(new string('-', 60));
                 Console.Write("Chọn ID card mạng: ");
                 string input = Console.ReadLine();
@@ -458,8 +521,8 @@ namespace TIA_Copilot_CLI
 
             // 5. Thực thi lệnh thực tế
             PrintIcon("i", $"Thực thi '{action.ToUpper()}' via {selectedAdapter}...", ConsoleColor.Cyan);
-            
-            try 
+
+            try
             {
                 switch (action)
                 {
@@ -471,7 +534,7 @@ namespace TIA_Copilot_CLI
                         break;
                     case "download":
                         string res = _tiaEngine.DownloadToPLC(_currentDeviceName, _currentIp, selectedAdapter);
-                        Console.WriteLine(res);                       
+                        Console.WriteLine(res);
                         break;
                     case "check":
                         PrintIcon("√", $"Trạng thái Online: {_tiaEngine.GetPlcStatus(_currentDeviceName, selectedAdapter)}", ConsoleColor.Green);
@@ -485,23 +548,29 @@ namespace TIA_Copilot_CLI
         {
             PrintIcon("i", $"--- IMPORT {blockType} ---", ConsoleColor.Cyan);
             string path = explicitPath;
-            if (string.IsNullOrEmpty(path)) {
+            if (string.IsNullOrEmpty(path))
+            {
                 var latestSclFile = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory).GetFiles("*.scl").OrderByDescending(f => f.LastWriteTime).FirstOrDefault();
                 if (latestSclFile != null) path = latestSclFile.FullName;
             }
-            if (File.Exists(path)) {
-                try {
+            if (File.Exists(path))
+            {
+                try
+                {
                     string target = !string.IsNullOrEmpty(_currentDeviceName) && _currentDeviceName != "None" ? _currentDeviceName : _tiaEngine.GetPlcList().FirstOrDefault();
                     _tiaEngine.CreateFBblockFromSource(target, path);
                     PrintIcon("√", $"Nạp thành công vào {target}!", ConsoleColor.Green);
-                } catch (Exception ex) { PrintIcon("×", $"Lỗi: {ex.Message}", ConsoleColor.Red); }
-            } else PrintIcon("×", "Không tìm thấy file SCL.", ConsoleColor.Red);
+                }
+                catch (Exception ex) { PrintIcon("×", $"Lỗi: {ex.Message}", ConsoleColor.Red); }
+            }
+            else PrintIcon("×", "Không tìm thấy file SCL.", ConsoleColor.Red);
         }
 
         static string ReadLineWithEscape()
         {
             StringBuilder sb = new StringBuilder();
-            while (true) {
+            while (true)
+            {
                 var k = Console.ReadKey(true);
                 if (k.Key == ConsoleKey.Escape) return null;
                 if (k.Key == ConsoleKey.Enter) { Console.WriteLine(); return sb.ToString(); }
@@ -510,7 +579,12 @@ namespace TIA_Copilot_CLI
             }
         }
 
-        public static void PrintIcon(string icon, string msg, ConsoleColor c) { Console.ForegroundColor = c; Console.Write($"[{icon}] "); Console.ResetColor(); Console.WriteLine(msg); }
+        public static void PrintIcon(string icon, string msg, ConsoleColor c)
+        {
+            Console.ForegroundColor = c;
+            Console.Write($"[{icon}] ");
+            Console.ResetColor(); Console.WriteLine(msg);
+        }
 
         static void PrintHelp()
         {
@@ -524,10 +598,13 @@ namespace TIA_Copilot_CLI
             Console.WriteLine("\n[AI MODULE]");
             Console.ResetColor();
 
-            Console.WriteLine("  load-tags \"<Đường_dẫn_File_Excel/CSV>\"               : Upload desire tags");
-            Console.WriteLine("  chat <Type> \"<Query>\" [SessionID]                    : Calling AI");
-            Console.WriteLine("  load-spec \"<Đường_dẫn_File_Spec.txt>\" [SessionID]    : Upload system spec");
-            Console.WriteLine("  clear-data [SessionID]                                 : clear uploaded tags/system spec");
+            Console.WriteLine("  chat <FB/FC/OB> \"<Query>\" [SessionID]        : Calling AI");
+            Console.WriteLine("  chat load-tags \"<Đường_dẫn_File_Excel/CSV>\"  : Upload desire tags");
+            Console.WriteLine("  chat load-spec \"<Đường_dẫn_File_Spec.txt>\"   : Upload system spec");
+            Console.WriteLine("  chat clear-data                                : clear uploaded tags/system spec");
+            Console.WriteLine("  chat session                                   : Quản lý Session");
+            Console.WriteLine("  chat status                                    : Kiểm tra trạng thái Session");
+            Console.WriteLine("  chat check-data                                : Kiểm tra dữ liệu Session");
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("\n[TIA MODULE]");
@@ -573,7 +650,7 @@ namespace TIA_Copilot_CLI
 
             Console.WriteLine("\n" + new string('-', 85));
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine(" LƯU Ý: Các đường dẫn chứa khoảng trắng bắt buộc bao quanh bằng dấu ngoặc kép \" \".");
+            Console.WriteLine(" LƯU Ý: Các đường dẫn, văn bản hội thoại chứa khoảng trắng bắt buộc bao quanh bằng dấu ngoặc kép \" \".");
             Console.WriteLine(" Gõ 'exit' hoặc bấm [ESC] để kết thúc phiên làm việc.");
             Console.ResetColor();
             Console.WriteLine(new string('=', 85) + "\n");
@@ -595,56 +672,56 @@ namespace TIA_Copilot_CLI
         }
 
         private static void HandleCreateDeviceWizard()
-{
-    string typeIdentifier = "";
-    Console.WriteLine("\n[WIZARD TẠO THIẾT BỊ]");
-    Console.WriteLine(" 1. Load từ Catalog (PlcCatalog.json)");
-    Console.WriteLine(" 2. Nhập tay (Manual)");
-    Console.Write("Chọn chế độ (1/2): ");
-    string choice = Console.ReadLine();
-
-    if (choice == "1")
-    {
-        string catalogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PLcCatalog.json");
-        if (File.Exists(catalogPath))
         {
-            var catalog = JsonConvert.DeserializeObject<List<PlcCatalogItem>>(File.ReadAllText(catalogPath));
-            var valid = catalog.Where(x => !string.IsNullOrEmpty(x.Name)).ToList();
+            string typeIdentifier = "";
+            Console.WriteLine("\n[WIZARD TẠO THIẾT BỊ]");
+            Console.WriteLine(" 1. Load từ Catalog (PlcCatalog.json)");
+            Console.WriteLine(" 2. Nhập tay (Manual)");
+            Console.Write("Chọn chế độ (1/2): ");
+            string choice = Console.ReadLine();
 
-            Console.WriteLine("\n--- DANH SÁCH PLC TRONG CATALOG ---");
-            for (int i = 0; i < valid.Count; i++) Console.WriteLine($" {i + 1}. {valid[i].Name} ({valid[i].OrderNumber})");
-            
-            Console.Write("Chọn ID: ");
-            if (int.TryParse(Console.ReadLine(), out int selIdx) && selIdx > 0 && selIdx <= valid.Count)
+            if (choice == "1")
             {
-                typeIdentifier = valid[selIdx - 1].GetTypeIdentifier();
-                Console.WriteLine($"[√] Đã chọn Type: {typeIdentifier}");
+                string catalogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PLcCatalog.json");
+                if (File.Exists(catalogPath))
+                {
+                    var catalog = JsonConvert.DeserializeObject<List<PlcCatalogItem>>(File.ReadAllText(catalogPath));
+                    var valid = catalog.Where(x => !string.IsNullOrEmpty(x.Name)).ToList();
+
+                    Console.WriteLine("\n--- DANH SÁCH PLC TRONG CATALOG ---");
+                    for (int i = 0; i < valid.Count; i++) Console.WriteLine($" {i + 1}. {valid[i].Name} ({valid[i].OrderNumber})");
+
+                    Console.Write("Chọn ID: ");
+                    if (int.TryParse(Console.ReadLine(), out int selIdx) && selIdx > 0 && selIdx <= valid.Count)
+                    {
+                        typeIdentifier = valid[selIdx - 1].GetTypeIdentifier();
+                        Console.WriteLine($"[√] Đã chọn Type: {typeIdentifier}");
+                    }
+                }
+                else PrintIcon("!", "Không tìm thấy file PlcCatalog.json!", ConsoleColor.Yellow);
             }
+
+            // Nếu chọn Manual hoặc Catalog lỗi
+            if (string.IsNullOrEmpty(typeIdentifier))
+            {
+                Console.Write("Order Number (VD: 6ES7 511-1AK02-0AB0): "); string order = Console.ReadLine();
+                Console.Write("Version (VD: V2.8): "); string ver = Console.ReadLine();
+                typeIdentifier = $"OrderNumber:{order}/{ver}";
+            }
+
+            Console.Write("Tên thiết bị (Device Name): "); string name = Console.ReadLine();
+            Console.Write("Địa chỉ IP: "); string ip = Console.ReadLine();
+
+            try
+            {
+                PrintIcon("i", "Đang tạo thiết bị trong TIA Portal...", ConsoleColor.Cyan);
+                _tiaEngine.CreateDev(name, typeIdentifier, ip, "");
+
+                _currentDeviceName = name;
+                _currentIp = ip;
+                PrintIcon("√", $"Thiết bị '{name}' đã được tạo thành công!", ConsoleColor.Green);
+            }
+            catch (Exception ex) { PrintIcon("×", $"Lỗi: {ex.Message}", ConsoleColor.Red); }
         }
-        else PrintIcon("!", "Không tìm thấy file PlcCatalog.json!", ConsoleColor.Yellow);
-    }
-    
-    // Nếu chọn Manual hoặc Catalog lỗi
-    if (string.IsNullOrEmpty(typeIdentifier))
-    {
-        Console.Write("Order Number (VD: 6ES7 511-1AK02-0AB0): "); string order = Console.ReadLine();
-        Console.Write("Version (VD: V2.8): "); string ver = Console.ReadLine();
-        typeIdentifier = $"OrderNumber:{order}/{ver}";
-    }
-
-    Console.Write("Tên thiết bị (Device Name): "); string name = Console.ReadLine();
-    Console.Write("Địa chỉ IP: "); string ip = Console.ReadLine();
-
-    try 
-    {
-        PrintIcon("i", "Đang tạo thiết bị trong TIA Portal...", ConsoleColor.Cyan);
-        _tiaEngine.CreateDev(name, typeIdentifier, ip, "");
-        
-        _currentDeviceName = name;
-        _currentIp = ip;
-        PrintIcon("√", $"Thiết bị '{name}' đã được tạo thành công!", ConsoleColor.Green);
-    }
-    catch (Exception ex) { PrintIcon("×", $"Lỗi: {ex.Message}", ConsoleColor.Red); }
-}
     }
 }

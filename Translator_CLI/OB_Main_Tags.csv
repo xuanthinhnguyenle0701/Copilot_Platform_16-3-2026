@@ -1,3 +1,0 @@
-﻿Name,Path,Data Type,Logical Address,Comment,Hmi Visible,Hmi Accessible,Hmi Writeable,Typeobject ID,Version ID
-TAG_EnableStandardBlock,Default tag table,Bool,%M0.0,[Input],True,True,True,,
-TAG_StandardBlockReady,Default tag table,Bool,%M0.1,[Output],True,True,True,,

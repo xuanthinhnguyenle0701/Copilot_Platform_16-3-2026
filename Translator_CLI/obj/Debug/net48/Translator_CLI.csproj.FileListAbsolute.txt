@@ -30,3 +30,35 @@ C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\n
 C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net48\Translator_CLI.exe
 C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\obj\Debug\net48\Translator_CLI.pdb
 C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\bin\Debug\net48\PLcCatalog.json
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\PLcCatalog.json
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Translator_CLI.exe.config
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Translator_CLI.exe
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Translator_CLI.pdb
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\ClosedXML.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\ClosedXML.Parser.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\DocumentFormat.OpenXml.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\DocumentFormat.OpenXml.Framework.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\ExcelNumberFormat.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Microsoft.Bcl.HashCode.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Newtonsoft.Json.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\RBush.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\SixLabors.Fonts.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\System.Buffers.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\System.Memory.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\System.Numerics.Vectors.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Siemens.Engineering.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Siemens.Engineering.Hmi.dll
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Siemens.Engineering.xml
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\bin\Debug\net48\Siemens.Engineering.Hmi.xml
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.csproj.AssemblyReference.cache
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.csproj.SuggestedBindingRedirects.cache
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.exe.config
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.AssemblyInfoInputs.cache
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.AssemblyInfo.cs
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.csproj.CoreCompileInputs.cache
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.sourcelink.json
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translat.BB6ACB5A.Up2Date
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.exe
+C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\Translator_CLI\obj\Debug\net48\Translator_CLI.pdb
