@@ -6,6 +6,7 @@ import warnings
 import memory 
 import app_secrets
 
+os.environ["CHROMA_TELEMETRY_IMPL"] = "none"
 warnings.filterwarnings("ignore")
 logging.getLogger("chromadb").setLevel(logging.ERROR)
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
@@ -51,6 +52,13 @@ def get_output_schema():
         }
         """
 
+def send_response(data_dict):
+    """Ép xả dữ liệu thẳng xuống ống nước (Buffer) và cưỡng bức tắt Python ngay lập tức"""
+    output_bytes = (json.dumps(data_dict, ensure_ascii=False) + "\n").encode('utf-8')
+    sys.stdout.buffer.write(output_bytes)
+    sys.stdout.buffer.flush()
+    os._exit(0)
+
 def clean_json_response(text):
     cleaned = text.strip()
     if cleaned.startswith("```json"):
@@ -91,20 +99,17 @@ def main():
 
         if command_type == "list_sessions":
             sessions = memory.list_all_sessions()
-            print(json.dumps({"status": "success", "sessions": sessions}, ensure_ascii=False))
-            return
+            send_response({"status": "success", "sessions": sessions})
 
         if command_type == "create_session":
             memory.init_session(session_id)
-            print(json.dumps({"status": "success", "message": f"Created {session_id}"}, ensure_ascii=False))
-            return
+            send_response({"status": "success", "message": f"Created {session_id}"})
 
         if command_type == "reset":
             memory.clear_session(session_id)
-            print(json.dumps({"status": "success", "message": f"Session '{session_id}' cleared."}, ensure_ascii=False))
-            return
+            send_response({"status": "success", "message": f"Session '{session_id}' cleared."})
 
-        # --- [MỚI] BƯỚC 2: XỬ LÝ LỆNH UPDATE SPEC ---
+        # --- BƯỚC 2: XỬ LÝ LỆNH UPDATE SPEC ---
         if command_type == "update_spec":
             try:
                 persistent_client = chromadb.PersistentClient(path=app_secrets.CHROMA_DB_PATH)
@@ -131,16 +136,14 @@ def main():
                 else:
                     msg = "Deleted old Spec. Current system has no Spec constraints."
                     
-                print(json.dumps({"status": "success", "message": msg}, ensure_ascii=False))
+                send_response({"status": "success", "message": msg})
             except Exception as e:
-                print(json.dumps({"status": "error", "message": f"Error loading Spec: {str(e)}"}, ensure_ascii=False))
-            return
+                send_response({"status": "error", "message": f"Error loading Spec: {str(e)}"})
         # --- [MỚI] LỆNH KIỂM TRA NỘI DUNG SPEC ĐANG NẠP ---
         if command_type == "check_spec":
             try:
                 persistent_client = chromadb.PersistentClient(path=app_secrets.CHROMA_DB_PATH)
                 try:
-                    # Cố gắng kết nối vào Collection Spec
                     collection = persistent_client.get_collection("current_project_spec")
                     results = collection.get()
                     docs = results.get("documents", [])
@@ -148,40 +151,31 @@ def main():
                     if not docs:
                         msg = "No current spec found. The system is empty."
                     else:
-                        # Nối các chunk lại với nhau (Vì khi nạp ta đã băm nhỏ)
                         preview_text = "\n\n--- [CHUNK NEXT] ---\n\n".join(docs)
                         msg = f"Found {len(docs)} chunks in current Spec.\n\n[CURRENT SPEC CONTENT]:\n{preview_text}"
                 except Exception:
                     msg = "No current Spec collection found. The system is completely empty."
                     
-                print(json.dumps({"status": "success", "message": msg}, ensure_ascii=False))
+                send_response({"status": "success", "message": msg})
             except Exception as e:
-                print(json.dumps({"status": "error", "message": f"Error reading Spec: {str(e)}"}, ensure_ascii=False))
-            return
-        # [MỚI] LỆNH DỌN DẸP VECTOR DB (SPEC)
-        # =====================================================================
+                send_response({"status": "error", "message": f"Error reading Spec: {str(e)}"})
+                
+        # --- LỆNH DỌN DẸP VECTOR DB (SPEC) ---
         elif command_type == "clear_spec":
             try:
                 import shutil
-                
-                # Tùy thuộc vào việc bạn đang lưu thư mục ChromaDB ở đâu, hãy sửa tên thư mục cho đúng.
-                # Giả sử thư mục lưu Vector DB của bạn tên là "chroma_db" (hoặc "db") nằm cùng cấp với main.py
-                db_directory = "chroma_db" # ---> [SỬA LẠI TÊN THƯ MỤC NẾU CẦN]
+                # SỬA LỖI Ở ĐÂY: Trỏ thẳng vào thư mục CHROMA_DB_PATH trong app_secrets
+                db_directory = app_secrets.CHROMA_DB_PATH 
 
                 if os.path.exists(db_directory):
-                    # Xóa vật lý toàn bộ thư mục chứa Database
                     shutil.rmtree(db_directory)
                     msg = "Đã xóa toàn bộ Spec cũ. Database đã được làm sạch!"
                 else:
                     msg = "Hệ thống đang trống, không có Spec nào để xóa."
 
-                response = {"status": "success", "message": msg}
-                print(json.dumps(response, ensure_ascii=False))
-                sys.exit(0)
+                send_response({"status": "success", "message": msg})
             except Exception as e:
-                response = {"status": "error", "message": f"Lỗi khi xóa Spec: {str(e)}"}
-                print(json.dumps(response, ensure_ascii=False))
-                sys.exit(1)
+                send_response({"status": "error", "message": f"Lỗi khi xóa Spec: {str(e)}"})
         # endregion
         
         # region FILTER CHỌN KIỂU BLOCK MỤC TIÊU (FB/FC/OB) - DỰA TRÊN THÔNG TIN NGỪNG CỦA USER

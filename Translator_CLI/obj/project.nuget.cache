@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "Mbko2Kzw3J0=",
+  "dgSpecHash": "cbTKFdP8xNk=",
   "success": true,
-  "projectFilePath": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\Translator_CLI\\Translator_CLI.csproj",
+  "projectFilePath": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\Translator_CLI.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\tia_v20\\.nuget\\packages\\closedxml\\0.105.0\\closedxml.0.105.0.nupkg.sha512",
     "C:\\Users\\tia_v20\\.nuget\\packages\\closedxml.parser\\2.0.0\\closedxml.parser.2.0.0.nupkg.sha512",
