@@ -658,12 +658,12 @@ FodyWeavers.xsd
 # =================================================================
 # CUSTOM TIA COPILOT IGNORE (DO NOT REMOVE)
 # =================================================================
-bin/
+Translator_CLI/bin/
 app_secrets.py
-chat_memory.db
+Translator_CLI/chat_memory.db
 # 2. CHỈ bỏ qua thư mục ChromaDB nằm trong Translator_CLI
 Translator_CLI/chroma_db_data/
-chroma.sqlite3
+Translator_CLI/chroma_db_data/chroma.sqlite3
 tags_cache.txt
 TIA_Copilot_Context_Dump.txt
 *.scl

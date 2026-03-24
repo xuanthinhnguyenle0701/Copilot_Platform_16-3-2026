@@ -241,8 +241,6 @@ namespace TIA_Copilot_CLI
 
                 // --- NHÓM 2: DEVICE & CONFIG ---
                 case "device":
-                    // Logic: Nếu gõ 'tia device' không tham số -> Hiện Wizard chọn JSON/Manual
-                    // Nếu gõ 'tia device Name IP Type' -> Chạy thẳng lệnh tạo
                     if (args.Length >= 5)
                     {
                         _tiaEngine.CreateDev(args[2], args[4], args[3], "");

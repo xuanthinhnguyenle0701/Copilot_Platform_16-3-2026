@@ -88,8 +88,6 @@ def main():
         command_type = request_data.get("command", "chat") 
         context_code = request_data.get("context_code", "")
         user_tags = request_data.get("user_tags", "").strip()
-        
-        # [CẬP NHẬT] Đổi biến nhận Payload khớp với C#
         spec_text = request_data.get("spec_text", "").strip()
         target_block_type = request_data.get("target_block_type", "AUTO").upper()
 
@@ -113,15 +111,12 @@ def main():
         if command_type == "update_spec":
             try:
                 persistent_client = chromadb.PersistentClient(path=app_secrets.CHROMA_DB_PATH)
-                
-                # Cố gắng xóa collection cũ (nếu có) để tránh bóng ma Vector
                 try:
                     persistent_client.delete_collection("current_project_spec")
                 except Exception:
                     pass 
                 
                 if spec_text:
-                    # Băm nhỏ Spec bằng Sliding Window theo ký tự
                     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
                     chunks = splitter.split_text(spec_text)
                     
@@ -139,7 +134,6 @@ def main():
                 send_response({"status": "success", "message": msg})
             except Exception as e:
                 send_response({"status": "error", "message": f"Error loading Spec: {str(e)}"})
-        # --- [MỚI] LỆNH KIỂM TRA NỘI DUNG SPEC ĐANG NẠP ---
         if command_type == "check_spec":
             try:
                 persistent_client = chromadb.PersistentClient(path=app_secrets.CHROMA_DB_PATH)
@@ -179,7 +173,7 @@ def main():
         # endregion
         
         # region FILTER CHỌN KIỂU BLOCK MỤC TIÊU (FB/FC/OB) - DỰA TRÊN THÔNG TIN NGỪNG CỦA USER
-        # --- [CẬP NHẬT] BƯỚC 3: DUAL RAG RETRIEVAL ---
+        # --- DUAL RAG RETRIEVAL ---
         embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         
         # 1. Truy xuất Sách giáo khoa (Tĩnh - Mặc định)
@@ -189,10 +183,10 @@ def main():
         filter_dict = {}
         
         if target_block_type in ["FB", "FC"]:
-            # Nếu viết hàm, chỉ lấy luật của Hàm (COMPONENT) và Cú pháp chung (SYNTAX). CẤM LẤY LUẬT CỦA OB.
+
             filter_dict = {"type": {"$in": ["COMPONENT", "SYNTAX"]}}
         elif target_block_type == "OB":
-            # Nếu đi dây OB, chỉ lấy luật của Trạm (SYSTEM) và Cú pháp chung (SYNTAX). CẤM LẤY LUẬT CỦA FB.
+
             filter_dict = {"type": {"$in": ["SYSTEM", "SYNTAX"]}}
             
         if filter_dict:
@@ -215,7 +209,7 @@ def main():
             if spec_docs:
                 spec_context = "\n\n".join([d.page_content for d in spec_docs])
         except Exception:
-            pass # An toàn bỏ qua nếu User chưa nạp Spec bao giờ
+            pass
         # endregion
         
         # region Prompt assembly
@@ -318,9 +312,9 @@ def main():
         try:
             data_dict = json.loads(final_json_str)
             data_dict["token_usage"] = token_count
-            final_json_str = json.dumps(data_dict,flush=True, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
+            final_json_str = json.dumps(data_dict, ensure_ascii=False, indent=2)
+        except Exception as e:
+            final_json_str = json.dumps({"error": f"Lỗi chèn Token: {str(e)}", "raw_output": final_json_str})
 
         # 4. Lưu lịch sử và in kết quả
         memory.save_turn(session_id, user_query, final_json_str)

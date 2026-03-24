@@ -12,8 +12,7 @@ namespace TIA_Copilot_CLI
     public static class CommandHandler
     {
         public static string DefaultSessionID = "default_session";
-        
-        // ---> [MỚI]: Khai báo vị trí file lưu tạm (Cache) nằm ngay cạnh file .exe
+
         private static readonly string TagCacheFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tags_cache.txt");
 
         public static string GetBlockType(string input)
@@ -28,7 +27,7 @@ namespace TIA_Copilot_CLI
         public static async Task HandleLoadTagsAsync(string tagFilePath)
         {
             Console.WriteLine($"\n🚀 [START] Bắt đầu nạp I/O Tags từ: {tagFilePath}");
-            
+
             if (string.IsNullOrEmpty(tagFilePath) || !File.Exists(tagFilePath))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -39,7 +38,7 @@ namespace TIA_Copilot_CLI
 
             string userTagsContent = "";
             string ext = Path.GetExtension(tagFilePath).ToLower();
-            
+
             if (ext == ".xlsx" || ext == ".xls") userTagsContent = TagManager.ReadUserTagsExcel(tagFilePath);
             else if (ext == ".csv") userTagsContent = TagManager.ReadUserTagsCsv(tagFilePath);
 
@@ -55,8 +54,8 @@ namespace TIA_Copilot_CLI
 
         public static async Task HandleChatAsync(string targetType, string query, string sessionId)
         {
-            Console.WriteLine($"\n🚀 [START] Bắt đầu sinh code cho khối: {targetType}");
-            
+            Console.WriteLine($"\n🚀 [START] Generating code for block: {targetType}");
+
             string userTagsContent = "";
 
             // Nếu là OB, tự động đi mò file Cache xem có tồn tại không
@@ -68,33 +67,30 @@ namespace TIA_Copilot_CLI
                     string content = Encoding.UTF8.GetString(fileBytes);
                     userTagsContent = content.TrimStart('\uFEFF');
                     Console.ForegroundColor = ConsoleColor.Magenta;
-                    Console.WriteLine($"[SYSTEM] Đã tìm thấy I/O Tags trong Cache. Tiến hành đính kèm vào Prompt.");
+                    Console.WriteLine($"[SYSTEM] Found I/O Tags in Cache. Proceeding to attach to Prompt.");
                     Console.ResetColor();
                 }
                 else
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"[CẢNH BÁO] Không tìm thấy dữ liệu Tag Cache. (Bạn chưa chạy lệnh load-tags). AI sẽ tự sinh Tag mới.");
+                    Console.WriteLine($"[WARNING] No info about Tag Cache. (Not yet uploaded via 'load-tags'). AI will generate new tags.");
                     Console.ResetColor();
                 }
             }
 
             // Gọi backend
             var backendTask = AiEngine.CallPythonBackendAsync(query, sessionId, "chat", "", "", targetType, userTagsContent);
-            string jsonResponse = await RunWithSpinner(backendTask, "AI đang suy nghĩ và phân tích logic...");
+            string jsonResponse = await RunWithSpinner(backendTask, "Generating...");
 
             if (string.IsNullOrWhiteSpace(jsonResponse))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("\n[LỖI NGHIÊM TRỌNG]: Python không trả về bất kỳ dữ liệu nào (Chuỗi rỗng)!");
+                Console.WriteLine("\n[CRITICAL ERROR]: Python backend did not return any response. Please check the Python server logs for more details.");
                 Console.ResetColor();
-            }
-            else
-            {
-                Console.WriteLine($"[DEBUG] Đã nhận {jsonResponse.Length} ký tự từ Python."); // Bật dòng này nếu muốn soi độ dài
+                return;
             }
             ProcessResponse(jsonResponse);
-            Console.WriteLine($"\n✅ [DONE] Quá trình sinh code hoàn tất!\n");
+            Console.WriteLine($"\n [DONE] Code generation completed!\n");
         }
 
         public static async Task HandleLoadSpecAsync(string specPath, string sessionId)
@@ -128,8 +124,8 @@ namespace TIA_Copilot_CLI
             // --- LỚP KHIÊN CẢNH BÁO ---
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"⚠️ [CẢNH BÁO MỨC ĐỘ CAO] Bạn sắp xóa toàn bộ tri thức (Spec & Tags) của Session: [{sessionId.ToUpper()}]");
-            
+            Console.WriteLine($" [CẢNH BÁO MỨC ĐỘ CAO] Bạn sắp xóa toàn bộ tri thức (Spec & Tags) của project này!");
+
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.Write("Hành động này KHÔNG THỂ hoàn tác. Bạn có chắc chắn muốn bóp cò? (y/n): ");
             Console.ResetColor();
@@ -143,11 +139,11 @@ namespace TIA_Copilot_CLI
 
             // --- BẮT ĐẦU XÓA ---
             Console.WriteLine($"\n🚀 [START] Tiến hành dọn dẹp hệ thống...");
-            
+
             // Đấm 1: Xóa file Tag Cache
             if (File.Exists(TagCacheFile))
             {
-                try 
+                try
                 {
                     File.Delete(TagCacheFile);
                     Console.ForegroundColor = ConsoleColor.Green;
@@ -168,23 +164,23 @@ namespace TIA_Copilot_CLI
             try
             {
                 dynamic obj = JsonConvert.DeserializeObject(jsonResponse);
-                if (obj.status == "success") 
-                { 
-                    Console.ForegroundColor = ConsoleColor.Green; 
-                    Console.WriteLine($"[SUCCESS] {obj.message}"); 
+                if (obj.status == "success")
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"[SUCCESS] {obj.message}");
                 }
-                else 
-                { 
-                    Console.ForegroundColor = ConsoleColor.Red; 
-                    Console.WriteLine($"[ERROR] {obj.message}"); 
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"[ERROR] {obj.message}");
                 }
             }
-            catch 
-            { 
+            catch
+            {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("[ERROR] Lỗi parse phản hồi từ Python Backend."); 
+                Console.WriteLine("[ERROR] Lỗi parse phản hồi từ Python Backend.");
             }
-            
+
             Console.ResetColor();
         }
 
@@ -192,8 +188,8 @@ namespace TIA_Copilot_CLI
         {
             // 1. Quét I/O Tags (Bộ nhớ cục bộ C#)
             string tagStatus = "❌ CHƯA NẠP (Trống)";
-            string tagFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tags_cache.txt"); 
-            
+            string tagFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tags_cache.txt");
+
             if (File.Exists(tagFilePath))
             {
                 FileInfo fi = new FileInfo(tagFilePath);
@@ -212,7 +208,7 @@ namespace TIA_Copilot_CLI
                 if (obj.status == "success")
                 {
                     string msg = obj.message.ToString();
-                    
+
                     // BỘ LỌC THÔNG MINH: Đọc hiểu câu trả lời của Python
                     if (msg.Contains("No current spec found") || msg.Contains("empty"))
                     {
@@ -222,7 +218,7 @@ namespace TIA_Copilot_CLI
                     {
                         // Nếu có Spec, Python sẽ trả về 1 cục text rất dài. Ta chỉ lấy dòng đầu tiên in ra cho gọn!
                         // VD: "Found 15 chunks in current Spec."
-                        string briefMsg = msg.Split('\n')[0]; 
+                        string briefMsg = msg.Split('\n')[0];
                         specStatus = $"✅ ĐÃ NẠP | {briefMsg} | Trạng thái: Sẵn sàng";
                     }
                 }
@@ -263,39 +259,61 @@ namespace TIA_Copilot_CLI
 
             while (keepMenuOpen)
             {
-                // =========================================================
-                // 1. GỌI PYTHON LẤY DỮ LIỆU (CHẠY NGẦM VỚI SPINNER TRƯỚC KHI VẼ UI)
-                // =========================================================
                 List<string> dbSessions = new List<string>();
                 try
                 {
                     var backendTask = AiEngine.CallPythonBackendAsync("", Program._currentSessionId, "list_sessions");
-                    
+
                     // Spinner sẽ xoay ở màn hình cũ, tải xong sẽ bị Console.Clear() quét sạch!
                     string jsonRes = await RunWithSpinner(backendTask, "Đang đồng bộ danh sách Session...", 15);
-                    dynamic obj = JsonConvert.DeserializeObject(jsonRes);
-                    if (obj != null && obj.status == "success" && obj.sessions != null)
+
+                    // --- [ĐÒN ĐÁNH CHẶN RÁC PYTHON] ---
+                    // Bất chấp Python in ra cảnh báo gì, C# chỉ cắt đúng khúc từ '{' đến '}' để parse
+                    int jsonStart = jsonRes.IndexOf('{');
+                    int jsonEnd = jsonRes.LastIndexOf('}');
+
+                    if (jsonStart >= 0 && jsonEnd >= jsonStart)
                     {
-                        foreach (var s in obj.sessions) dbSessions.Add((string)s);
+                        string cleanJson = jsonRes.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                        dynamic obj = JsonConvert.DeserializeObject(cleanJson);
+
+                        if (obj != null && obj.status == "success" && obj.sessions != null)
+                        {
+                            foreach (var s in obj.sessions)
+                            {
+                                dbSessions.Add((string)s);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Mở khiên kiểm tra: Nếu Python không trả về JSON, in ra để xem nó trả về cái gì
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"\n[CẢNH BÁO MÙA ĐÔNG]: Backend không trả về JSON hợp lệ. Dữ liệu thô: {jsonRes}");
+                        Console.ResetColor();
+                        await Task.Delay(3000); // Dừng 3 giây cho lập trình viên đọc lỗi
                     }
                 }
-                catch { /* Lỗi âm thầm bỏ qua, dùng list rỗng */ }
+                catch (Exception ex)
+                {
+                    // KHÔNG BAO GIỜ NUỐT LỖI KHI DEV
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"\n[ERROR C# PARSE JSON]: {ex.Message}");
+                    Console.ResetColor();
+                    await Task.Delay(2000);
+                }
 
-                // Ép luôn luôn phải có default và session hiện tại để UI không bị vỡ
                 if (!dbSessions.Contains("default")) dbSessions.Insert(0, "default");
                 if (!dbSessions.Contains(Program._currentSessionId)) dbSessions.Add(Program._currentSessionId);
 
-                // =========================================================
-                // 2. XÓA MÀN HÌNH VÀ VẼ GIAO DIỆN SẠCH TƯNG
-                // =========================================================
                 Console.Clear();
                 Console.ForegroundColor = ConsoleColor.Magenta;
                 Console.WriteLine("==========================================================");
-                Console.WriteLine(" 📂 TRUNG TÂM CHỈ HUY SESSION (CHAT & CONTEXT)");
+                Console.WriteLine(" CHAT SESSION MENU (CHAT & CONTEXT)");
                 Console.WriteLine("==========================================================");
                 Console.ResetColor();
 
-                Console.WriteLine($"\n Session hiện tại: [{Program._currentSessionId.ToUpper()}]\n");
+                Console.WriteLine($"\n Current session: [{Program._currentSessionId.ToUpper()}]\n");
 
                 // --- IN DANH SÁCH ---
                 for (int i = 0; i < dbSessions.Count; i++)
@@ -314,10 +332,10 @@ namespace TIA_Copilot_CLI
 
                 Console.WriteLine("\n----------------------------------------------------------");
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine(" [SỐ]: Chọn | [C]: Tạo mới | [S]: Xóa Session | [H]: Xóa Lịch sử | [ESC]: Thoát");
+                Console.WriteLine(" [NUMBER]: Choose | [C]: Create Session | [S]: Delete Session | [H]: Clear Chat History | [ESC]: Exit");
                 Console.ResetColor();
 
-                // --- 3. BẮT SỰ KIỆN BÀN PHÍM ---
+                // --- BẮT SỰ KIỆN BÀN PHÍM ---
                 var keyInfo = Console.ReadKey(intercept: true);
                 char key = char.ToUpper(keyInfo.KeyChar);
 
@@ -338,7 +356,7 @@ namespace TIA_Copilot_CLI
                         // GẮN SPINNER TẠO MỚI
                         var createTask = AiEngine.CallPythonBackendAsync("", newSession, "create_session");
                         await RunWithSpinner(createTask, $"Đang khởi tạo không gian cho [{newSession}]...");
-                        
+
                         Program._currentSessionId = newSession;
                         Program.PrintIcon("√", $"Đã tạo và chuyển sang Session: {newSession}", ConsoleColor.Green);
                         await Task.Delay(1000);
@@ -350,12 +368,12 @@ namespace TIA_Copilot_CLI
                     string actionName = key == 'S' ? "TIÊU DIỆT SESSION" : "XÓA LỊCH SỬ CHAT";
                     Console.WriteLine($"\n\n 👉 Bạn chọn [{actionName}].");
                     Console.Write(" >> Nhập SỐ thứ tự Session muốn thao tác (Bấm Enter để Hủy): ");
-                    
+
                     if (int.TryParse(Console.ReadLine(), out int targetIdx) && targetIdx > 0 && targetIdx <= dbSessions.Count)
                     {
                         string targetSession = dbSessions[targetIdx - 1];
 
-                        if (key == 'S' && targetSession == "default") 
+                        if (key == 'S' && targetSession == "default")
                         {
                             Program.PrintIcon("×", "TỪ CHỐI: Không được tiêu diệt Session gốc 'default'.", ConsoleColor.Red);
                             await Task.Delay(1500);
@@ -365,14 +383,14 @@ namespace TIA_Copilot_CLI
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.Write($" ⚠️ CẢNH BÁO: Xác nhận [{actionName}] với '{targetSession}'? (y/n): ");
                         Console.ResetColor();
-                        
+
                         string confirm = Console.ReadLine()?.Trim().ToLower();
                         if (confirm == "y" || confirm == "yes")
                         {
                             // GẮN SPINNER XÓA DỮ LIỆU
                             var resetTask = AiEngine.CallPythonBackendAsync("", targetSession, "reset");
                             await RunWithSpinner(resetTask, $"Đang tiến hành dọn dẹp [{targetSession}]...");
-                            
+
                             if (key == 'S')
                             {
                                 Program.PrintIcon("√", $"Đã tiêu diệt hoàn toàn Session: {targetSession}", ConsoleColor.Green);
@@ -402,16 +420,16 @@ namespace TIA_Copilot_CLI
                 }
             }
         }
-        
+
         public static async Task HandleCheckDataAsync(string sessionId)
         {
             Console.WriteLine();
-            
+
             // Dùng StringBuilder để đúc một file text hoàn chỉnh
             StringBuilder dumpData = new StringBuilder();
             dumpData.AppendLine("==========================================================");
-            dumpData.AppendLine($" 📂 TIA COPILOT - DỮ LIỆU BỐI CẢNH (SESSION: {sessionId.ToUpper()})");
-            dumpData.AppendLine($" 🕒 Thời gian trích xuất: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+            dumpData.AppendLine($" TIA COPILOT - DỮ LIỆU BỐI CẢNH (SESSION: {sessionId.ToUpper()})");
+            dumpData.AppendLine($" Thời gian trích xuất: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
             dumpData.AppendLine("==========================================================\n");
 
             // --- 1. LẤY I/O TAGS CACHE (LOCAL C#) ---
@@ -420,7 +438,7 @@ namespace TIA_Copilot_CLI
             if (File.Exists(tagFilePath))
             {
                 string tagsContent = File.ReadAllText(tagFilePath);
-                dumpData.AppendLine(tagsContent.TrimStart('\uFEFF')); // Gọt ký tự BOM nếu có
+                dumpData.AppendLine(tagsContent.TrimStart('\uFEFF'));
             }
             else
             {
@@ -445,7 +463,7 @@ namespace TIA_Copilot_CLI
                     }
                     else
                     {
-                        dumpData.AppendLine(msg); // In toàn bộ nội dung Spec dài dằng dặc ra đây
+                        dumpData.AppendLine(msg);
                     }
                 }
                 else
@@ -463,33 +481,32 @@ namespace TIA_Copilot_CLI
             {
                 string exportFileName = "TIA_Copilot_Context_Dump.txt";
                 string exportPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, exportFileName);
-                
+
                 File.WriteAllText(exportPath, dumpData.ToString(), Encoding.UTF8);
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine($"\n[√] Đã trích xuất thành công ra file: {exportFileName}");
                 Console.ResetColor();
                 Console.ForegroundColor = ConsoleColor.DarkGray;
-                Console.WriteLine($"📁 Đường dẫn: {exportPath}\n");
+                Console.WriteLine($" Đường dẫn: {exportPath}\n");
                 Console.ResetColor();
 
-                // Lệnh bọc thép gọi hệ điều hành Windows mở file bằng Notepad mặc định
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
                     FileName = exportPath,
-                    UseShellExecute = true // BẮT BUỘC = true để Windows tự chọn app mở file .txt
+                    UseShellExecute = true 
                 };
                 Process.Start(psi);
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\n[×] Không thể tự động mở Notepad. Lỗi OS: {ex.Message}");
+                Console.WriteLine($"\n[×] Cannot automatically open Notepad. OS Error: {ex.Message}");
                 Console.ResetColor();
-                Console.WriteLine("👉 Bạn hãy mở thủ công theo đường dẫn trên.");
+                Console.WriteLine("👉 Manually open the file as the following address.");
             }
         }
-        
+
         public static async Task<T> RunWithSpinner<T>(Task<T> targetTask, string waitingMessage, int timeoutSeconds = 180)
         {
             char[] spinnerChars = new char[] { '|', '/', '-', '\\' };
@@ -498,7 +515,7 @@ namespace TIA_Copilot_CLI
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.Write($"{waitingMessage}  ");
 
-            // Lưu lại vị trí con trỏ chuột hiện tại để ghi đè ký tự xoay
+
             int cursorLeft = Console.CursorLeft;
             int cursorTop = Console.CursorTop;
 
@@ -513,44 +530,40 @@ namespace TIA_Copilot_CLI
                     // KHIÊN CHỐNG TREO: Chặt đứt vòng lặp nếu quá hạn
                     if (DateTime.Now > timeoutTime)
                     {
-                        throw new TimeoutException($"Backend không phản hồi sau {timeoutSeconds} giây.");
+                        throw new TimeoutException($"Backend did not respond within {timeoutSeconds} seconds.");
                     }
 
                     Console.SetCursorPosition(cursorLeft - 1, cursorTop);
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.Write(spinnerChars[spinnerIndex]);
                     spinnerIndex = (spinnerIndex + 1) % spinnerChars.Length;
-
-                    // Tránh giật lag CPU, xoay mỗi 100ms
                     await Task.Delay(100);
                 }
 
                 // 3. Trả về kết quả thực sự của backend nếu mọi thứ suôn sẻ
-                return await targetTask; 
+                return await targetTask;
             }
             catch (TimeoutException ex)
             {
-                // 4. CHIẾN THUẬT NGHI BINH: Nếu kiểu trả về T là chuỗi (string)
-                // Ta nặn ra một cục JSON giả mạo để lừa các hàm phía sau không bị Crash
                 if (typeof(T) == typeof(string))
                 {
-                    string fakeJson = Newtonsoft.Json.JsonConvert.SerializeObject(new 
-                    { 
-                        status = "error", 
-                        message = $"TIMEOUT CRASH: {ex.Message} Hãy kiểm tra lại Server Python!" 
+                    string fakeJson = Newtonsoft.Json.JsonConvert.SerializeObject(new
+                    {
+                        status = "error",
+                        message = $"TIMEOUT CRASH: {ex.Message} Hãy kiểm tra lại Server Python!"
                     });
-                    return (T)(object)fakeJson; // Ép kiểu an toàn về T
+                    return (T)(object)fakeJson;
                 }
-                throw; // Nếu T không phải string (VD: là int, bool), đành quăng lỗi ra ngoài
+                throw;
             }
             catch (Exception ex)
             {
                 if (typeof(T) == typeof(string))
                 {
-                    string fakeJson = Newtonsoft.Json.JsonConvert.SerializeObject(new 
-                    { 
-                        status = "error", 
-                        message = $"LỖI KẾT NỐI: {ex.Message}" 
+                    string fakeJson = Newtonsoft.Json.JsonConvert.SerializeObject(new
+                    {
+                        status = "error",
+                        message = $"LỖI KẾT NỐI: {ex.Message}"
                     });
                     return (T)(object)fakeJson;
                 }
@@ -558,11 +571,10 @@ namespace TIA_Copilot_CLI
             }
             finally
             {
-                // 5. DỌN CHIẾN TRƯỜNG (LUÔN CHẠY DÙ CÓ LỖI HAY KHÔNG)
                 Console.SetCursorPosition(cursorLeft - 1, cursorTop);
-                Console.Write(" "); // Xóa ký tự spinner
+                Console.Write(" ");
                 Console.SetCursorPosition(cursorLeft - 1, cursorTop);
-                Console.WriteLine(); // Xuống dòng trả lại giao diện bình thường
+                Console.WriteLine();
                 Console.ResetColor();
             }
         }
@@ -573,11 +585,6 @@ namespace TIA_Copilot_CLI
             {
                 try
                 {
-                    // =========================================================
-                    // 🛡️ [BỌC THÉP LỚP 1]: GỌT SẠCH RÁC TRƯỚC VÀ SAU JSON
-
-                    // Bắt đầu gọt từ dấu ngoặc nhọn đầu tiên đến dấu cuối cùng
-                    // =========================================================
                     int startIndex = jsonResponse.IndexOf('{');
                     int endIndex = jsonResponse.LastIndexOf('}');
 
@@ -595,7 +602,7 @@ namespace TIA_Copilot_CLI
                     if (responseObj.ContainsKey("token_usage"))
                     {
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"\n⚡ [TOKEN MONITOR] Prompt's token amount: {responseObj["token_usage"]} tokens");
+                        Console.WriteLine($"\n [TOKEN MONITOR] Prompt's token amount: {responseObj["token_usage"]} tokens");
                         Console.ResetColor();
                     }
 
@@ -616,14 +623,11 @@ namespace TIA_Copilot_CLI
                 }
                 catch (Exception ex)
                 {
-                    // =========================================================
-                    // 🛡️ [BỌC THÉP LỚP 2]: HIỂN THỊ RÁC ĐỂ KHÁM NGHIỆM
-                    // =========================================================
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"\n[LỖI C# PARSE JSON]: {ex.Message}");
+                    Console.WriteLine($"\n[ERROR C# PARSE JSON]: {ex.Message}");
 
                     Console.ForegroundColor = ConsoleColor.DarkGray;
-                    Console.WriteLine("\n--- RAW DATA TỪ PYTHON GỬI VỀ ---");
+                    Console.WriteLine("\n--- RAW DATA SENT FROM AI ---");
                     Console.WriteLine(jsonResponse);
                     Console.WriteLine("---------------------------------");
                     Console.ResetColor();
