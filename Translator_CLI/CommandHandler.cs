@@ -59,7 +59,7 @@ namespace TIA_Copilot_CLI
             string userTagsContent = "";
 
             // Nếu là OB, tự động đi mò file Cache xem có tồn tại không
-            if (targetType == "ORGANIZATION_BLOCK")
+            if (targetType == "ORGANIZATION_BLOCK" || targetType == "HMI_SCREEN")
             {
                 if (File.Exists(TagCacheFile))
                 {
@@ -265,10 +265,9 @@ namespace TIA_Copilot_CLI
                     var backendTask = AiEngine.CallPythonBackendAsync("", Program._currentSessionId, "list_sessions");
 
                     // Spinner sẽ xoay ở màn hình cũ, tải xong sẽ bị Console.Clear() quét sạch!
-                    string jsonRes = await RunWithSpinner(backendTask, "Đang đồng bộ danh sách Session...", 15);
+                    string jsonRes = await RunWithSpinner(backendTask, "Synchronizing session list...", 100);
+                    //Console.WriteLine("DEBUG: Raw backend response: " + jsonRes);
 
-                    // --- [ĐÒN ĐÁNH CHẶN RÁC PYTHON] ---
-                    // Bất chấp Python in ra cảnh báo gì, C# chỉ cắt đúng khúc từ '{' đến '}' để parse
                     int jsonStart = jsonRes.IndexOf('{');
                     int jsonEnd = jsonRes.LastIndexOf('}');
 
@@ -283,20 +282,20 @@ namespace TIA_Copilot_CLI
                             {
                                 dbSessions.Add((string)s);
                             }
+                            //Console.WriteLine("DEBUG: Sessions from backend: " + string.Join(", ", dbSessions));
                         }
                     }
                     else
                     {
                         // Mở khiên kiểm tra: Nếu Python không trả về JSON, in ra để xem nó trả về cái gì
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"\n[CẢNH BÁO MÙA ĐÔNG]: Backend không trả về JSON hợp lệ. Dữ liệu thô: {jsonRes}");
+                        Console.WriteLine($"\n[WARNING]: Backend return invalid JSON. Raw data: {jsonRes}");
                         Console.ResetColor();
                         await Task.Delay(3000); // Dừng 3 giây cho lập trình viên đọc lỗi
                     }
                 }
                 catch (Exception ex)
                 {
-                    // KHÔNG BAO GIỜ NUỐT LỖI KHI DEV
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"\n[ERROR C# PARSE JSON]: {ex.Message}");
                     Console.ResetColor();
@@ -309,9 +308,10 @@ namespace TIA_Copilot_CLI
                 Console.Clear();
                 Console.ForegroundColor = ConsoleColor.Magenta;
                 Console.WriteLine("==========================================================");
-                Console.WriteLine(" CHAT SESSION MENU (CHAT & CONTEXT)");
+                Console.WriteLine("            CHAT SESSION MENU (CHAT & CONTEXT)");
                 Console.WriteLine("==========================================================");
                 Console.ResetColor();
+                
 
                 Console.WriteLine($"\n Current session: [{Program._currentSessionId.ToUpper()}]\n");
 
@@ -348,17 +348,17 @@ namespace TIA_Copilot_CLI
                 else if (key == 'C')
                 {
                     Console.WriteLine("\n");
-                    Console.Write(" >> Nhập tên Session mới (Viết liền không dấu): ");
+                    Console.Write(" >> New session name (No spaces): ");
                     string newSession = Console.ReadLine()?.Trim().Replace(" ", "_").ToLower();
 
                     if (!string.IsNullOrEmpty(newSession) && !dbSessions.Contains(newSession))
                     {
                         // GẮN SPINNER TẠO MỚI
                         var createTask = AiEngine.CallPythonBackendAsync("", newSession, "create_session");
-                        await RunWithSpinner(createTask, $"Đang khởi tạo không gian cho [{newSession}]...");
+                        await RunWithSpinner(createTask, $"Initializing space for [{newSession}]...");
 
                         Program._currentSessionId = newSession;
-                        Program.PrintIcon("√", $"Đã tạo và chuyển sang Session: {newSession}", ConsoleColor.Green);
+                        Program.PrintIcon("√", $"Session created and switched to: {newSession}", ConsoleColor.Green);
                         await Task.Delay(1000);
                     }
                 }
@@ -366,8 +366,8 @@ namespace TIA_Copilot_CLI
                 else if (key == 'S' || key == 'H')
                 {
                     string actionName = key == 'S' ? "TIÊU DIỆT SESSION" : "XÓA LỊCH SỬ CHAT";
-                    Console.WriteLine($"\n\n 👉 Bạn chọn [{actionName}].");
-                    Console.Write(" >> Nhập SỐ thứ tự Session muốn thao tác (Bấm Enter để Hủy): ");
+                    Console.WriteLine($"\n\n 👉 Choose [{actionName}].");
+                    Console.Write(" >> Enter the session number you want to operate on (Press Enter to Cancel): ");
 
                     if (int.TryParse(Console.ReadLine(), out int targetIdx) && targetIdx > 0 && targetIdx <= dbSessions.Count)
                     {
@@ -381,7 +381,7 @@ namespace TIA_Copilot_CLI
                         }
 
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.Write($" ⚠️ CẢNH BÁO: Xác nhận [{actionName}] với '{targetSession}'? (y/n): ");
+                        Console.Write($" ⚠️ WARNING: Confirm [{actionName}] with [{targetSession}]? (y/n): ");
                         Console.ResetColor();
 
                         string confirm = Console.ReadLine()?.Trim().ToLower();
@@ -389,23 +389,23 @@ namespace TIA_Copilot_CLI
                         {
                             // GẮN SPINNER XÓA DỮ LIỆU
                             var resetTask = AiEngine.CallPythonBackendAsync("", targetSession, "reset");
-                            await RunWithSpinner(resetTask, $"Đang tiến hành dọn dẹp [{targetSession}]...");
+                            await RunWithSpinner(resetTask, $"Processing cleanup for [{targetSession}]...");
 
                             if (key == 'S')
                             {
-                                Program.PrintIcon("√", $"Đã tiêu diệt hoàn toàn Session: {targetSession}", ConsoleColor.Green);
+                                Program.PrintIcon("√", $"Successfully destroyed Session: {targetSession}", ConsoleColor.Green);
                                 if (Program._currentSessionId == targetSession)
                                 {
                                     Program._currentSessionId = "default";
-                                    Program.PrintIcon("i", "Đã tự động chuyển về Session 'default'.", ConsoleColor.Cyan);
+                                    Program.PrintIcon("i", "Successfully switched to default session.", ConsoleColor.Cyan);
                                 }
                             }
                             else
                             {
                                 // GẮN SPINNER TẠO LẠI VỎ SESSION MỚI (CHỈ MẤT LỊCH SỬ)
                                 var recreateTask = AiEngine.CallPythonBackendAsync("", targetSession, "create_session");
-                                await RunWithSpinner(recreateTask, $"Đang thiết lập lại vỏ Session [{targetSession}]...");
-                                Program.PrintIcon("√", $"Đã xóa sạch bộ nhớ lịch sử chat của: {targetSession}", ConsoleColor.Green);
+                                await RunWithSpinner(recreateTask, $"Initializing new session shell for [{targetSession}]...");
+                                Program.PrintIcon("√", $"Successfully cleared chat history for: {targetSession}", ConsoleColor.Green);
                             }
                             await Task.Delay(1500);
                         }
@@ -415,7 +415,7 @@ namespace TIA_Copilot_CLI
                 else if (int.TryParse(key.ToString(), out int selection) && selection > 0 && selection <= dbSessions.Count)
                 {
                     Program._currentSessionId = dbSessions[selection - 1];
-                    Program.PrintIcon("√", $"Đã chuyển sang Session: {Program._currentSessionId}", ConsoleColor.Green);
+                    Program.PrintIcon("√", $"Successfully switched to Session: {Program._currentSessionId}", ConsoleColor.Green);
                     await Task.Delay(800);
                 }
             }

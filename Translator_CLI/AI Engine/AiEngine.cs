@@ -61,6 +61,7 @@ namespace TIA_Copilot_CLI
                 start.RedirectStandardError = true;
                 start.CreateNoWindow = true;
                 start.StandardOutputEncoding = Encoding.UTF8;
+                start.WorkingDirectory = Path.GetDirectoryName(PYTHON_SCRIPT_PATH);
 
                 using (Process process = Process.Start(start))
                 {

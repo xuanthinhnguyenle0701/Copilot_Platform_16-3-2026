@@ -1,10 +1,11 @@
+from pathlib import Path
 import sqlite3
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 from langchain_core.messages import HumanMessage, AIMessage
 
-# Đường dẫn DB
-DB_PATH = "sqlite:///chat_memory.db"
-REAL_DB_FILE = "chat_memory.db" # Tên file thực tế để dùng thư viện sqlite3 quét
+BASE_DIR = Path(__file__).resolve().parent
+REAL_DB_FILE = BASE_DIR.parent / "Translator_CLI" / "chat_memory.db"
+DB_PATH = f"sqlite:///{REAL_DB_FILE.as_posix()}"
 
 def get_session_history(session_id):
     """Lấy object lịch sử của LangChain"""
@@ -53,13 +54,15 @@ def list_all_sessions():
     Hàm này dùng SQL thuần để quét bảng message_store.
     """
     try:
-        conn = sqlite3.connect(REAL_DB_FILE)
+        conn = sqlite3.connect(str(REAL_DB_FILE))
         cursor = conn.cursor()
         # Bảng mặc định của LangChain thường tên là 'message_store'
         cursor.execute("SELECT DISTINCT session_id FROM message_store")
         rows = cursor.fetchall()
         conn.close()
         
+        with open("session_debug.log", "a", encoding="utf-8") as f:
+            f.write("DEBUG: Sessions found in DB: " + repr([row[0] for row in rows]) + "\n")
         # Trả về danh sách dạng ['session1', 'session2']
         return [row[0] for row in rows]
     except Exception as e:

@@ -30,9 +30,13 @@ def get_system_prompt_part1():
     except:
         return "You are an expert IEC 61131-3 Programmer."
 
-def get_output_schema():
+def get_output_schema(target_block_type="AUTO"):
+    if target_block_type == "HMI_SCREEN":
+        schema_file = "data/hmi_output_schema.json"
+    else:
+        schema_file = "data/siemensplc_output_schema.json"
     try:
-        with open("data/siemensplc_output_schema.json", "r", encoding="utf-8") as f:
+        with open(schema_file, "r", encoding="utf-8") as f:
             return f.read()
     except:
         return """
@@ -91,10 +95,9 @@ def main():
         spec_text = request_data.get("spec_text", "").strip()
         target_block_type = request_data.get("target_block_type", "AUTO").upper()
 
-        # region XỬ LÝ LỆNH ĐẶC BIỆT (KHÔNG PHẢI CHAT) - LIST SESSIONS, RESET SESSION, UPDATE SPEC, CHECK SPEC
-
         
 
+        # region XỬ LÝ LỆNH ĐẶC BIỆT (KHÔNG PHẢI CHAT) - LIST SESSIONS, RESET SESSION, UPDATE SPEC, CHECK SPEC
         if command_type == "list_sessions":
             sessions = memory.list_all_sessions()
             send_response({"status": "success", "sessions": sessions})
@@ -239,7 +242,27 @@ def main():
         system_rules = get_system_prompt_part1()
         target_schema = get_output_schema()
     
-        full_prompt = f"""
+        # Conditinal branch for PLC and HMI prompts
+        if target_block_type == "HMI_SCREEN":
+            full_prompt = f"""
+        [HMI_SCREEN PROMPT - TO BE IMPLEMENTED]
+
+        ### CHAT HISTORY:
+        {chat_history_str}
+
+        ### HARD CONSTRAINTS FROM PROJECT SPEC:
+        {spec_context}
+
+        ### AVAILABLE I/O TAGS:
+        {user_tags}
+
+        ### USER REQUEST:
+        {user_query}
+
+        GENERATE JSON ONLY.
+        """
+        else:
+            full_prompt = f"""
         {system_rules}
 
         {user_tags_constraint}
