@@ -292,7 +292,7 @@ namespace TIA_Copilot_CLI
                         try
                         {
                             var projectData = JsonConvert.DeserializeObject<ScadaProjectModel>(File.ReadAllText(jPath));
-                            _tiaEngine.GenerateScadaProject(projectData);
+                            _tiaEngine.GenerateScadaProject(projectData, _currentDeviceName);
                             PrintIcon("√", "Vẽ SCADA hoàn tất!", ConsoleColor.Green);
                         }
                         catch (Exception ex) { PrintIcon("X", $"Lỗi vẽ: {ex.Message}", ConsoleColor.Red); }

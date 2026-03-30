@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = Translator_CLI
-build_property.ProjectDir = C:\Users\tia_v20\Downloads\Copilot_Platform_16-3-2026\translator_cli\
+build_property.ProjectDir = C:\Capstone Project\Copilot_Platform\Copilot_Platform\Translator_CLI\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

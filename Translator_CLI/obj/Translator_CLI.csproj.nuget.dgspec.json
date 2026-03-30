@@ -1,25 +1,32 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\Translator_CLI.csproj": {}
+    "C:\\Capstone Project\\Copilot_Platform\\Copilot_Platform\\Translator_CLI\\Translator_CLI.csproj": {}
   },
   "projects": {
-    "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\Translator_CLI.csproj": {
+    "C:\\Capstone Project\\Copilot_Platform\\Copilot_Platform\\Translator_CLI\\Translator_CLI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\Translator_CLI.csproj",
+        "projectUniqueName": "C:\\Capstone Project\\Copilot_Platform\\Copilot_Platform\\Translator_CLI\\Translator_CLI.csproj",
         "projectName": "Translator_CLI",
-        "projectPath": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\Translator_CLI.csproj",
-        "packagesPath": "C:\\Users\\tia_v20\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\obj\\",
+        "projectPath": "C:\\Capstone Project\\Copilot_Platform\\Copilot_Platform\\Translator_CLI\\Translator_CLI.csproj",
+        "packagesPath": "C:\\Users\\xuant\\.nuget\\packages\\",
+        "outputPath": "C:\\Capstone Project\\Copilot_Platform\\Copilot_Platform\\Translator_CLI\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "C:\\Users\\tia_v20\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\xuant\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net48"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -38,7 +45,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "10.0.200"
+        "SdkAnalysisLevel": "10.0.100"
       },
       "frameworks": {
         "net48": {
@@ -48,18 +55,12 @@
               "target": "Package",
               "version": "[0.105.0, )"
             },
-            "Microsoft.NETFramework.ReferenceAssemblies": {
-              "suppressParent": "All",
-              "target": "Package",
-              "version": "[1.0.3, )",
-              "autoReferenced": true
-            },
             "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.4, )"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101\\RuntimeIdentifierGraph.json"
         }
       },
       "runtimes": {
