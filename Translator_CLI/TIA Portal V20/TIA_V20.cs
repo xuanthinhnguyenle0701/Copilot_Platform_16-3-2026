@@ -240,9 +240,39 @@ namespace Middleware_console
         {
             if (_project == null) CheckProject();
             List<string> plcNames = new List<string>();
-            foreach (Device device in _project.Devices) plcNames.Add(device.Name);
-            foreach (DeviceUserGroup group in _project.DeviceGroups) ScanGroupRecursive(group, plcNames);
+
+            foreach (Device device in _project.Devices) 
+            {
+                // Gọi hàm lọc tên thông minh thay vì lấy device.Name trực tiếp
+                plcNames.Add(GetSmartDeviceName(device));
+            }
+
+            foreach (DeviceUserGroup group in _project.DeviceGroups) 
+            {
+                ScanGroupRecursive(group, plcNames);
+            }
             return plcNames;
+        }
+
+        private string GetSmartDeviceName(Device device)
+        {
+            // Bước 1: Thử tìm trong DeviceItems (Nơi chứa CPU)
+            foreach (DeviceItem item in device.DeviceItems)
+            {
+                // PLC cũ thường bị kẹt tên ở đây. 
+                // Chúng ta bỏ qua Rail_0, Rack, v.v.
+                if (item.Name.StartsWith("Rail") || item.Name.StartsWith("Rack")) continue;
+
+                // Nếu Item có các thuộc tính của một CPU (thường là Item[1])
+                // thì đây chính là cái tên "Nhu_Project2" Otis cần
+                if (item.Name != device.Name && !item.Name.Contains("station"))
+                {
+                    return item.Name;
+                }
+            }
+
+            // Bước 2: Nếu không tìm thấy CPU tên lạ, quay lại lấy tên Device
+            return device.Name;
         }
 
         public static List<string> GetSystemNetworkAdapters()
