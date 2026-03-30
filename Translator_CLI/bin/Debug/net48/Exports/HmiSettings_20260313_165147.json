@@ -1,5 +1,0 @@
-{
-  "TargetName": "HMI_RT_2",
-  "TargetType": "Siemens.Engineering.HmiUnified.HmiSoftware",
-  "RuntimeSettings_Error": "'Siemens.Engineering.HmiUnified.HmiSoftware' does not contain a definition for 'SoftwareSettings'"
-}
