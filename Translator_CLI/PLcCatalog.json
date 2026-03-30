@@ -7,7 +7,8 @@
   {
     "Name": "S7-1500 CPU 1511-1 PN",
     "OrderNumber": "6ES7 511-1AK02-0AB0",
-    "Version": "V2.9"
+    "Version": "V2.9",
+    "AvailableVersions": ["V2.5", "V2.6", "V2.8", "V2.9"]
   },
   {
     "Name": "S7-1500 CPU 1512C-1 PN",
