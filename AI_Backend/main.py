@@ -30,16 +30,20 @@ def get_system_prompt_part1():
     except:
         return "You are an expert IEC 61131-3 Programmer."
 
+def get_hmi_system_prompt():
+    try:
+        with open("data/hmi_siemens_base.md", "r", encoding="utf-8") as f:
+            return f.read().split("# [PART 2] RAG_CONTEXT")[0]
+    except:
+        return "You are an expert Siemens WinCC Unified HMI screen designer."
+
 def get_output_schema(target_block_type="AUTO"):
     if target_block_type == "HMI_SCREEN":
-        schema_file = "data/hmi_output_schema.json"
+        schema_file = "data/siemenshmi_output_schema.json"
+        fallback = '{"screen_info": {"name": "AI_Screen", "width": 1024, "height": 600}, "items": [], "global_tags": []}'
     else:
         schema_file = "data/siemensplc_output_schema.json"
-    try:
-        with open(schema_file, "r", encoding="utf-8") as f:
-            return f.read()
-    except:
-        return """
+        fallback = """
         {
           "block_info": { "name": "FB_Standard", "type": "FUNCTION_BLOCK", "description": "Standard Block" },
           "interface": [
@@ -55,6 +59,11 @@ def get_output_schema(target_block_type="AUTO"):
           ]
         }
         """
+    try:
+        with open(schema_file, "r", encoding="utf-8") as f:
+            return f.read()
+    except:
+        return fallback
 
 def send_response(data_dict):
     """Ép xả dữ liệu thẳng xuống ống nước (Buffer) và cưỡng bức tắt Python ngay lập tức"""
@@ -95,9 +104,10 @@ def main():
         spec_text = request_data.get("spec_text", "").strip()
         target_block_type = request_data.get("target_block_type", "AUTO").upper()
 
+        # region XỬ LÝ LỆNH ĐẶC BIỆT (KHÔNG PHẢI CHAT) - LIST SESSIONS, RESET SESSION, UPDATE SPEC, CHECK SPEC
+
         
 
-        # region XỬ LÝ LỆNH ĐẶC BIỆT (KHÔNG PHẢI CHAT) - LIST SESSIONS, RESET SESSION, UPDATE SPEC, CHECK SPEC
         if command_type == "list_sessions":
             sessions = memory.list_all_sessions()
             send_response({"status": "success", "sessions": sessions})
@@ -175,35 +185,70 @@ def main():
                 send_response({"status": "error", "message": f"Lỗi khi xóa Spec: {str(e)}"})
         # endregion
         
-        # region FILTER CHỌN KIỂU BLOCK MỤC TIÊU (FB/FC/OB) - DỰA TRÊN THÔNG TIN NGỪNG CỦA USER
-        # --- DUAL RAG RETRIEVAL ---
+        # region DUAL-PATH RAG RETRIEVAL — branches on target_block_type
         embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        
-        # 1. Truy xuất Sách giáo khoa (Tĩnh - Mặc định)
-        kb_db = Chroma(persist_directory=app_secrets.CHROMA_DB_PATH, embedding_function=embeddings, collection_name="iec_standard_kb")
-        # Xây dựng bộ lọc thông minh dựa trên loại khối (FB/FC/OB)
-        search_kwargs = {"k": 4} # Lấy 4 chunks để đảm bảo đủ kiến thức
-        filter_dict = {}
-        
-        if target_block_type in ["FB", "FC"]:
-
-            filter_dict = {"type": {"$in": ["COMPONENT", "SYNTAX"]}}
-        elif target_block_type == "OB":
-
-            filter_dict = {"type": {"$in": ["SYSTEM", "SYNTAX"]}}
-            
-        if filter_dict:
-            search_kwargs["filter"] = filter_dict
-
-        kb_retriever = kb_db.as_retriever(search_kwargs=search_kwargs)
-        kb_docs = kb_retriever.invoke(user_query)
-        kb_context = "\n\n".join([d.page_content for d in kb_docs])
-
-        # 2. Truy xuất Luật vận hành (Động - Collection riêng)
+        kb_context = ""
         spec_context = ""
+
+        if target_block_type == "HMI_SCREEN":
+            # --- HMI PATH: retrieve from hmi_standard_kb ---
+            # Smart filter: query drives which object categories to pull
+            # WIDGET covers library objects (Tank/Valve/Motor/Pipe/shapes)
+            # CONTROL covers I-O controls and data panels
+            # SCREEN covers navigation and screen structure
+            # LAYOUT covers general composition guidance
+            hmi_search_kwargs = {"k": 5}  # Pull more chunks — HMI queries are broad
+
+            query_upper = user_query.upper()
+            hmi_filter = {}
+            if any(w in query_upper for w in ["TANK", "VALVE", "MOTOR", "PUMP", "PIPE", "SENSOR", "INDICATOR"]):
+                hmi_filter = {"type": {"$in": ["WIDGET", "LAYOUT"]}}
+            elif any(w in query_upper for w in ["TREND", "ALARM", "RECIPE", "DIAGNOSIS", "CHART"]):
+                hmi_filter = {"type": {"$in": ["CONTROL", "SCREEN"]}}
+            elif any(w in query_upper for w in ["BUTTON", "NAVIGATE", "SCREEN", "WINDOW"]):
+                hmi_filter = {"type": {"$in": ["SCREEN", "CONTROL", "LAYOUT"]}}
+
+            if hmi_filter:
+                hmi_search_kwargs["filter"] = hmi_filter
+
+            try:
+                hmi_kb_db = Chroma(
+                    persist_directory=app_secrets.CHROMA_DB_PATH,
+                    embedding_function=embeddings,
+                    collection_name="hmi_standard_kb"
+                )
+                hmi_retriever = hmi_kb_db.as_retriever(search_kwargs=hmi_search_kwargs)
+                hmi_docs = hmi_retriever.invoke(user_query)
+                kb_context = "\n\n".join([d.page_content for d in hmi_docs])
+            except Exception:
+                kb_context = ""  # hmi_standard_kb not ingested yet — prompt still works without it
+
+        else:
+            # --- SCL PATH: retrieve from iec_standard_kb (original logic, unchanged) ---
+            kb_db = Chroma(
+                persist_directory=app_secrets.CHROMA_DB_PATH,
+                embedding_function=embeddings,
+                collection_name="iec_standard_kb"
+            )
+            search_kwargs = {"k": 4}
+            filter_dict = {}
+
+            if target_block_type in ["FB", "FC"]:
+                filter_dict = {"type": {"$in": ["COMPONENT", "SYNTAX"]}}
+            elif target_block_type == "OB":
+                filter_dict = {"type": {"$in": ["SYSTEM", "SYNTAX"]}}
+
+            if filter_dict:
+                search_kwargs["filter"] = filter_dict
+
+            kb_retriever = kb_db.as_retriever(search_kwargs=search_kwargs)
+            kb_docs = kb_retriever.invoke(user_query)
+            kb_context = "\n\n".join([d.page_content for d in kb_docs])
+
+        # Spec context — shared by both paths (project operational rules)
         try:
             spec_db = Chroma(
-                persist_directory=app_secrets.CHROMA_DB_PATH, 
+                persist_directory=app_secrets.CHROMA_DB_PATH,
                 embedding_function=embeddings,
                 collection_name="current_project_spec"
             )
@@ -215,18 +260,16 @@ def main():
             pass
         # endregion
         
-        # region Prompt assembly
-        # --- LẮP RÁP PROMPT PHÂN QUYỀN TRỌNG LƯỢNG ---
+        # region Prompt assembly — branches on target_block_type
         block_type_constraint = ""
-        if target_block_type != "AUTO":
+        if target_block_type not in ["AUTO", "HMI_SCREEN"]:
             block_type_constraint = f"""
             ### HARD CONSTRAINT - FORCED BLOCK TYPE:
             You MUST set the "type" field to "{target_block_type}".
             Your code MUST be formatted according to the rules of a {target_block_type}.
             """
 
-        user_tags_constraint = "" 
-        # Chỉ kích hoạt luật khi C# có gửi Tags VÀ User đang yêu cầu viết OB
+        user_tags_constraint = ""
         if user_tags and target_block_type in ["OB", "ORGANIZATION_BLOCK"]:
             user_tags_constraint = f"""
         ### 🎯 USER DEFINED I/O TAGS (STRICT WIRING DICTIONARY):
@@ -240,27 +283,101 @@ def main():
 
         chat_history_str = memory.get_sliding_window_context(session_id, window_size=5)
         system_rules = get_system_prompt_part1()
-        target_schema = get_output_schema()
-    
-        # Conditinal branch for PLC and HMI prompts
+        target_schema = get_output_schema(target_block_type)
+
         if target_block_type == "HMI_SCREEN":
+            hmi_system_rules = get_hmi_system_prompt()
+
+            hmi_tags_constraint = ""
+            if user_tags:
+                hmi_tags_constraint = f"""
+        ### 🎯 AVAILABLE PLC TAGS — STRICT BINDING DICTIONARY:
+        The following tags exist on the PLC. When you bind an HMI object to a tag, you MUST
+        choose ONLY from this list. Do NOT invent or fabricate tag names.
+        Map each object to the most logically appropriate tag based on its name and data type.
+
+        [AVAILABLE TAGS]:
+        {user_tags}
+                """
+
             full_prompt = f"""
-        [HMI_SCREEN PROMPT - TO BE IMPLEMENTED]
+        {hmi_system_rules}
+
+        {hmi_tags_constraint}
+
+        ### 🛑 PROJECT OPERATIONAL REQUIREMENTS (MUST FOLLOW):
+        This is the project spec. Every screen object and tag binding MUST align with these rules.
+        {spec_context}
+
+        ### 📚 HMI OBJECT REFERENCE (RETRIEVED FROM KNOWLEDGE BASE):
+        Use these rules to select correct object types, subtypes, behaviors, and field names.
+        {kb_context}
 
         ### CHAT HISTORY:
         {chat_history_str}
 
-        ### HARD CONSTRAINTS FROM PROJECT SPEC:
-        {spec_context}
+        ### REQUIRED JSON OUTPUT SCHEMA:
+        You MUST return JSON that EXACTLY matches this structure. Do not add, remove, or rename any keys.
+        Every item in the "items" array MUST have at minimum: "name", "type".
+        Remove the "_comment_*" fields — those are for your reference only, do NOT include them in output.
 
-        ### AVAILABLE I/O TAGS:
-        {user_tags}
+        {target_schema}
+
+        ### ⚙️ CRITICAL RULES (MUST FOLLOW — VIOLATIONS WILL BREAK THE ASSEMBLER):
+
+        1. **LOGICAL JSON ONLY — NO PHYSICAL DATA:**
+           - Do NOT include pixel coordinates (Left, Top, Width, Height).
+           - Do NOT include LibraryPath strings.
+           - Do NOT write any JavaScript (ColorScript, KeyDown/KeyUp script strings).
+           - The C# assembler handles all of the above. Your job is intent and tag binding only.
+
+        2. **TAG BINDING RULE:**
+           - Use "bind_tag" for the primary tag that drives the object's state or value.
+           - If no tags are provided, invent logical tag names that match the process described.
+           - For TrendControl, use "trend_tag" instead of "bind_tag".
+           - AlarmControl, FunctionTrendControl, SystemDiagnosisControl do NOT need a tag.
+
+        3. **BEHAVIOR KEYWORDS — ONLY USE EXACT STRINGS:**
+           - "fill_level"       → analog tag drives a visible fill (use for Tank, Bar)
+           - "color_on_status"  → boolean tag drives green/red color change (use for Valve, Motor, Rectangle, Circle)
+           - Do NOT invent other behavior keywords.
+
+        4. **BUTTON RULES:**
+           - Momentary button (START/STOP/RESET): include "keydown_write" and "keyup_write" with tag + value.
+           - Navigation button (screen switch): include "navigate_to" with exact target screen name. No write fields.
+           - Never combine both patterns on the same button.
+
+        5. **SUBTYPE RULE:**
+           - Valve: "ControlValve" or "GateValve"
+           - Motor: "Motor2" (horizontal) or "Motor9Vertical" (vertical)
+           - Pipe: "PipeHorizontal" or "PipeVertical"
+           - Tank, Rectangle, Circle: no subtype needed.
+
+        6. **HINT FIELD:**
+           - Every object MUST have a "hint" field describing its intended zone and role.
+           - Format: "<zone>, <role>". Example: "left sidebar, START button for conveyor pump"
+           - Zones: "center process area", "left sidebar", "top status bar", "right indicator column",
+             "bottom navigation bar", "top-left monitoring panel", "top-right monitoring panel"
+
+        7. **NAMING CONVENTION:**
+           - Use underscore-separated Vietnamese or English names. No spaces.
+           - Example: "Bon_Chua_Chinh", "Nut_START", "Van_Cap_Vao_01"
+
+        8. **GLOBAL TAGS:**
+           - If the user's request implies new HMI-only tags (not in the PLC list), declare them in "global_tags".
+           - Each entry needs: "name" (string), "type" (BOOL/INT/REAL), "comment" (purpose description).
+           - If no new tags are needed, return "global_tags": [].
+
+        9. **SCREEN INFO:**
+           - Always fill "screen_info" with a meaningful "name", and default width/height of 1024x600
+             unless the user specifies otherwise.
 
         ### USER REQUEST:
         {user_query}
 
-        GENERATE JSON ONLY.
+        GENERATE JSON ONLY. No markdown, no explanation, no code fences.
         """
+
         else:
             full_prompt = f"""
         {system_rules}

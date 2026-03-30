@@ -1,0 +1,193 @@
+{
+  "_comment": "LOGICAL HMI SCHEMA — AI returns this. C# assembler converts it to physical WinCC JSON. AI must NOT add coordinates, LibraryPaths, or script strings.",
+  "screen_info": {
+    "name": "Main_Process",
+    "width": 1024,
+    "height": 600
+  },
+  "items": [
+    {
+      "_comment_tank": "LIBRARY OBJECT EXAMPLE — Tank",
+      "name": "Bon_Chua_Nuoc_RO",
+      "type": "Tank",
+      "bind_tag": "H_range",
+      "behaviors": ["fill_level", "color_on_status"],
+      "hint": "main process tank, center of screen"
+    },
+    {
+      "_comment_valve": "LIBRARY OBJECT EXAMPLE — Valve",
+      "name": "Van_Cap_Vao",
+      "type": "Valve",
+      "subtype": "ControlValve",
+      "bind_tag": "V3_2",
+      "behaviors": ["color_on_status"],
+      "hint": "inlet valve, top of pipe entering tank"
+    },
+    {
+      "_comment_motor": "LIBRARY OBJECT EXAMPLE — Motor/Pump",
+      "name": "Bom_Cap_Nuoc",
+      "type": "Motor",
+      "subtype": "Motor2",
+      "bind_tag": "V3_2",
+      "behaviors": ["color_on_status"],
+      "hint": "feed pump, bottom left of screen"
+    },
+    {
+      "_comment_pipe": "LIBRARY OBJECT EXAMPLE — Pipe",
+      "name": "Ong_Dung_Sau_Bom",
+      "type": "Pipe",
+      "subtype": "PipeVertical",
+      "bind_tag": "V3_1",
+      "behaviors": ["color_on_status"],
+      "hint": "vertical pipe connecting pump outlet to horizontal pipe"
+    },
+    {
+      "_comment_rectangle": "PRIMITIVE SHAPE EXAMPLE — Status indicator",
+      "name": "Cam_Bien_S1",
+      "type": "Rectangle",
+      "bind_tag": "Hi_1",
+      "behaviors": ["color_on_status"],
+      "hint": "high-level sensor indicator, right side of tank"
+    },
+    {
+      "_comment_circle": "PRIMITIVE SHAPE EXAMPLE — Circle",
+      "name": "Den_Trang_Thai",
+      "type": "Circle",
+      "bind_tag": "V3_1",
+      "behaviors": ["color_on_status"],
+      "hint": "status indicator light"
+    },
+    {
+      "_comment_button_momentary": "BUTTON EXAMPLE — Momentary pulse",
+      "name": "Nut_START",
+      "type": "Button",
+      "label": "START",
+      "keydown_write": { "tag": "Start", "value": 1 },
+      "keyup_write": { "tag": "Start", "value": 0 }
+    },
+    {
+      "_comment_button_navigate": "BUTTON EXAMPLE — Screen navigation",
+      "name": "Nut_CHUYEN_MAN",
+      "type": "Button",
+      "label": "Go to Diagnostics",
+      "navigate_to": "Diagnosis_Manual"
+    },
+    {
+      "_comment_iofield": "IO FIELD EXAMPLE",
+      "name": "Hien_Thi_Nhiet_Do",
+      "type": "IOField",
+      "bind_tag": "Nhiet_Do_Bon",
+      "format": "{P,DD hh:mm:ss}",
+      "hint": "temperature display, top-left area"
+    },
+    {
+      "_comment_bar": "BAR CHART EXAMPLE",
+      "name": "Thanh_Muc_Nuoc",
+      "type": "Bar",
+      "bind_tag": "H_range",
+      "min_value": 0,
+      "max_value": 100,
+      "hint": "water level bar, left of tank"
+    },
+    {
+      "_comment_gauge": "GAUGE EXAMPLE",
+      "name": "Dong_Ho_Ap_Suat",
+      "type": "Gauge",
+      "bind_tag": "H_range",
+      "min_value": 0,
+      "max_value": 10,
+      "hint": "pressure gauge, top-right area"
+    },
+    {
+      "_comment_clock": "CLOCK EXAMPLE",
+      "name": "Dong_Ho_He_Thong",
+      "type": "Clock",
+      "format": "{P, hh:mm:ss}",
+      "clock_mode": "LocalTime",
+      "hint": "system clock, top-left corner"
+    },
+    {
+      "_comment_toucharea": "TOUCH AREA EXAMPLE",
+      "name": "Vung_Bam_An",
+      "type": "TouchArea",
+      "bind_tag": "Reset_Tank_Trigger",
+      "tooltip": "Nhan de Reset Bon",
+      "hint": "invisible overlay on top of tank"
+    },
+    {
+      "_comment_trend": "TREND CONTROL EXAMPLE",
+      "name": "Trend_Nhiet_Do_Bon",
+      "type": "TrendControl",
+      "trend_tag": "Nhiet_Do_Tag",
+      "show_ruler": true,
+      "hint": "temperature trend chart, top-left of monitoring screen"
+    },
+    {
+      "_comment_alarm": "ALARM CONTROL EXAMPLE",
+      "name": "Bang_Canh_Bao_He_Thong",
+      "type": "AlarmControl",
+      "hint": "alarm table, top-right of monitoring screen"
+    },
+    {
+      "_comment_function_trend": "FUNCTION TREND EXAMPLE",
+      "name": "Bieu_Do_Ham_So",
+      "type": "FunctionTrendControl",
+      "hint": "function trend, bottom-left of monitoring screen"
+    },
+    {
+      "_comment_sysdiag": "SYSTEM DIAGNOSIS EXAMPLE",
+      "name": "Chan_Doan_He_Thong",
+      "type": "SystemDiagnosisControl",
+      "hint": "system diagnostics panel, top-left of diagnostics screen"
+    },
+    {
+      "_comment_checkbox": "CHECKBOX GROUP EXAMPLE",
+      "name": "Xac_Nhan_Van_Hanh",
+      "type": "CheckBoxGroup",
+      "label": "Che do Auto",
+      "bind_tag": "Mode_Auto_Status",
+      "hint": "auto mode toggle, left panel"
+    },
+    {
+      "_comment_radio": "RADIO BUTTON GROUP EXAMPLE",
+      "name": "Chon_Kenh_Radio",
+      "type": "RadioButtonGroup",
+      "label": "Kenh 1",
+      "bind_tag": "Channel_Select",
+      "hint": "channel selector, left panel"
+    },
+    {
+      "_comment_media": "MEDIA CONTROL EXAMPLE",
+      "name": "Video_Huong_Dan",
+      "type": "MediaControl",
+      "url": "C:/Videos/Tutorial.mp4",
+      "hint": "tutorial video player, top-left"
+    },
+    {
+      "_comment_web": "WEB CONTROL EXAMPLE",
+      "name": "Trinh_Duyet_Web",
+      "type": "WebControl",
+      "url": "https://www.siemens.com",
+      "hint": "embedded browser, top-right"
+    },
+    {
+      "_comment_recipe": "RECIPE CONTROL EXAMPLE",
+      "name": "Quan_Ly_Cong_Thuc",
+      "type": "DetailedParameterControl",
+      "parameter_set_id": 1,
+      "hint": "recipe manager, bottom-right"
+    },
+    {
+      "_comment_screenwindow": "SCREEN WINDOW EXAMPLE",
+      "name": "Cua_So_Phu",
+      "type": "ScreenWindow",
+      "screen_name": "Screen_Manual_Control",
+      "hint": "embedded sub-screen, bottom-left"
+    }
+  ],
+  "global_tags": [
+            { "name": "TAG_StartBtn_01", "type": "BOOL", "comment": "Input" },
+            { "name": "TAG_MotorSpeed_01", "type": "REAL", "comment": "Output" },
+            { "name": "TAG_SystemFlag", "type": "BOOL", "comment": "Memory" }
+          ]
+}

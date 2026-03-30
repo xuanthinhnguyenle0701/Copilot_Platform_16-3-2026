@@ -134,6 +134,7 @@ namespace TIA_Copilot_CLI
                             case "fb":
                             case "fc":
                             case "ob":
+                            case "scada":
                                 string targetType = CommandHandler.GetBlockType(chatAction);
                                 string query = args.Length > 2 ? args[2] : "";
                                 if (args.Length > 3) sessionId = args[3];

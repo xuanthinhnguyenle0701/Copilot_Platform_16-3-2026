@@ -1194,11 +1194,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\Translator_CLI\\Translator_CLI.csproj",
+      "projectUniqueName": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\Translator_CLI.csproj",
       "projectName": "Translator_CLI",
-      "projectPath": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\Translator_CLI\\Translator_CLI.csproj",
+      "projectPath": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\Translator_CLI.csproj",
       "packagesPath": "C:\\Users\\tia_v20\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\Translator_CLI\\obj\\",
+      "outputPath": "C:\\Users\\tia_v20\\Downloads\\Copilot_Platform_16-3-2026\\translator_cli\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\tia_v20\\AppData\\Roaming\\NuGet\\NuGet.Config"
