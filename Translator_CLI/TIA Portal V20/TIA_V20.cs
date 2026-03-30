@@ -2893,4 +2893,10 @@ namespace Middleware_console
             return $"OrderNumber:{OrderNumber}/{ver}";
         }
     }
+    public class PlcCatalogWrapper
+    {
+        public List<PlcCatalogItem> S71200 { get; set; }
+        public List<PlcCatalogItem> S71500 { get; set; }
+        public List<PlcCatalogItem> WinCC_Unified { get; set; }
+    }
 }
