@@ -251,7 +251,7 @@ namespace TIA_Copilot_CLI
                     }
                     else
                     {
-                        // GỌI WIZARD (Giống Navigator cũ)
+                       
                         HandleCreateDeviceWizard();
                     }
                     break;
@@ -673,7 +673,8 @@ namespace TIA_Copilot_CLI
         private static void HandleCreateDeviceWizard()
         {
             string typeIdentifier = "";
-            Console.WriteLine("\n[WIZARD TẠO THIẾT BỊ]");
+            Console.WriteLine("\n" + new string('=', 45));
+            Console.WriteLine("[WIZARD TẠO THIẾT BỊ]");
             Console.WriteLine(" 1. Load từ Catalog (PlcCatalog.json)");
             Console.WriteLine(" 2. Nhập tay (Manual)");
             Console.Write("Chọn chế độ (1/2): ");
@@ -681,30 +682,53 @@ namespace TIA_Copilot_CLI
 
             if (choice == "1")
             {
-                string catalogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PLcCatalog.json");
+                string catalogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PlcCatalog.json");
                 if (File.Exists(catalogPath))
                 {
                     var catalog = JsonConvert.DeserializeObject<List<PlcCatalogItem>>(File.ReadAllText(catalogPath));
                     var valid = catalog.Where(x => !string.IsNullOrEmpty(x.Name)).ToList();
 
-                    Console.WriteLine("\n--- DANH SÁCH PLC TRONG CATALOG ---");
-                    for (int i = 0; i < valid.Count; i++) Console.WriteLine($" {i + 1}. {valid[i].Name} ({valid[i].OrderNumber})");
+                    Console.WriteLine("\n--- DANH SÁCH THIẾT BỊ TRONG CATALOG ---");
+                    for (int i = 0; i < valid.Count; i++) 
+                        Console.WriteLine($" {i + 1,-2}. {valid[i].Name} ({valid[i].OrderNumber})");
 
-                    Console.Write("Chọn ID: ");
+                    Console.Write("\nChọn ID thiết bị: ");
                     if (int.TryParse(Console.ReadLine(), out int selIdx) && selIdx > 0 && selIdx <= valid.Count)
                     {
-                        typeIdentifier = valid[selIdx - 1].GetTypeIdentifier();
-                        Console.WriteLine($"[√] Đã chọn Type: {typeIdentifier}");
+                        var selectedItem = valid[selIdx - 1];
+                        string finalVer = selectedItem.Version; // Lấy version mặc định ban đầu
+
+                        // LOGIC CHỌN VERSION NHIỀU PHIÊN BẢN
+                        if (selectedItem.AvailableVersions != null && selectedItem.AvailableVersions.Count > 0)
+                        {
+                            Console.WriteLine($"\nThiết bị này hỗ trợ các phiên bản Firmware sau:");
+                            for (int j = 0; j < selectedItem.AvailableVersions.Count; j++)
+                            {
+                                Console.WriteLine($"  {j + 1}. {selectedItem.AvailableVersions[j]}");
+                            }
+                            Console.Write($"Chọn ID Version (Enter để lấy mặc định {finalVer}): ");
+                            string vInput = Console.ReadLine();
+                            if (int.TryParse(vInput, out int vIdx) && vIdx > 0 && vIdx <= selectedItem.AvailableVersions.Count)
+                            {
+                                finalVer = selectedItem.AvailableVersions[vIdx - 1];
+                            }
+                        }
+
+                        // Tạo chuỗi định danh chuẩn TIA Openness (OrderNumber/Version)
+                        typeIdentifier = selectedItem.GetTypeIdentifier(finalVer);
+                        Console.WriteLine($"[√] Đã chọn cấu hình: {typeIdentifier}");
                     }
                 }
                 else PrintIcon("!", "Không tìm thấy file PlcCatalog.json!", ConsoleColor.Yellow);
             }
 
-            // Nếu chọn Manual hoặc Catalog lỗi
+            // Nếu chọn Manual (2) hoặc Catalog không tìm thấy ID
             if (string.IsNullOrEmpty(typeIdentifier))
             {
+                Console.WriteLine("\n[NHẬP TAY THÔNG SỐ]");
                 Console.Write("Order Number (VD: 6ES7 511-1AK02-0AB0): "); string order = Console.ReadLine();
                 Console.Write("Version (VD: V2.8): "); string ver = Console.ReadLine();
+                if (!ver.StartsWith("V")) ver = "V" + ver;
                 typeIdentifier = $"OrderNumber:{order}/{ver}";
             }
 
@@ -713,14 +737,19 @@ namespace TIA_Copilot_CLI
 
             try
             {
-                PrintIcon("i", "Đang tạo thiết bị trong TIA Portal...", ConsoleColor.Cyan);
+                PrintIcon("i", $"Đang tạo {name} ({typeIdentifier})...", ConsoleColor.Cyan);
+                
+                // Gọi hàm CreateDev trong TiaEngine
                 _tiaEngine.CreateDev(name, typeIdentifier, ip, "");
 
                 _currentDeviceName = name;
                 _currentIp = ip;
                 PrintIcon("√", $"Thiết bị '{name}' đã được tạo thành công!", ConsoleColor.Green);
             }
-            catch (Exception ex) { PrintIcon("×", $"Lỗi: {ex.Message}", ConsoleColor.Red); }
+            catch (Exception ex) 
+            { 
+                PrintIcon("×", $"Lỗi tạo thiết bị: {ex.Message}", ConsoleColor.Red); 
+            }
         }
     }
 }

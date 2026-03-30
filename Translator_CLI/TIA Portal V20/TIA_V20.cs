@@ -2755,6 +2755,16 @@ public void ExportLibraryUDT(string udtName)
         public string Name { get; set; }
         public string OrderNumber { get; set; }
         public string Version { get; set; }
-        public string GetTypeIdentifier() => $"OrderNumber:{OrderNumber}/{Version}";
+        public List<string> AvailableVersions { get; set; }
+        public string GetTypeIdentifier(string selectedVer = null)
+        {
+            // Nếu người dùng chọn bản cụ thể thì lấy, không thì lấy bản mặc định
+            string ver = !string.IsNullOrEmpty(selectedVer) ? selectedVer : Version;
+            
+            // Đảm bảo có chữ 'V' (TIA bắt buộc format: OrderNumber/V4.4)
+            if (!ver.StartsWith("V")) ver = "V" + ver;
+            
+            return $"OrderNumber:{OrderNumber}/{ver}";
+        }
     }
 }
