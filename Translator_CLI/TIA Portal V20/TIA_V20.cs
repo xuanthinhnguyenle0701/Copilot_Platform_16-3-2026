@@ -263,33 +263,46 @@ namespace Middleware_console
 
         private string GetCombinedDeviceName(Device device)
         {
-            // 1. Xử lý cho trạm PC (WinCC Unified / PC Station)
-            if (device.Name.Contains("PC-System") || device.Name.Contains("PC_Station"))
+            // 1. KIỂM TRA XEM ĐÂY CÓ PHẢI LÀ TRẠM PC (PC STATION) KHÔNG
+            // Chúng ta dựa vào TypeIdentifier để nhận diện chính xác mọi PC Station bất kể tên là gì
+            bool isPcStation = device.TypeIdentifier.Contains("Simatic.PC") ||
+                               device.TypeIdentifier.Contains("System:Device.PC");
+
+            if (isPcStation)
             {
-                string stationName = device.Name;
+                string stationName = device.Name; // Ví dụ: SYRUP_SCADA
                 string runtimeName = "";
 
+                // Duyệt tìm thành phần Runtime bên trong trạm PC
                 foreach (DeviceItem item in device.DeviceItems)
                 {
-                    // Tìm thành phần HMI Runtime hoặc WinCC Unified bên trong
-                    if (item.Name.Contains("HMI_RT") || item.Name.Contains("WinCC") || item.Name.Contains("RT_"))
+                    // Kiểm tra các thành phần phần mềm/runtime (WinCC Unified, RT Professional, v.v.)
+                    // Thường các item này có dịch vụ "SoftwareContainer"
+                    var swContainer = item.GetService<SoftwareContainer>();
+
+                    if (swContainer != null ||
+                        item.Name.Contains("HMI_RT") ||
+                        item.Name.Contains("WinCC") ||
+                        item.Name.Contains("RT_"))
                     {
                         runtimeName = item.Name;
                         break;
                     }
                 }
 
-                // Nếu tìm thấy runtime thì gộp: PC-System_1|HMI_RT_1
+                // Trả về định dạng: SYRUP_SCADA|HMI_RT_1
                 return !string.IsNullOrEmpty(runtimeName) ? $"{stationName}|{runtimeName}" : stationName;
             }
 
-            // 2. Xử lý cho PLC (S7-1500 / S7-1200)
-            // Ưu tiên lấy tên CPU (Nhu_Project2) thay vì tên trạm mặc định
+            // 2. XỬ LÝ CHO PLC (S7-1500 / S7-1200)
+            // Nếu không phải PC Station, ta tìm tên CPU bên trong
             foreach (DeviceItem item in device.DeviceItems)
             {
+                // Bỏ qua các thành phần khung giá (Rail/Rack)
                 if (item.Name.StartsWith("Rail") || item.Name.StartsWith("Rack")) continue;
 
-                if (item.Name != device.Name && !item.Name.Contains("station"))
+                // Nếu item có tên khác với trạm và không phải là trạm mặc định thì đó thường là CPU
+                if (item.Name != device.Name && !item.Name.ToLower().Contains("station"))
                 {
                     return item.Name;
                 }
