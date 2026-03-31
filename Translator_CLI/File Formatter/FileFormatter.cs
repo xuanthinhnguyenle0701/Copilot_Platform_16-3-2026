@@ -8,6 +8,30 @@ using Newtonsoft.Json.Linq;
 
 namespace TIA_Copilot_CLI
 {
+    internal static class OutputPaths
+    {
+        private static string _cached = null;
+
+        public static string GetGeneratedDir()
+        {
+            if (_cached != null) return _cached;
+
+            DirectoryInfo dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+
+            // Walk up until we land on the Translator_CLI project folder
+            while (dir != null && !dir.Name.Equals("Translator_CLI", StringComparison.OrdinalIgnoreCase))
+                dir = dir.Parent;
+
+            string root = dir != null
+                ? dir.FullName
+                : AppDomain.CurrentDomain.BaseDirectory; // fallback — folder rename guard
+
+            _cached = Path.Combine(root, "Genereated_Files");
+            Directory.CreateDirectory(_cached); // create on first use if missing
+            return _cached;
+        }
+    }
+
     public static class SCLGenerator
     {
         public static void GenerateAndSave(BlockData data)
@@ -115,8 +139,7 @@ namespace TIA_Copilot_CLI
                 // --- LƯU FILE SCL ---
                 string safeName = string.IsNullOrWhiteSpace(data.Name) ? "AI_Generated_Block" : data.Name;
                 string fileName = $"{safeName}.scl";
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string fullPath = Path.Combine(baseDir, fileName);
+                string fullPath = Path.Combine(OutputPaths.GetGeneratedDir(), fileName);
                 File.WriteAllText(fullPath, sb.ToString(), Encoding.UTF8);
 
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -200,10 +223,7 @@ namespace TIA_Copilot_CLI
                 // ---> SỬ DỤNG data.Name ĐỂ ĐẶT TÊN FILE
                 string safeName = string.IsNullOrWhiteSpace(data.Name) ? "AI_Generated" : data.Name;
                 string fileName = $"{safeName}_Tags.csv";
-                
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string fullPath = Path.Combine(baseDir, fileName);
-
+                string fullPath = Path.Combine(OutputPaths.GetGeneratedDir(), fileName);
                 File.WriteAllText(fullPath, csv.ToString(), Encoding.UTF8);
 
                 Console.ForegroundColor = ConsoleColor.Magenta;
@@ -466,13 +486,14 @@ namespace TIA_Copilot_CLI
     // -----------------------------------------------------------------------
     public static class HmiGenerator
     {
-        // Increase to push rightward
+        // --- LAYOUT ENGINE ---
+        // Zone model: Process area (center), Controls (left sidebar), Status bar (top)
+        // C# stamps coordinates based on type and a running slot counter per zone.
+        // [TO BE REFINED] — adjust zone origins and sizes to match your screen layout.
+
         private static readonly int SIDEBAR_X       = 30;
-        // Increase to push downward for button
         private static readonly int SIDEBAR_Y_START = 180;
-        
         private static readonly int SIDEBAR_BTN_W   = 120;
-        
         private static readonly int SIDEBAR_BTN_H   = 40;
         private static readonly int SIDEBAR_GAP      = 10;
 
@@ -533,8 +554,7 @@ namespace TIA_Copilot_CLI
                 // Save physical JSON
                 string safeName  = string.IsNullOrWhiteSpace(data.ScreenName) ? "AI_Screen" : data.ScreenName;
                 string fileName  = $"{safeName}.json";
-                string baseDir   = AppDomain.CurrentDomain.BaseDirectory;
-                string fullPath  = Path.Combine(baseDir, fileName);
+                string fullPath  = Path.Combine(OutputPaths.GetGeneratedDir(), fileName);
 
                 File.WriteAllText(fullPath, projectJson.ToString(Newtonsoft.Json.Formatting.Indented), Encoding.UTF8);
 
@@ -880,7 +900,7 @@ namespace TIA_Copilot_CLI
 
                 string safeName = string.IsNullOrWhiteSpace(data.ScreenName) ? "AI_Screen" : data.ScreenName;
                 string fileName = $"{safeName}_HMI_Tags.csv";
-                string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+                string fullPath = Path.Combine(OutputPaths.GetGeneratedDir(), fileName);
 
                 // Write with UTF-8 BOM — WinCC Unified CSV import requires it
                 File.WriteAllText(fullPath, csv.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
