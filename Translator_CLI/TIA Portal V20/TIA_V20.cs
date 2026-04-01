@@ -37,7 +37,7 @@ namespace Middleware_console
 {
     public delegate void MyDownloadConfigurationDelegate(Siemens.Engineering.Download.Configurations.DownloadConfiguration downloadConfiguration);
     public class TIA_V20
-    {        
+    {
         #region 1. Fields, Constructor & Connectivity Status
         private TiaPortal _tiaPortal;
         private Project _project;
@@ -244,22 +244,22 @@ namespace Middleware_console
         }
 
         public List<string> GetPlcList()
-{
-    if (_project == null) CheckProject();
-    List<string> plcNames = new List<string>();
+        {
+            if (_project == null) CheckProject();
+            List<string> plcNames = new List<string>();
 
-    foreach (Device device in _project.Devices) 
-    {
-        // Sử dụng hàm xử lý tên gộp
-        plcNames.Add(GetCombinedDeviceName(device));
-    }
+            foreach (Device device in _project.Devices)
+            {
+                // Sử dụng hàm xử lý tên gộp
+                plcNames.Add(GetCombinedDeviceName(device));
+            }
 
-    foreach (DeviceUserGroup group in _project.DeviceGroups) 
-    {
-        ScanGroupRecursive(group, plcNames);
-    }
-    return plcNames;
-}
+            foreach (DeviceUserGroup group in _project.DeviceGroups)
+            {
+                ScanGroupRecursive(group, plcNames);
+            }
+            return plcNames;
+        }
 
 private string GetCombinedDeviceName(Device device)
 {
@@ -303,8 +303,8 @@ private string GetCombinedDeviceName(Device device)
         }
     }
 
-    return device.Name;
-}
+            return device.Name;
+        }
 
         public static List<string> GetSystemNetworkAdapters()
         {
@@ -358,8 +358,8 @@ private string GetCombinedDeviceName(Device device)
 
             // 1. TÁCH TÊN LẤY LỚP NGOÀI (STATION)
             // Ví dụ: "PC-System_3|HMI_RT_3" -> lấy "PC-System_3"
-            string targetStationName = rawDeviceName.Contains("|") 
-                                    ? rawDeviceName.Split('|')[0] 
+            string targetStationName = rawDeviceName.Contains("|")
+                                    ? rawDeviceName.Split('|')[0]
                                     : rawDeviceName;
 
             // 2. TÌM THIẾT BỊ THEO TÊN TRẠM CHA
@@ -373,7 +373,7 @@ private string GetCombinedDeviceName(Device device)
             if (compileHW)
             {
                 sb.AppendLine("> Đang dò lớp HW...");
-                object hwTarget = FindCompilableInDevice(device); 
+                object hwTarget = FindCompilableInDevice(device);
                 if (hwTarget != null)
                     sb.AppendLine(InternalInvoke(hwTarget, "HW", rebuildAll));
                 else
@@ -416,7 +416,7 @@ private string GetCombinedDeviceName(Device device)
         {
             var sw = GetSoftware(device);
             if (HasCompilableService(sw)) return sw;
-            return FindCompilableInDevice(device); 
+            return FindCompilableInDevice(device);
         }
 
         private bool HasCompilableService(object obj)
@@ -433,10 +433,10 @@ private string GetCombinedDeviceName(Device device)
             {
                 var provider = (IServiceProvider)target;
                 object service = provider.GetService(typeof(ICompilable));
-                
+
                 // CHIẾN THUẬT V20: Lấy chính xác Type của Interface ICompilable
                 Type interfaceType = typeof(ICompilable);
-                
+
                 // Lấy Method Compile(CompilerOptions) trực tiếp từ Interface
                 // Vì ICompilable chỉ có 2 overload: Compile() và Compile(options)
                 // Chúng ta lấy hàm có 1 tham số.
@@ -452,11 +452,11 @@ private string GetCombinedDeviceName(Device device)
 
                     // THỰC THI: Gọi thông qua Interface Mapping
                     var result = method.Invoke(service, new object[] { optionValue });
-                    
+
                     // Lấy State và in lỗi nếu có
                     return FormatCompileResult(result, label);
                 }
-                
+
                 // Nếu vẫn không thấy, thử gọi hàm Compile() không tham số (Changes only)
                 var simpleMethod = interfaceType.GetMethod("Compile", Type.EmptyTypes);
                 if (simpleMethod != null)
@@ -483,8 +483,8 @@ private string GetCombinedDeviceName(Device device)
 
             var stateProp = result.GetType().GetProperty("State");
             string state = stateProp?.GetValue(result)?.ToString() ?? "Unknown";
-            
-            string stateColor = state == "Success" ? "\u001b[32m" : "\u001b[31m"; 
+
+            string stateColor = state == "Success" ? "\u001b[32m" : "\u001b[31m";
             string reset = "\u001b[0m";
 
             StringBuilder sb = new StringBuilder();
@@ -502,10 +502,10 @@ private string GetCombinedDeviceName(Device device)
                     hasMessages = true;
                     PrintMessagesRecursive(m, sb, 1);
                 }
-                if (!hasMessages && state == "Error") 
+                if (!hasMessages && state == "Error")
                     sb.AppendLine("   \u001b[33mℹ [!] Lỗi hệ thống nhưng không có tin nhắn chi tiết (Kiểm tra Log TIA).\u001b[0m");
             }
-            
+
             return sb.ToString();
         }
 
@@ -520,7 +520,7 @@ private string GetCombinedDeviceName(Device device)
             string type = typeProp?.GetValue(msg)?.ToString();
             string desc = descProp?.GetValue(msg)?.ToString();
             string path = pathProp?.GetValue(msg)?.ToString();
-            
+
             string indent = new string(' ', indentLevel * 3);
 
             if (!string.IsNullOrEmpty(desc))
@@ -555,7 +555,7 @@ private string GetCombinedDeviceName(Device device)
                 sb.AppendLine($"{indent}{colorCode}{icon} {path}{resetCode}: {desc}");
             }
 
-            try 
+            try
             {
                 var subMessagesProp = msg.GetType().GetProperty("Messages");
                 var subMessages = (System.Collections.IEnumerable)subMessagesProp?.GetValue(msg);
@@ -568,7 +568,7 @@ private string GetCombinedDeviceName(Device device)
                 }
             } catch { }
         }
-        
+
         #endregion
 
         #region 5. WinCC Unified: Screen Management
@@ -714,8 +714,8 @@ private string GetCombinedDeviceName(Device device)
         {
             dynamic hmiTarget = GetHmiTarget(deviceName);
             dynamic screens = null;
-            
-            try { screens = hmiTarget.Screens; } 
+
+            try { screens = hmiTarget.Screens; }
             catch { screens = hmiTarget.ScreenFolder.Screens; }
 
             // Xóa màn hình cũ nếu trùng tên để cập nhật mới
@@ -727,7 +727,7 @@ private string GetCombinedDeviceName(Device device)
             // Tạo màn hình mới với thông số từ JSON
             Console.WriteLine($"   -> Đang tạo màn hình: {screenData.ScreenName} ({screenData.Width}x{screenData.Height})");
             dynamic res = screens.Create(screenData.ScreenName);
-            
+
             // Gán kích thước chuẩn từ JSON
             res.SetAttribute("Width", (uint)(screenData.Width > 0 ? screenData.Width : 1920));
             res.SetAttribute("Height", (uint)(screenData.Height > 0 ? screenData.Height : 1080));
@@ -761,7 +761,7 @@ private string GetCombinedDeviceName(Device device)
         {
             // 1. Dictionary dùng chung để lưu "xác" vật thể phục vụ nạp Tag ở GĐ 2
             var createdObjects = new Dictionary<string, dynamic>();
-            
+
             Console.WriteLine("\n>> [GIAI ĐOẠN 1] Dựng hình & Gán tọa độ thực...");
 
             foreach (var item in items) 
@@ -1041,7 +1041,7 @@ private string GetCombinedDeviceName(Device device)
 
             Console.WriteLine("\n>> [GIAI ĐOẠN 2] Nạp linh hồn THẬT...");
 
-            foreach (var item in items) 
+            foreach (var item in items)
             {
                 if (!createdObjects.ContainsKey(item.Name)) continue;
                 dynamic dynItem = createdObjects[item.Name];
@@ -1057,22 +1057,27 @@ private string GetCombinedDeviceName(Device device)
                 // --- PHÂN LUỒNG NẠP TAG ---
 
                 // 1. NHÓM HÌNH KHỐI (Rectangle, Circle, EllipseSegment, CircularArc)
-                if (realType.Contains("Rectangle") || realType.Contains("Circle") || realType.Contains("EllipseSegment")) {
+                if (realType.Contains("Rectangle") || realType.Contains("Circle") || realType.Contains("EllipseSegment"))
+                {
                     string customScript = item.Properties.ContainsKey("ColorScript") ? item.Properties["ColorScript"].ToString() : "";
                     BindTagToBasicWithStates(dynItem, tag, "BackColor", customScript);
-                    Console.WriteLine($"      => [THẬT BACK] {item.Name} -> {tag}"); 
+                    Console.WriteLine($"      => [THẬT BACK] {item.Name} -> {tag}");
                 }
-                else if (realType.Contains("CircularArc")) {
+                else if (realType.Contains("CircularArc"))
+                {
                     BindTagToBasic(dynItem, tag, "LineColor");
                     Console.WriteLine($"      => [THẬT LINE] {item.Name} -> {tag}");
                 }
 
                 // 2. NHÓM WIDGET (Thư viện)
-                else if (item.Properties.ContainsKey("LibraryPath")) {
+                else if (item.Properties.ContainsKey("LibraryPath"))
+                {
                     string targetProp = item.Type.Contains("Tank") ? "FillLevelColor" : "BasicColor";
                     string customScript = item.Properties.ContainsKey("ColorScript") ? item.Properties["ColorScript"].ToString() : "";
-                    foreach (dynamic m in dynItem.Interface) {
-                        if (m.PropertyName == targetProp) {
+                    foreach (dynamic m in dynItem.Interface)
+                    {
+                        if (m.PropertyName == targetProp)
+                        {
                             if (item.Type.Contains("Motor")) BindScriptToWidget(m, tag, customScript);
                             else BindTagToWidget(m, tag);
                             Console.WriteLine($"      => [THẬT WIDGET] {item.Name} -> {tag}");
@@ -1082,73 +1087,78 @@ private string GetCombinedDeviceName(Device device)
                 }
 
                 // 3. NHÓM ĐIỀU KHIỂN & HIỂN THỊ (IO Field, Bar, Slider, Gauge, Radio, CheckBox)
-                else if (realType.Contains("Bar") || realType.Contains("Gauge") || 
+                else if (realType.Contains("Bar") || realType.Contains("Gauge") ||
                         realType.Contains("Slider") || realType.Contains("IoField") ||
-                        realType.Contains("Switch") || realType.Contains("CheckBox") || 
+                        realType.Contains("Switch") || realType.Contains("CheckBox") ||
                         realType.Contains("RadioButton"))
                 {
-                    BindTagToBasic(dynItem, tag, "ProcessValue");         
+                    BindTagToBasic(dynItem, tag, "ProcessValue");
                     Console.WriteLine($"      => [THẬT ELEMENT] {item.Name} ({realType}) -> {tag}");
                 }
 
                 // 4. NHÓM VĂN BẢN (TextBox)
-                else if (realType.Contains("TextBox")) {
+                else if (realType.Contains("TextBox"))
+                {
                     BindTagToBasic(dynItem, tag, "Text");
                     Console.WriteLine($"      => [THẬT TEXT] {item.Name} -> {tag}");
                 }
-                else if (realType.Contains("Text") || realType.Equals("HmiText")) {
+                else if (realType.Contains("Text") || realType.Equals("HmiText"))
+                {
                     // Với HmiText, thuộc tính cần Bind Tag thường là "Text" 
                     // Nhưng lưu ý: Bind Tag vào Text của Unified đôi khi cần trỏ sâu vào Resource
-                    BindTagToBasic(dynItem, tag, "Text"); 
+                    BindTagToBasic(dynItem, tag, "Text");
                     Console.WriteLine($"      => [THẬT TEXT] {item.Name} -> {tag}");
                 }
             }
             Console.WriteLine("[SUCCESS] Vẽ và nạp linh hồn hoàn tất!");
         }
         private IEngineeringObject CreateBaseItem(dynamic composition, string typeName, string name)
-{
-    var method = ((object)composition).GetType().GetMethods()
-        .FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod);
+        {
+            var method = ((object)composition).GetType().GetMethods()
+                .FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod);
 
-    // Tìm Type chính xác theo tên truyền vào (HmiText)
-    Type targetType = AppDomain.CurrentDomain.GetAssemblies()
-        .SelectMany(a => a.GetTypes())
-        .FirstOrDefault(t => t.Name == typeName);
+            // Tìm Type chính xác theo tên truyền vào (HmiText)
+            Type targetType = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .FirstOrDefault(t => t.Name == typeName);
 
     if (targetType == null) {
-        Console.WriteLine($"[!] Không tìm thấy Type: {typeName}");
-        return null;
-    }
+                Console.WriteLine($"[!] Không tìm thấy Type: {typeName}");
+                return null;
+            }
 
-    return (IEngineeringObject)method.MakeGenericMethod(targetType).Invoke(composition, new object[] { name });
-}
+            return (IEngineeringObject)method.MakeGenericMethod(targetType).Invoke(composition, new object[] { name });
+        }
         public void BindTagToBasic(dynamic item, string tagName, string propName) {
             try {
                 var method = ((object)item.Dynamizations).GetType().GetMethods().FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod && m.GetParameters().Length == 1);
                 Type tagType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).FirstOrDefault(t => t.Name == "TagDynamization");
-                if (method != null && tagType != null) {
+                if (method != null && tagType != null)
+                {
                     var tagDyn = method.MakeGenericMethod(tagType).Invoke(item.Dynamizations, new object[] { propName });
                     ((dynamic)tagDyn).Tag = tagName;
                     Console.WriteLine($"      => [THẬT] Basic Tag: {tagName}");
                 }
-            } catch { }
+            }
+            catch { }
         }
 
-        private void ProcessButtonScripts(dynamic dynItem, string itemName, dynamic scriptsJson) {
+        private void ProcessButtonScripts(dynamic dynItem, string itemName, dynamic scriptsJson)
+        {
             // Kiểm tra null để tránh crash
             if (scriptsJson == null) return;
 
             Type enumType = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => a.GetTypes())
                 .FirstOrDefault(t => t.Name == "HmiButtonEventType");
-            
+
             if (enumType == null) return;
 
             // QUAN TRỌNG: Duyệt qua các thuộc tính của đối tượng JSON
             foreach (var scriptEntry in scriptsJson) {
                 try {
                     // Nếu dùng Newtonsoft.Json, scriptEntry sẽ có Name và Value
-                    string evName = scriptEntry.Name; 
+                    string evName = scriptEntry.Name;
                     string jsCode = scriptEntry.Value.ToString();
 
                     var evEnum = Enum.Parse(enumType, evName);
@@ -1175,14 +1185,17 @@ private string GetCombinedDeviceName(Device device)
             }
         }
 
-        public void BindTagToBasicWithStates(dynamic item, string tagName, string propName, string scriptCode) 
+        public void BindTagToBasicWithStates(dynamic item, string tagName, string propName, string scriptCode)
         {
-            try {
+            try
+            {
                 var dyns = item.Dynamizations;
 
                 // 1. XÓA TRIỆT ĐỂ DYNAMIZATION CŨ (Tránh lỗi Target of Invocation)
-                for (int i = dyns.Count - 1; i >= 0; i--) {
-                    if (dyns[i].PropertyName == propName) {
+                for (int i = dyns.Count - 1; i >= 0; i--)
+                {
+                    if (dyns[i].PropertyName == propName)
+                    {
                         dyns[i].Delete();
                     }
                 }
@@ -1190,34 +1203,43 @@ private string GetCombinedDeviceName(Device device)
                 // 2. TẠO SCRIPT DYNAMIZATION QUA REFLECTION
                 var method = ((object)dyns).GetType().GetMethods()
                     .FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod && m.GetParameters().Length == 1);
-                
+
                 Type scriptType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
                     .FirstOrDefault(t => t.Name == "ScriptDynamization");
 
-                if (method != null && scriptType != null) {
+                if (method != null && scriptType != null)
+                {
                     var dyn = method.MakeGenericMethod(scriptType).Invoke(dyns, new object[] { propName });
                     dynamic scriptObj = (dynamic)dyn;
 
                     // 3. THIẾT LẬP TRIGGER (Dành riêng cho Basic Objects V20)
                     bool triggerSuccess = false;
-                    try {
+                    try
+                    {
                         // Thử cách 1: SourceAttribute (Dùng cho WinCC Unified V20 Basic Shapes)
-                        scriptObj.SourceAttribute = tagName; 
+                        scriptObj.SourceAttribute = tagName;
                         triggerSuccess = true;
-                    } catch {
-                        try {
+                    }
+                    catch
+                    {
+                        try
+                        {
                             // Thử cách 2: AttributeTriggers (Dùng khi thuộc tính cần giám sát cụ thể)
                             var attrTrigger = scriptObj.AttributeTriggers.Create();
-                            attrTrigger.AttributePath = propName; 
+                            attrTrigger.AttributePath = propName;
                             attrTrigger.Tag = tagName;
                             triggerSuccess = true;
-                        } catch {
-                            try {
+                        }
+                        catch
+                        {
+                            try
+                            {
                                 // Thử cách 3: Triggers tổng quát (Thường dùng cho Widget)
                                 var tagTrigger = scriptObj.Triggers.Create();
                                 tagTrigger.Tag = tagName;
                                 triggerSuccess = true;
-                            } catch { }
+                            }
+                            catch { }
                         }
                     }
 
@@ -1233,13 +1255,17 @@ private string GetCombinedDeviceName(Device device)
                     else
                         Console.WriteLine($"      => [THẬT RGB SCRIPT] {item.Name} -> {tagName} (Cần gán Trigger tay)");
                 }
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 Console.WriteLine($"      [!] Lỗi nạp Script tại {item.Name}: {ex.Message}");
             }
         }
 
-        public void BindScriptToWidget(dynamic member, string tagName, string scriptCode) {
-            try {
+        public void BindScriptToWidget(dynamic member, string tagName, string scriptCode)
+        {
+            try
+            {
                 dynamic dyns = member.Dynamizations;
                 var method = ((object)dyns).GetType().GetMethods()
                     .FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod && m.GetParameters().Length == 1);
@@ -1247,47 +1273,57 @@ private string GetCombinedDeviceName(Device device)
                 Type scriptType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
                     .FirstOrDefault(t => t.Name == "ScriptDynamization");
 
-                if (method != null && scriptType != null) {
+                if (method != null && scriptType != null)
+                {
                     var scriptDyn = method.MakeGenericMethod(scriptType).Invoke(dyns, new object[] { member.PropertyName });
-                    
+
                     // THIẾT LẬP TRIGGER (Để Script tự chạy khi Tag đổi giá trị)
-                    try {
+                    try
+                    {
                         var tagTrigger = ((dynamic)scriptDyn).Triggers.Create();
                         tagTrigger.Tag = tagName;
-                    } catch { }
+                    }
+                    catch { }
 
                     // NẠP MÃ JS: Ưu tiên lấy từ JSON, nếu trống dùng mẫu chuẩn RGB
-                    string finalScript = !string.IsNullOrEmpty(scriptCode) ? scriptCode : 
+                    string finalScript = !string.IsNullOrEmpty(scriptCode) ? scriptCode :
                         $@"var status = Tags(""{tagName}"").Read(); 
         return status ? HMIRuntime.Math.RGB(135, 190, 50) : HMIRuntime.Math.RGB(178, 34, 34);";
 
                     ((dynamic)scriptDyn).ScriptCode = finalScript;
-                    
+
                     Console.WriteLine($"      => [THẬT WIDGET JSON SCRIPT] {member.PropertyName} -> {tagName}");
                 }
-            } catch (Exception ex) { 
+            }
+            catch (Exception ex)
+            {
                 Console.WriteLine($"      [!] Lỗi Widget Script: {ex.Message}");
             }
         }
-        public void BindTagToWidget(dynamic member, string tagName) {
-            try {
+        public void BindTagToWidget(dynamic member, string tagName)
+        {
+            try
+            {
                 dynamic dyns = member.Dynamizations;
                 // Tìm hàm Create(string propertyName) có 1 tham số
                 var method = ((object)dyns).GetType().GetMethods()
                     .FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod && m.GetParameters().Length == 1);
-                
+
                 // SỬA LỖI .Many() thành .SelectMany()
                 Type tagType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes())
                     .FirstOrDefault(t => t.Name == "TagDynamization");
 
-                if (method != null && tagType != null) {
+                if (method != null && tagType != null)
+                {
                     // Thực thi nạp Tag vào đúng cổng PropertyName của Member
                     var tagDyn = method.MakeGenericMethod(tagType).Invoke(dyns, new object[] { member.PropertyName });
-                    ((dynamic)tagDyn).Tag = tagName; 
+                    ((dynamic)tagDyn).Tag = tagName;
                     Console.WriteLine($"      => [THẬT WIDGET] {member.PropertyName} -> {tagName}");
                 }
-            } catch (Exception ex) { 
-                Console.WriteLine($"      [!] Lỗi Widget Tag: {ex.Message}"); 
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"      [!] Lỗi Widget Tag: {ex.Message}");
             }
         }
 
@@ -1346,51 +1382,55 @@ private string GetCombinedDeviceName(Device device)
             });
         }
 
-        
+
         private void CreateDynamicWidget(dynamic composition, string type, string name, dynamic properties)
-{
-    try {
-        // 1. Tìm kiểu dữ liệu đích
-        Type targetType = AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(a => a.GetTypes())
-            .FirstOrDefault(t => t.Name == "HmiCustomWidgetContainer");
-        
-        if (targetType == null) return;
+        {
+            try
+            {
+                // 1. Tìm kiểu dữ liệu đích
+                Type targetType = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(a => a.GetTypes())
+                    .FirstOrDefault(t => t.Name == "HmiCustomWidgetContainer");
 
-        // 2. Lấy method Create(string name, string typeIdentifier)
-        // Chúng ta lấy phương thức Generic
-        var methodInfo = ((object)composition).GetType().GetMethods()
-            .FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod && m.GetParameters().Length == 2);
+                if (targetType == null) return;
 
-        if (methodInfo == null) return;
+                // 2. Lấy method Create(string name, string typeIdentifier)
+                // Chúng ta lấy phương thức Generic
+                var methodInfo = ((object)composition).GetType().GetMethods()
+                    .FirstOrDefault(m => m.Name == "Create" && m.IsGenericMethod && m.GetParameters().Length == 2);
 
-        // 3. ĐÂY LÀ BƯỚC QUAN TRỌNG: Cụ thể hóa phương thức Generic
-        // Biến Create<T> thành Create<HmiCustomWidgetContainer>
-        var concreteMethod = methodInfo.MakeGenericMethod(targetType);
+                if (methodInfo == null) return;
 
-        // 4. Chuẩn bị định danh
-        string subType = properties.ContainsKey("SubType") ? properties["SubType"].ToString() : type;
-        string typeIdentifier = $"extended.{subType}"; 
+                // 3. ĐÂY LÀ BƯỚC QUAN TRỌNG: Cụ thể hóa phương thức Generic
+                // Biến Create<T> thành Create<HmiCustomWidgetContainer>
+                var concreteMethod = methodInfo.MakeGenericMethod(targetType);
 
-        // 5. THỰC THI (Invoke phương thức đã được cụ thể hóa)
-        // Không dùng late bound trực tiếp trên methodInfo nữa
-        var newItem = (IEngineeringObject)concreteMethod.Invoke(composition, new object[] { (string)name, (string)typeIdentifier });
+                // 4. Chuẩn bị định danh
+                string subType = properties.ContainsKey("SubType") ? properties["SubType"].ToString() : type;
+                string typeIdentifier = $"extended.{subType}";
 
-        if (newItem != null) {
-            // Gán tọa độ và Interface (Giữ nguyên phần code SetAttribute của bạn)
-            newItem.SetAttribute("Left", Convert.ToInt32(properties["Left"]));
-            newItem.SetAttribute("Top", Convert.ToInt32(properties["Top"]));
-            newItem.SetAttribute("Width", (uint)Convert.ToUInt32(properties["Width"]));
-            newItem.SetAttribute("Height", (uint)Convert.ToUInt32(properties["Height"]));
-            
-            // ... (Phần nạp BasicColor, FillLevelValue...)
-            Console.WriteLine($"      [RENDER OK] {name} ({subType})");
+                // 5. THỰC THI (Invoke phương thức đã được cụ thể hóa)
+                // Không dùng late bound trực tiếp trên methodInfo nữa
+                var newItem = (IEngineeringObject)concreteMethod.Invoke(composition, new object[] { (string)name, (string)typeIdentifier });
+
+                if (newItem != null)
+                {
+                    // Gán tọa độ và Interface (Giữ nguyên phần code SetAttribute của bạn)
+                    newItem.SetAttribute("Left", Convert.ToInt32(properties["Left"]));
+                    newItem.SetAttribute("Top", Convert.ToInt32(properties["Top"]));
+                    newItem.SetAttribute("Width", (uint)Convert.ToUInt32(properties["Width"]));
+                    newItem.SetAttribute("Height", (uint)Convert.ToUInt32(properties["Height"]));
+
+                    // ... (Phần nạp BasicColor, FillLevelValue...)
+                    Console.WriteLine($"      [RENDER OK] {name} ({subType})");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Dùng InnerException để xem lỗi thật sự từ Siemens nếu có
+                Console.WriteLine($"      [LỖI TẠI {name}]: {ex.InnerException?.Message ?? ex.Message}");
+            }
         }
-    } catch (Exception ex) {
-        // Dùng InnerException để xem lỗi thật sự từ Siemens nếu có
-        Console.WriteLine($"      [LỖI TẠI {name}]: {ex.InnerException?.Message ?? ex.Message}");
-    }
-}
 
         #endregion
 
@@ -1415,18 +1455,18 @@ private string GetCombinedDeviceName(Device device)
 
                 // Bước 2: GIẢI PHÁP - Gán trực tiếp từng thuộc tính thay vì gửi chuỗi InitialAddress
                 // Cách này giúp TIA Portal không phải tự phân tách chuỗi, tránh lỗi format
-                try 
+                try
                 {
                     newConn.SetAttribute("HostAddress", hmiIp); // IP của HMI
                     newConn.SetAttribute("PlcAddress", plcIp); // IP của PLC
                     newConn.SetAttribute("HostAccessPoint", "S7ONLINE");
-                    
+
                     // Gán các thông số phụ mà Driver yêu cầu
-                    newConn.SetAttribute("PlcExpansionSlot", 1); 
+                    newConn.SetAttribute("PlcExpansionSlot", 1);
                     newConn.SetAttribute("PlcRack", 0);
                     newConn.SetAttribute("PlcIsCyclicOperation", true);
                 }
-                catch 
+                catch
                 {
                     // Fallback: Nếu gán rời bị chặn, dùng chuỗi tối giản nhất (không có dấu ; ở cuối)
                     string minimal = $"Version=16.0.0.0;HostAddress={hmiIp};PlcAddress={plcIp}";
@@ -1509,7 +1549,7 @@ private string GetCombinedDeviceName(Device device)
                     string address = columns[2].Trim();
                     string dataType = columns[3].Trim();
 
-                    try 
+                    try
                     {
                         var tags = table.Tags;
                         
@@ -1562,7 +1602,8 @@ private string GetCombinedDeviceName(Device device)
 
             try
             {
-                if (!System.IO.File.Exists(csvPath)) {
+                if (!System.IO.File.Exists(csvPath))
+                {
                     Console.WriteLine($"[ERROR] Không tìm thấy file: {csvPath}"); return;
                 }
 
@@ -1576,8 +1617,8 @@ private string GetCombinedDeviceName(Device device)
                 for (int i = 1; i < lines.Length; i++)
                 {
                     // Tách cột bằng dấu phẩy hoặc dấu chấm phẩy
-                    string[] columns = lines[i].Split(','); 
-                    if (columns.Length < 4) columns = lines[i].Split(';'); 
+                    string[] columns = lines[i].Split(',');
+                    if (columns.Length < 4) columns = lines[i].Split(';');
 
                     if (columns.Length < 4) continue;
 
@@ -1588,19 +1629,19 @@ private string GetCombinedDeviceName(Device device)
                     string address = columns[3].Trim();        // Cột D: Logical Address
                     string comment = columns.Length > 4 ? columns[4].Trim() : ""; // Cột E: Comment
 
-                    try 
+                    try
                     {
                         // Tìm hoặc tạo Tag Table dựa theo cột B
-                        var table = software.TagTableGroup.TagTables.Find(tablePath) 
+                        var table = software.TagTableGroup.TagTables.Find(tablePath)
                                     ?? software.TagTableGroup.TagTables.Create(tablePath);
 
                         var plcTags = table.Tags;
                         if (plcTags.Find(tagName) != null) plcTags.Find(tagName).Delete();
-                        
+
                         var newTag = plcTags.Create(tagName);
 
                         // Gán thuộc tính theo đúng Openness API cho PLC
-                        newTag.SetAttribute("DataTypeName", dataType); 
+                        newTag.SetAttribute("DataTypeName", dataType);
                         newTag.SetAttribute("LogicalAddress", address);
 
                         if (!string.IsNullOrEmpty(comment))
@@ -1609,7 +1650,7 @@ private string GetCombinedDeviceName(Device device)
                         }
 
                         successCount++;
-                        Console.WriteLine($"[INFO] Line {i+1}: Đã nạp {tagName} vào bảng {tablePath}");
+                        Console.WriteLine($"[INFO] Line {i + 1}: Đã nạp {tagName} vào bảng {tablePath}");
                     }
                     catch (Exception ex)
                     {
@@ -1630,7 +1671,7 @@ private string GetCombinedDeviceName(Device device)
             {
                 Device hmiDevice = FindDeviceRecursive(_project, hmiName);
                 var software = GetSoftware(hmiDevice) as HmiSoftware;
-                
+
                 // 1. Tìm Tag cần Log trong Default tag table
                 var table = software.TagTables.Find("Default tag table");
                 var hmiTag = table.Tags.Find(tagName);
@@ -1638,7 +1679,7 @@ private string GetCombinedDeviceName(Device device)
 
                 // 2. Truy cập danh sách LoggingTags của Tag đó
                 var loggingTags = hmiTag.LoggingTags;
-                
+
                 // 3. Tạo LoggingTag mới (thường đặt tên trùng với tên Tag hoặc tagName_Log)
                 string logTagName = tagName + "_Log";
                 var existingLog = loggingTags.Find(logTagName);
@@ -1648,10 +1689,10 @@ private string GetCombinedDeviceName(Device device)
 
                 // 4. Cấu hình các thuộc tính dựa trên API bạn gửi
                 // Gán vào bảng Data Log (Ví dụ: "Data_log_1")
-                newLoggingTag.SetAttribute("LogConfiguration", dataLogName); 
-                
+                newLoggingTag.SetAttribute("LogConfiguration", dataLogName);
+
                 // Chế độ ghi: 3 = OnChange (Ghi khi thay đổi)
-                newLoggingTag.SetAttribute("LoggingMode", 3); 
+                newLoggingTag.SetAttribute("LoggingMode", 3);
 
                 // Nếu muốn làm mượt dữ liệu (Smoothing)
                 newLoggingTag.SetAttribute("SmoothingMode", 0); // 0 = NoSmoothing
@@ -1702,7 +1743,7 @@ private string GetCombinedDeviceName(Device device)
                 // Truy cập vào kho Graphics của Project qua Reflection
                 PropertyInfo graphicsProp = _project.GetType().GetProperty("Graphics");
                 var graphicsCollection = graphicsProp.GetValue(_project);
-                
+
                 // Gọi hàm Import(name, path, folder)
                 // Lưu ý: TIA Openness cho phép nạp trực tiếp vào root Graphics
                 MethodInfo importMethod = graphicsCollection.GetType().GetMethod("Import", new[] { typeof(string), typeof(string) });
@@ -1731,138 +1772,138 @@ private string GetCombinedDeviceName(Device device)
         #endregion
 
         #region 9. Download, Online & Diagnostic Operations
-       public string DownloadToPLC(string deviceName, string targetIpAddress, string pgPcInterfaceName)
-{
-    if (_project == null) return "Error: Project chưa được load.";
-
-    try
-    {
-        // 1. Tìm thiết bị và khởi tạo các Service
-        Device device = FindDeviceRecursive(_project, deviceName);
-        if (device == null) return $"Error: Không tìm thấy thiết bị '{deviceName}'";
-
-        var plcItem = GetCpuItem(device);
-        var downloadProvider = plcItem?.GetService<Siemens.Engineering.Download.DownloadProvider>();
-        var onlineProvider = plcItem?.GetService<Siemens.Engineering.Online.OnlineProvider>();
-
-        if (downloadProvider == null) return "Error: DownloadProvider không khả dụng.";
-
-        // 2. KIỂM TRA THÔNG TUYẾN (PING)
-        // Đảm bảo card mạng ảo Siemens PLCSIM đã nhận diện được PLC
-        Console.WriteLine($"[i] Đang kiểm tra Ping tới {targetIpAddress}...");
-        using (System.Net.NetworkInformation.Ping ping = new System.Net.NetworkInformation.Ping())
+        public string DownloadToPLC(string deviceName, string targetIpAddress, string pgPcInterfaceName)
         {
+            if (_project == null) return "Error: Project chưa được load.";
+
             try
             {
-                var reply = ping.Send(targetIpAddress, 2000);
-                if (reply.Status != System.Net.NetworkInformation.IPStatus.Success)
+                // 1. Tìm thiết bị và khởi tạo các Service
+                Device device = FindDeviceRecursive(_project, deviceName);
+                if (device == null) return $"Error: Không tìm thấy thiết bị '{deviceName}'";
+
+                var plcItem = GetCpuItem(device);
+                var downloadProvider = plcItem?.GetService<Siemens.Engineering.Download.DownloadProvider>();
+                var onlineProvider = plcItem?.GetService<Siemens.Engineering.Online.OnlineProvider>();
+
+                if (downloadProvider == null) return "Error: DownloadProvider không khả dụng.";
+
+                // 2. KIỂM TRA THÔNG TUYẾN (PING)
+                // Đảm bảo card mạng ảo Siemens PLCSIM đã nhận diện được PLC
+                Console.WriteLine($"[i] Đang kiểm tra Ping tới {targetIpAddress}...");
+                using (System.Net.NetworkInformation.Ping ping = new System.Net.NetworkInformation.Ping())
                 {
-                    return $"FAILED: Không thể Ping thấy PLC tại {targetIpAddress}. Hãy kiểm tra PLCSIM Advanced hoặc Card mạng số {pgPcInterfaceName}!";
+                    try
+                    {
+                        var reply = ping.Send(targetIpAddress, 2000);
+                        if (reply.Status != System.Net.NetworkInformation.IPStatus.Success)
+                        {
+                            return $"FAILED: Không thể Ping thấy PLC tại {targetIpAddress}. Hãy kiểm tra PLCSIM Advanced hoặc Card mạng số {pgPcInterfaceName}!";
+                        }
+                        Console.WriteLine($"[√] Ping thành công! (Thời gian phản hồi: {reply.RoundtripTime}ms)");
+                    }
+                    catch (Exception ex)
+                    {
+                        return $"FAILED: Lỗi hệ thống khi Ping: {ex.Message}";
+                    }
                 }
-                Console.WriteLine($"[√] Ping thành công! (Thời gian phản hồi: {reply.RoundtripTime}ms)");
+
+                // 3. HANDSHAKE BẢO MẬT (Xử lý bảng Trustworthy của V20)
+                try
+                {
+                    dynamic dynamicProvider = onlineProvider;
+                    // Dùng dynamic để "bắt" sự kiện CertificateValidation nếu nó tồn tại
+                    dynamicProvider.CertificateValidation += new EventHandler<dynamic>((sender, e) =>
+                    {
+                        Console.WriteLine($"   [√] Đã tự động chấp nhận Certificate bảo mật cho {deviceName}");
+                        e.Accept(); // Nhấn "Connect" tự động trên bảng Trustworthy
+                    });
+                }
+                catch { /* Bỏ qua nếu phiên bản TIA không hỗ trợ event này trực tiếp */ }
+
+                // 4. CẤU HÌNH INTERFACE
+                var mode = downloadProvider.Configuration.Modes.Find("PN/IE");
+                var pcInterface = mode.PcInterfaces.Find(pgPcInterfaceName, 1);
+                if (pcInterface == null) return "FAILED: Không tìm thấy Card mạng phù hợp.";
+
+                var targetConf = pcInterface.TargetInterfaces[0];
+
+                // Áp cấu hình để mở Socket kết nối
+                downloadProvider.Configuration.ApplyConfiguration(targetConf);
+
+                // 5. THỰC THI NẠP (DOWNLOAD)
+                Console.WriteLine("[i] Đang bắt đầu quá trình nạp chương trình...");
+                var result = downloadProvider.Download(
+                    targetConf,
+                    (preConf) => // Xử lý các bảng thông báo trước khi nạp (Stop Modules, Overwrite...)
+                    {
+                        dynamic d = preConf;
+                        try
+                        {
+                            string configName = preConf.GetType().Name;
+                            Console.WriteLine($"   => Đang xử lý bảng: {configName}");
+
+                            var prop = preConf.GetType().GetProperty("CurrentSelection");
+                            if (prop != null)
+                            {
+                                var enumType = prop.GetValue(preConf).GetType();
+                                foreach (var name in Enum.GetNames(enumType))
+                                {
+                                    // Tự động chọn hành động để tiếp tục nạp
+                                    if (name.Contains("Stop") || name.Contains("Overwrite") || name.Contains("Accept"))
+                                    {
+                                        prop.SetValue(preConf, Enum.Parse(enumType, name));
+                                        Console.WriteLine($"      [√] Đã chọn: {name}");
+                                        break;
+                                    }
+                                }
+                            }
+                            // Xác nhận đã xử lý bảng
+                            var chk = preConf.GetType().GetProperty("Checked") ?? preConf.GetType().GetProperty("IsChecked");
+                            if (chk != null) chk.SetValue(preConf, true);
+                        }
+                        catch { }
+                    },
+                    (postConf) => // Xử lý sau khi nạp (Restart PLC)
+                    {
+                        try
+                        {
+                            var prop = postConf.GetType().GetProperty("CurrentSelection");
+                            if (prop != null)
+                            {
+                                var enumType = prop.GetValue(postConf).GetType();
+                                foreach (var name in Enum.GetNames(enumType))
+                                {
+                                    if (name.Contains("Start"))
+                                    {
+                                        prop.SetValue(postConf, Enum.Parse(enumType, name));
+                                        Console.WriteLine("   [√] PLC đang khởi động lại (RUN)...");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                    },
+                    Siemens.Engineering.Download.DownloadOptions.Hardware | Siemens.Engineering.Download.DownloadOptions.Software
+                );
+
+                // 6. TRẢ KẾT QUẢ
+                if (result.State == Siemens.Engineering.Download.DownloadResultState.Success)
+                {
+                    return "SUCCESS: Chương trình đã nạp hoàn tất và PLC đã RUN!";
+                }
+                else
+                {
+                    var errorMsg = result.Messages.FirstOrDefault(m => m.State == Siemens.Engineering.Download.DownloadResultState.Error)?.Message ?? "Unknown Error";
+                    return $"FAILED: {result.State}. Chi tiết: {errorMsg}";
+                }
             }
             catch (Exception ex)
             {
-                return $"FAILED: Lỗi hệ thống khi Ping: {ex.Message}";
+                return $"CRITICAL ERROR: {ex.GetBaseException().Message}";
             }
         }
-
-        // 3. HANDSHAKE BẢO MẬT (Xử lý bảng Trustworthy của V20)
-        try
-        {
-            dynamic dynamicProvider = onlineProvider;
-            // Dùng dynamic để "bắt" sự kiện CertificateValidation nếu nó tồn tại
-            dynamicProvider.CertificateValidation += new EventHandler<dynamic>((sender, e) =>
-            {
-                Console.WriteLine($"   [√] Đã tự động chấp nhận Certificate bảo mật cho {deviceName}");
-                e.Accept(); // Nhấn "Connect" tự động trên bảng Trustworthy
-            });
-        }
-        catch { /* Bỏ qua nếu phiên bản TIA không hỗ trợ event này trực tiếp */ }
-
-        // 4. CẤU HÌNH INTERFACE
-        var mode = downloadProvider.Configuration.Modes.Find("PN/IE");
-        var pcInterface = mode.PcInterfaces.Find(pgPcInterfaceName, 1);
-        if (pcInterface == null) return "FAILED: Không tìm thấy Card mạng phù hợp.";
-
-        var targetConf = pcInterface.TargetInterfaces[0];
-        
-        // Áp cấu hình để mở Socket kết nối
-        downloadProvider.Configuration.ApplyConfiguration(targetConf);
-
-        // 5. THỰC THI NẠP (DOWNLOAD)
-        Console.WriteLine("[i] Đang bắt đầu quá trình nạp chương trình...");
-        var result = downloadProvider.Download(
-            targetConf,
-            (preConf) => // Xử lý các bảng thông báo trước khi nạp (Stop Modules, Overwrite...)
-            {
-                dynamic d = preConf;
-                try
-                {
-                    string configName = preConf.GetType().Name;
-                    Console.WriteLine($"   => Đang xử lý bảng: {configName}");
-
-                    var prop = preConf.GetType().GetProperty("CurrentSelection");
-                    if (prop != null)
-                    {
-                        var enumType = prop.GetValue(preConf).GetType();
-                        foreach (var name in Enum.GetNames(enumType))
-                        {
-                            // Tự động chọn hành động để tiếp tục nạp
-                            if (name.Contains("Stop") || name.Contains("Overwrite") || name.Contains("Accept"))
-                            {
-                                prop.SetValue(preConf, Enum.Parse(enumType, name));
-                                Console.WriteLine($"      [√] Đã chọn: {name}");
-                                break;
-                            }
-                        }
-                    }
-                    // Xác nhận đã xử lý bảng
-                    var chk = preConf.GetType().GetProperty("Checked") ?? preConf.GetType().GetProperty("IsChecked");
-                    if (chk != null) chk.SetValue(preConf, true);
-                }
-                catch { }
-            },
-            (postConf) => // Xử lý sau khi nạp (Restart PLC)
-            {
-                try
-                {
-                    var prop = postConf.GetType().GetProperty("CurrentSelection");
-                    if (prop != null)
-                    {
-                        var enumType = prop.GetValue(postConf).GetType();
-                        foreach (var name in Enum.GetNames(enumType))
-                        {
-                            if (name.Contains("Start"))
-                            {
-                                prop.SetValue(postConf, Enum.Parse(enumType, name));
-                                Console.WriteLine("   [√] PLC đang khởi động lại (RUN)...");
-                                break;
-                            }
-                        }
-                    }
-                }
-                catch { }
-            },
-            Siemens.Engineering.Download.DownloadOptions.Hardware | Siemens.Engineering.Download.DownloadOptions.Software
-        );
-
-        // 6. TRẢ KẾT QUẢ
-        if (result.State == Siemens.Engineering.Download.DownloadResultState.Success)
-        {
-            return "SUCCESS: Chương trình đã nạp hoàn tất và PLC đã RUN!";
-        }
-        else
-        {
-            var errorMsg = result.Messages.FirstOrDefault(m => m.State == Siemens.Engineering.Download.DownloadResultState.Error)?.Message ?? "Unknown Error";
-            return $"FAILED: {result.State}. Chi tiết: {errorMsg}";
-        }
-    }
-    catch (Exception ex)
-    {
-        return $"CRITICAL ERROR: {ex.GetBaseException().Message}";
-    }
-}
 
 
         // --- BỔ SUNG: THAY ĐỔI TRẠNG THÁI PLC (RUN/STOP) ---
@@ -1875,21 +1916,21 @@ private string GetCombinedDeviceName(Device device)
             Console.WriteLine($"\n--- EXECUTING MANUAL COMMAND: {targetDesc} ---");
 
             if (_project == null) return "Error: Project not loaded.";
-            
+
             try
             {
                 // 1. SETUP
                 Device device = FindDeviceRecursive(_project, deviceName);
                 if (device == null) return "Error: Device not found.";
-                
+
                 var downloadProvider = (GetCpuItem(device) as IEngineeringServiceProvider)?.GetService<Siemens.Engineering.Download.DownloadProvider>();
                 if (downloadProvider == null) return "Error: CPU does not support Download/Control.";
 
                 var mode = downloadProvider.Configuration.Modes.Find("PN/IE");
                 var pcInterface = mode.PcInterfaces.Find(netCard, 1);
-                if (pcInterface == null) 
+                if (pcInterface == null)
                     foreach (var pc in mode.PcInterfaces) if (pc.Name.Contains(netCard)) { pcInterface = pc; break; }
-                
+
                 if (pcInterface == null) return "Error: Network Card not found.";
                 var targetConf = pcInterface.TargetInterfaces.Count > 0 ? pcInterface.TargetInterfaces[0] : null;
 
@@ -1899,12 +1940,12 @@ private string GetCombinedDeviceName(Device device)
 
                 var result = downloadProvider.Download(
                     targetConf,
-                    
+
                     // --- PRE-DOWNLOAD: QUAN TRỌNG - PHẢI XỬ LÝ STOP MODULES TẠI ĐÂY ---
-                    (preConf) => 
+                    (preConf) =>
                     {
                         // Logic này giúp xử lý tình huống: PLC đang RUN mà muốn nạp lệnh STOP
-                        try 
+                        try
                         {
                             // 1. Thử xử lý theo kiểu Enum (StopModulesSelections)
                             var prop = preConf.GetType().GetProperty("CurrentSelection");
@@ -1923,33 +1964,37 @@ private string GetCombinedDeviceName(Device device)
                                 }
                             }
                             // 2. Thử xử lý theo kiểu List (Fallback)
-                            else 
+                            else
                             {
                                 var list = preConf as System.Collections.IEnumerable;
                                 if (list != null)
                                 {
                                     foreach (dynamic item in list)
                                     {
-                                        try {
-                                            foreach (dynamic option in item.Options) {
-                                                if (option.Name.ToString().Contains("Stop")) {
+                                        try
+                                        {
+                                            foreach (dynamic option in item.Options)
+                                            {
+                                                if (option.Name.ToString().Contains("Stop"))
+                                                {
                                                     item.Current = option;
                                                     break;
                                                 }
                                             }
-                                        } catch {}
+                                        }
+                                        catch { }
                                     }
                                 }
                             }
                         }
-                        catch {} // Bỏ qua lỗi nhỏ để ưu tiên chạy tiếp
+                        catch { } // Bỏ qua lỗi nhỏ để ưu tiên chạy tiếp
                     },
-                    
+
                     // --- POST-DOWNLOAD: CHỌN TRẠNG THÁI CUỐI CÙNG ---
-                    (postConf) => 
+                    (postConf) =>
                     {
                         Console.WriteLine($"-> Configuring PLC State to: {actionName.ToUpper()}...");
-                        try 
+                        try
                         {
                             var prop = postConf.GetType().GetProperty("CurrentSelection");
                             if (prop != null)
@@ -1988,7 +2033,7 @@ private string GetCombinedDeviceName(Device device)
                         }
                         catch (Exception ex) { Console.WriteLine($"   [Error] State conf failed: {ex.Message}"); }
                     },
-                    ops 
+                    ops
                 );
 
                 // 3. KẾT QUẢ
@@ -2002,13 +2047,13 @@ private string GetCombinedDeviceName(Device device)
                 {
                     var msg = result.Messages.FirstOrDefault(m => m.State == Siemens.Engineering.Download.DownloadResultState.Error)?.Message ?? "Unknown";
                     if (msg.Contains("Connect to module") || msg.Contains("failed"))
-                         return "⚠️ FAILED: Connection refused. Check Certificate or Network.";
+                        return "⚠️ FAILED: Connection refused. Check Certificate or Network.";
                     return $"FAILED: {msg}";
                 }
             }
             catch (Exception ex) { return $"EXCEPTION: {ex.Message}"; }
-        }        
-        
+        }
+
 
         public string GetPlcStatus(string deviceName, string netCard)
         {
@@ -2019,11 +2064,11 @@ private string GetCombinedDeviceName(Device device)
             {
                 Device device = FindDeviceRecursive(_project, deviceName);
                 if (device == null) return "Error: Device not found.";
-                
+
                 DeviceItem cpuItem = GetCpuItem(device);
                 var serviceProvider = cpuItem as IEngineeringServiceProvider;
                 var onlineProvider = serviceProvider?.GetService<Siemens.Engineering.Online.OnlineProvider>();
-                
+
                 if (onlineProvider == null) return "Error: No Online support.";
 
                 // Cấu hình mạng
@@ -2065,7 +2110,7 @@ private string GetCombinedDeviceName(Device device)
                 // 1. SETUP (Tìm thiết bị)
                 Device device = FindDeviceRecursive(_project, deviceName);
                 if (device == null) return "Error: Device not found.";
-                
+
                 DeviceItem cpuItem = GetCpuItem(device);
                 if (cpuItem == null) return "Error: CPU item not found.";
 
@@ -2084,14 +2129,14 @@ private string GetCombinedDeviceName(Device device)
 
                 // 4. THỰC HIỆN KẾT NỐI
                 Console.WriteLine(">> Going Online... (Please watch TIA Portal window)");
-                onlineProvider.GoOnline(); 
+                onlineProvider.GoOnline();
 
                 if (onlineProvider.State == Siemens.Engineering.Online.OnlineState.Online)
                 {
                     // 5. GIỮ KẾT NỐI VÀ ĐẾM NGƯỢC
                     Console.WriteLine("\n>> [SUCCESS] PLC IS ONLINE!");
                     Console.WriteLine(">> Look at TIA Portal now: You should see ORANGE bars and GREEN checks.");
-                    
+
                     Console.Write(">> Going Offline in: ");
                     for (int i = 10; i > 0; i--)
                     {
@@ -2099,7 +2144,7 @@ private string GetCombinedDeviceName(Device device)
                         System.Threading.Thread.Sleep(1000); // Dừng 1 giây
                     }
                     Console.WriteLine("Now!");
-                    
+
                     return "SUCCESS: Connection verified manually.";
                 }
                 else
@@ -2114,7 +2159,7 @@ private string GetCombinedDeviceName(Device device)
             finally
             {
                 // 6. NGẮT KẾT NỐI
-                try 
+                try
                 {
                     if (onlineProvider != null && onlineProvider.State == Siemens.Engineering.Online.OnlineState.Online)
                     {
@@ -2122,7 +2167,7 @@ private string GetCombinedDeviceName(Device device)
                         onlineProvider.GoOffline();
                     }
                 }
-                catch {}
+                catch { }
             }
         }
 
@@ -2137,7 +2182,7 @@ private string GetCombinedDeviceName(Device device)
             foreach (PlcBlock block in software.BlockGroup.Blocks) block.Export(new FileInfo(Path.Combine(backupFolderPath, block.Name + ".xml")), ExportOptions.None);
             return "Backup Done";
         }
-        
+
         #endregion
 
         #region 11. Core Helpers (Scanning & Reflection)
@@ -2270,558 +2315,605 @@ private Device FindInGroup(DeviceUserGroup group, string searchName)
 
         // 1. Export Màn hình Unified sang JSON
         public void ExportUnifiedScreenToJson(string deviceName, string screenName, string outputPath)
-{
-    var hmiTarget = GetHmiTarget(deviceName);
-    dynamic screens = null;
-    try { screens = hmiTarget.Screens; } catch { screens = hmiTarget.ScreenFolder.Screens; }
+        {
+            var hmiTarget = GetHmiTarget(deviceName);
+            dynamic screens = null;
+            try { screens = hmiTarget.Screens; } catch { screens = hmiTarget.ScreenFolder.Screens; }
 
-    var screen = ((System.Collections.IEnumerable)screens).Cast<dynamic>().FirstOrDefault(s => s.Name == screenName);
-    if (screen == null) throw new Exception($"Không tìm thấy màn hình: {screenName}");
+            var screen = ((System.Collections.IEnumerable)screens).Cast<dynamic>().FirstOrDefault(s => s.Name == screenName);
+            if (screen == null) throw new Exception($"Không tìm thấy màn hình: {screenName}");
 
-    var exportModel = new {
-        ScreenName = screen.Name,
-        Width = (int)screen.Width,
-        Height = (int)screen.Height,
-        Items = new List<object>()
-    };
+            var exportModel = new
+            {
+                ScreenName = screen.Name,
+                Width = (int)screen.Width,
+                Height = (int)screen.Height,
+                Items = new List<object>()
+            };
 
-    // Serialize và lưu file
-    string json = JsonConvert.SerializeObject(exportModel, Newtonsoft.Json.Formatting.Indented);
-    File.WriteAllText(outputPath, json);
-}
-
-public void ExportUnifiedScreenWithTextToJson(string deviceName, string screenName, string outputPath)
-{
-    var hmiTarget = GetHmiTarget(deviceName);
-    dynamic screens = null;
-    try { screens = hmiTarget.Screens; } catch { screens = hmiTarget.ScreenFolder.Screens; }
-
-    var screen = ((System.Collections.IEnumerable)screens).Cast<dynamic>().FirstOrDefault(s => s.Name == screenName);
-    if (screen == null) throw new Exception($"Không tìm thấy màn hình: {screenName}");
-
-    var itemList = new List<object>();
-
-    foreach (var item in screen.ScreenItems)
-    {
-        var props = new Dictionary<string, object>();
-        
-        // 1. Lấy các thuộc tính cơ bản (Chỉ lấy giá trị thô, tránh lấy Object hệ thống)
-        string[] safeProps = { "Name", "Left", "Top", "Width", "Height", "ForeColor", "BackColor", "HorizontalTextAlignment", "VerticalTextAlignment" };
-        foreach (var p in safeProps) {
-            try { 
-                var val = item.GetAttribute(p);
-                // Nếu là Color, chuyển về String RGB để tránh Loop
-                if (val is System.Drawing.Color c) props[p] = $"{c.R}, {c.G}, {c.B}";
-                else props[p] = val;
-            } catch { }
+            // Serialize và lưu file
+            string json = JsonConvert.SerializeObject(exportModel, Newtonsoft.Json.Formatting.Indented);
+            File.WriteAllText(outputPath, json);
         }
 
-        // 2. Xử lý RIÊNG cho Font để tránh lỗi "Self referencing loop"
-        try {
-            // Thay vì lấy cả Object Font, ta chỉ lấy các giá trị con cần thiết
-            props["Font.Name"] = item.GetAttribute("Font.Name");
-            props["Font.Size"] = item.GetAttribute("Font.Size");
-            props["Font.Bold"] = item.GetAttribute("Font.Bold");
-        } catch { }
-
-        // 3. LẤY TEXT XML (Cái này là quan trọng nhất để trị lỗi Invalid Format)
-        string rawXml = "";
-        try {
-            var textComposition = item.Text.Items;
-            if (textComposition.Count > 0)
-            {
-                // Lấy chuỗi XML nguyên bản mà Siemens tự sinh ra
-                rawXml = textComposition[0].GetAttribute("Text").ToString();
-            }
-        } catch { }
-
-        itemList.Add(new {
-            Name = item.Name,
-            Type = item.GetType().Name,
-            Properties = props,
-            RawTextXml = rawXml
-        });
-    }
-
-    var exportModel = new {
-        ScreenName = screen.Name,
-        Items = itemList
-    };
-
-    // Cấu hình JsonSerializer để bỏ qua các vòng lặp nếu lỡ có
-    var settings = new Newtonsoft.Json.JsonSerializerSettings {
-        ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore,
-        Formatting = Newtonsoft.Json.Formatting.Indented
-    };
-
-    string json = JsonConvert.SerializeObject(exportModel, settings);
-    File.WriteAllText(outputPath, json);
-}
-public void ExportPlcTagsToCsv(string deviceName, string outputPath)
-{
-    var device = _project.Devices.FirstOrDefault(d => d.Name == deviceName);
-    if (device == null) return;
-
-    // Sửa lỗi GetItems() -> dùng DeviceItems
-    var software = device.DeviceItems
-        .SelectMany(i => i.DeviceItems) 
-        .FirstOrDefault(i => i.GetService<SoftwareContainer>() != null)
-        ?.GetService<SoftwareContainer>()?.Software as PlcSoftware;
-
-    var table = software?.TagTableGroup.TagTables.FirstOrDefault();
-    if (table != null) {
-        // Sửa lỗi ExportOptions.Default -> dùng None
-        table.Export(new FileInfo(outputPath), ExportOptions.None);
-    }
-}
-
-public void ExportHmiTagsToCsv(string deviceName, string outputPath)
-{
-    var hmi = GetHmiTarget(deviceName);
-    var table = hmi.TagTableGroup.TagTables.FirstOrDefault();
-    if (table != null) {
-        // Sửa lỗi ExportOptions.Default -> dùng None
-        table.Export(new FileInfo(outputPath), ExportOptions.None);
-    }
-}
-
-public void ExportHmiSettingsToJson(string deviceName, string outputPath)
-{
-    var report = new Dictionary<string, object>();
-    try {
-        dynamic hmiSoftware = GetHmiTarget(deviceName);
-        
-        // 1. Quét thông tin cơ bản để xác nhận đã kết nối đúng
-        report.Add("TargetName", hmiSoftware.Name.ToString());
-        report.Add("TargetType", hmiSoftware.GetType().FullName);
-
-        // 2. Thử truy cập theo đường dẫn chính thức của V20 (Dùng Try-Catch cho từng nấc)
-        try {
-            var rt = hmiSoftware.SoftwareSettings.RuntimeSettings;
-            var rtData = new Dictionary<string, string>();
-            foreach (var p in rt.GetType().GetProperties()) {
-                try { rtData.Add(p.Name, p.GetValue(rt).ToString()); } catch { }
-            }
-            report.Add("RuntimeSettings_Found", rtData);
-        } catch (Exception ex) { report.Add("RuntimeSettings_Error", ex.Message); }
-
-        // 3. THỬ CHIÊU CUỐI: Quét qua mục 'Settings' nếu SoftwareSettings không có
-        try {
-            var settings = hmiSoftware.Settings;
-            var stData = new Dictionary<string, string>();
-            foreach (var p in settings.GetType().GetProperties()) {
-                try { stData.Add(p.Name, p.GetValue(settings).ToString()); } catch { }
-            }
-            report.Add("Settings_Found", stData);
-        } catch { }
-
-        // 4. KIỂM TRA XEM MÀN HÌNH NÀO ĐANG ĐƯỢC ĐẶT LÀM START (Dùng Filter)
-        try {
+        public void ExportUnifiedScreenWithTextToJson(string deviceName, string screenName, string outputPath)
+        {
+            var hmiTarget = GetHmiTarget(deviceName);
             dynamic screens = null;
-            try { screens = hmiSoftware.Screens; } catch { screens = hmiSoftware.ScreenFolder.Screens; }
-            
-            var startScreenCandidate = ((System.Collections.IEnumerable)screens).Cast<dynamic>()
-                                        .FirstOrDefault(s => s.GetType().GetProperty("IsStartScreen") != null);
-            if(startScreenCandidate != null) report.Add("ActiveStartScreen", startScreenCandidate.Name);
-        } catch { }
+            try { screens = hmiTarget.Screens; } catch { screens = hmiTarget.ScreenFolder.Screens; }
 
-        File.WriteAllText(outputPath, JsonConvert.SerializeObject(report, Newtonsoft.Json.Formatting.Indented));
-    }
-    catch (Exception ex) {
-        File.WriteAllText(outputPath, "{\"FatalError\": \"" + ex.Message + "\"}");
-    }
-}
+            var screen = ((System.Collections.IEnumerable)screens).Cast<dynamic>().FirstOrDefault(s => s.Name == screenName);
+            if (screen == null) throw new Exception($"Không tìm thấy màn hình: {screenName}");
+
+            var itemList = new List<object>();
+
+            foreach (var item in screen.ScreenItems)
+            {
+                var props = new Dictionary<string, object>();
+
+                // 1. Lấy các thuộc tính cơ bản (Chỉ lấy giá trị thô, tránh lấy Object hệ thống)
+                string[] safeProps = { "Name", "Left", "Top", "Width", "Height", "ForeColor", "BackColor", "HorizontalTextAlignment", "VerticalTextAlignment" };
+                foreach (var p in safeProps)
+                {
+                    try
+                    {
+                        var val = item.GetAttribute(p);
+                        // Nếu là Color, chuyển về String RGB để tránh Loop
+                        if (val is System.Drawing.Color c) props[p] = $"{c.R}, {c.G}, {c.B}";
+                        else props[p] = val;
+                    }
+                    catch { }
+                }
+
+                // 2. Xử lý RIÊNG cho Font để tránh lỗi "Self referencing loop"
+                try
+                {
+                    // Thay vì lấy cả Object Font, ta chỉ lấy các giá trị con cần thiết
+                    props["Font.Name"] = item.GetAttribute("Font.Name");
+                    props["Font.Size"] = item.GetAttribute("Font.Size");
+                    props["Font.Bold"] = item.GetAttribute("Font.Bold");
+                }
+                catch { }
+
+                // 3. LẤY TEXT XML (Cái này là quan trọng nhất để trị lỗi Invalid Format)
+                string rawXml = "";
+                try
+                {
+                    var textComposition = item.Text.Items;
+                    if (textComposition.Count > 0)
+                    {
+                        // Lấy chuỗi XML nguyên bản mà Siemens tự sinh ra
+                        rawXml = textComposition[0].GetAttribute("Text").ToString();
+                    }
+                }
+                catch { }
+
+                itemList.Add(new
+                {
+                    Name = item.Name,
+                    Type = item.GetType().Name,
+                    Properties = props,
+                    RawTextXml = rawXml
+                });
+            }
+
+            var exportModel = new
+            {
+                ScreenName = screen.Name,
+                Items = itemList
+            };
+
+            // Cấu hình JsonSerializer để bỏ qua các vòng lặp nếu lỡ có
+            var settings = new Newtonsoft.Json.JsonSerializerSettings
+            {
+                ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore,
+                Formatting = Newtonsoft.Json.Formatting.Indented
+            };
+
+            string json = JsonConvert.SerializeObject(exportModel, settings);
+            File.WriteAllText(outputPath, json);
+        }
+        public void ExportPlcTagsToCsv(string deviceName, string outputPath)
+        {
+            var device = _project.Devices.FirstOrDefault(d => d.Name == deviceName);
+            if (device == null) return;
+
+            // Sửa lỗi GetItems() -> dùng DeviceItems
+            var software = device.DeviceItems
+                .SelectMany(i => i.DeviceItems)
+                .FirstOrDefault(i => i.GetService<SoftwareContainer>() != null)
+                ?.GetService<SoftwareContainer>()?.Software as PlcSoftware;
+
+            var table = software?.TagTableGroup.TagTables.FirstOrDefault();
+            if (table != null)
+            {
+                // Sửa lỗi ExportOptions.Default -> dùng None
+                table.Export(new FileInfo(outputPath), ExportOptions.None);
+            }
+        }
+
+        public void ExportHmiTagsToCsv(string deviceName, string outputPath)
+        {
+            var hmi = GetHmiTarget(deviceName);
+            var table = hmi.TagTableGroup.TagTables.FirstOrDefault();
+            if (table != null)
+            {
+                // Sửa lỗi ExportOptions.Default -> dùng None
+                table.Export(new FileInfo(outputPath), ExportOptions.None);
+            }
+        }
+
+        public void ExportHmiSettingsToJson(string deviceName, string outputPath)
+        {
+            var report = new Dictionary<string, object>();
+            try
+            {
+                dynamic hmiSoftware = GetHmiTarget(deviceName);
+
+                // 1. Quét thông tin cơ bản để xác nhận đã kết nối đúng
+                report.Add("TargetName", hmiSoftware.Name.ToString());
+                report.Add("TargetType", hmiSoftware.GetType().FullName);
+
+                // 2. Thử truy cập theo đường dẫn chính thức của V20 (Dùng Try-Catch cho từng nấc)
+                try
+                {
+                    var rt = hmiSoftware.SoftwareSettings.RuntimeSettings;
+                    var rtData = new Dictionary<string, string>();
+                    foreach (var p in rt.GetType().GetProperties())
+                    {
+                        try { rtData.Add(p.Name, p.GetValue(rt).ToString()); } catch { }
+                    }
+                    report.Add("RuntimeSettings_Found", rtData);
+                }
+                catch (Exception ex) { report.Add("RuntimeSettings_Error", ex.Message); }
+
+                // 3. THỬ CHIÊU CUỐI: Quét qua mục 'Settings' nếu SoftwareSettings không có
+                try
+                {
+                    var settings = hmiSoftware.Settings;
+                    var stData = new Dictionary<string, string>();
+                    foreach (var p in settings.GetType().GetProperties())
+                    {
+                        try { stData.Add(p.Name, p.GetValue(settings).ToString()); } catch { }
+                    }
+                    report.Add("Settings_Found", stData);
+                }
+                catch { }
+
+                // 4. KIỂM TRA XEM MÀN HÌNH NÀO ĐANG ĐƯỢC ĐẶT LÀM START (Dùng Filter)
+                try
+                {
+                    dynamic screens = null;
+                    try { screens = hmiSoftware.Screens; } catch { screens = hmiSoftware.ScreenFolder.Screens; }
+
+                    var startScreenCandidate = ((System.Collections.IEnumerable)screens).Cast<dynamic>()
+                                                .FirstOrDefault(s => s.GetType().GetProperty("IsStartScreen") != null);
+                    if (startScreenCandidate != null) report.Add("ActiveStartScreen", startScreenCandidate.Name);
+                }
+                catch { }
+
+                File.WriteAllText(outputPath, JsonConvert.SerializeObject(report, Newtonsoft.Json.Formatting.Indented));
+            }
+            catch (Exception ex)
+            {
+                File.WriteAllText(outputPath, "{\"FatalError\": \"" + ex.Message + "\"}");
+            }
+        }
         #endregion
 
         #region 13. Faceplate & UDT                   
 
-public void EditLibraryUDT(string udtName)
-{
-    try {
-        var typeFolder = _project.ProjectLibrary.TypeFolder;
-        dynamic targetType = typeFolder.Types.Find(udtName);
-        if (targetType == null) return;
-
-        // 1. DỌN SẠCH CÁC BẢN INWORK CŨ ĐỂ TRÁNH NHẦM LẪN
-        for (int i = targetType.Versions.Count - 1; i >= 0; i--)
+        public void EditLibraryUDT(string udtName)
         {
-            if (targetType.Versions[i].State.ToString().Contains("InWork"))
-                targetType.Versions[i].Delete();
-        }
+            try
+            {
+                var typeFolder = _project.ProjectLibrary.TypeFolder;
+                dynamic targetType = typeFolder.Types.Find(udtName);
+                if (targetType == null) return;
 
-        // 2. EXPORT & INJECT (Logic XML của Otis)
-        string tempPath = Path.Combine(Path.GetTempPath(), "TIA_V20_Force_v48");
-        if (Directory.Exists(tempPath)) Directory.Delete(tempPath, true);
-        Directory.CreateDirectory(tempPath);
-        
-        LibraryTypeVersion latestBefore = null;
-        foreach (var v in targetType.Versions) { latestBefore = v; }
-        
-        string xmlFile = Path.Combine(tempPath, udtName + ".xml");
-        latestBefore.Export(new FileInfo(xmlFile), ExportOptions.WithDefaults);
-        
-        InjectUdtMembers(xmlFile, new List<(string, string)> {
+                // 1. DỌN SẠCH CÁC BẢN INWORK CŨ ĐỂ TRÁNH NHẦM LẪN
+                for (int i = targetType.Versions.Count - 1; i >= 0; i--)
+                {
+                    if (targetType.Versions[i].State.ToString().Contains("InWork"))
+                        targetType.Versions[i].Delete();
+                }
+
+                // 2. EXPORT & INJECT (Logic XML của Otis)
+                string tempPath = Path.Combine(Path.GetTempPath(), "TIA_V20_Force_v48");
+                if (Directory.Exists(tempPath)) Directory.Delete(tempPath, true);
+                Directory.CreateDirectory(tempPath);
+
+                LibraryTypeVersion latestBefore = null;
+                foreach (var v in targetType.Versions) { latestBefore = v; }
+
+                string xmlFile = Path.Combine(tempPath, udtName + ".xml");
+                latestBefore.Export(new FileInfo(xmlFile), ExportOptions.WithDefaults);
+
+                InjectUdtMembers(xmlFile, new List<(string, string)> {
             ("Copilot_Status", "Int"),
             ("Copilot_Control", "Word"),
             ("Last_Update", "DTL")
         });
 
-        // 3. NẠP LẠI (Sẽ tạo ra một Version mới, ví dụ v0.0.7)
-        Console.WriteLine("[>] Đang nạp cấu trúc XML mới vào Library...");
-        targetType.Versions.CreateFromDocuments(
-            new DirectoryInfo(tempPath), 
-            udtName, 
-            Siemens.Engineering.Library.Types.CreateOptions.None, 
-            Siemens.Engineering.Library.LibraryImportOptions.None
-        );
+                // 3. NẠP LẠI (Sẽ tạo ra một Version mới, ví dụ v0.0.7)
+                Console.WriteLine("[>] Đang nạp cấu trúc XML mới vào Library...");
+                targetType.Versions.CreateFromDocuments(
+                    new DirectoryInfo(tempPath),
+                    udtName,
+                    Siemens.Engineering.Library.Types.CreateOptions.None,
+                    Siemens.Engineering.Library.LibraryImportOptions.None
+                );
 
-        // 4. RELEASE BẢN MỚI NHẤT & THIẾT LẬP DEFAULT
-        LibraryTypeVersion newVersion = null;
-        foreach (var v in targetType.Versions) {
-            if (v.State.ToString().Contains("InWork")) {
-                newVersion = v;
-                break;
+                // 4. RELEASE BẢN MỚI NHẤT & THIẾT LẬP DEFAULT
+                LibraryTypeVersion newVersion = null;
+                foreach (var v in targetType.Versions)
+                {
+                    if (v.State.ToString().Contains("InWork"))
+                    {
+                        newVersion = v;
+                        break;
+                    }
+                }
+
+                if (newVersion != null)
+                {
+                    string finalVerStr = newVersion.VersionNumber.ToString();
+
+                    // Chốt bản mới (v0.0.7)
+                    newVersion.Release(0, null, "Otis_Admin", "Final Copilot Fix v48.1");
+                    newVersion.SetAsDefault();
+                    Console.WriteLine($"[√] Đã Release và Set Default cho bản mới nhất: v{finalVerStr}");
+
+                    // 5. XÓA SẠCH TẤT CẢ CÁC BẢN CŨ (Dọn rác v0.0.1 -> v0.0.6)
+                    Console.WriteLine($"[i] Đang xóa sạch các phiên bản cũ để dọn dẹp thư viện...");
+
+                    bool foundOld = true;
+                    while (foundOld)
+                    {
+                        foundOld = false;
+                        foreach (var v in targetType.Versions)
+                        {
+                            // Nếu không phải là bản vừa mới tạo, thì xóa sạch!
+                            if (v.VersionNumber.ToString() != finalVerStr)
+                            {
+                                Console.WriteLine($"  [-] Xóa bản cũ: v{v.VersionNumber}");
+                                v.Delete();
+                                foundOld = true;
+                                break; // Break để refresh lại danh sách Versions sau khi Delete
+                            }
+                        }
+                    }
+
+                    // 6. ĐỒNG BỘ PROJECT
+                    try
+                    {
+                        targetType.UpdateProject(1, 1);
+                    }
+                    catch
+                    {
+                        targetType.UpdateProject();
+                    }
+
+                    _project.Save();
+                    Console.WriteLine($"[√] HOÀN TẤT: Thư viện chỉ còn duy nhất bản v{finalVerStr} sạch sẽ!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[X] Lỗi Runtime v48.1: {ex.Message}");
             }
         }
 
-        if (newVersion != null) {
-            string finalVerStr = newVersion.VersionNumber.ToString();
-            
-            // Chốt bản mới (v0.0.7)
-            newVersion.Release(0, null, "Otis_Admin", "Final Copilot Fix v48.1");
-            newVersion.SetAsDefault();
-            Console.WriteLine($"[√] Đã Release và Set Default cho bản mới nhất: v{finalVerStr}");
-
-            // 5. XÓA SẠCH TẤT CẢ CÁC BẢN CŨ (Dọn rác v0.0.1 -> v0.0.6)
-            Console.WriteLine($"[i] Đang xóa sạch các phiên bản cũ để dọn dẹp thư viện...");
-            
-            bool foundOld = true;
-            while (foundOld)
+        public void DiscoverLibraryCapabilities()
+        {
+            try
             {
-                foundOld = false;
-                foreach (var v in targetType.Versions)
+                var projectLibrary = _project.ProjectLibrary;
+
+                Console.WriteLine("\n======= [ QUÉT HỆ THỐNG THƯ VIỆN SIEMENS V20 ] =======");
+
+                // 1. Quét Cấp độ Folder (Cực kỳ quan trọng để tìm CreateFrom)
+                var folder = projectLibrary.TypeFolder;
+                ScanObjectMethods("FOLDER (LibraryTypeSystemFolder)", folder);
+
+                // 2. Quét Cấp độ Type (Để tìm Update/Merge)
+                if (folder.Types.Count > 0)
                 {
-                    // Nếu không phải là bản vừa mới tạo, thì xóa sạch!
-                    if (v.VersionNumber.ToString() != finalVerStr)
+                    var firstType = folder.Types[0];
+                    ScanObjectMethods("TYPE (LibraryType)", firstType);
+
+                    // 3. Quét Cấp độ Version (Để tìm Edit/Process)
+                    if (firstType.Versions.Count > 0)
                     {
-                        Console.WriteLine($"  [-] Xóa bản cũ: v{v.VersionNumber}");
-                        v.Delete(); 
-                        foundOld = true;
-                        break; // Break để refresh lại danh sách Versions sau khi Delete
+                        ScanObjectMethods("VERSION (LibraryTypeVersion)", firstType.Versions[0]);
                     }
+                }
+                else
+                {
+                    Console.WriteLine("[!] Library trống, không thể quét sâu hơn vào Type/Version.");
+                }
+
+                Console.WriteLine("==========================================================\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[X] Lỗi khi quét sâu: {ex.Message}");
+            }
+        }
+
+        private void ScanObjectMethods(string label, object obj)
+        {
+            if (obj == null) return;
+            var type = obj.GetType();
+            var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Select(m => m.Name)
+                .Distinct()
+                .OrderBy(n => n);
+
+            Console.WriteLine($"\n[+] Đối tượng: {label}");
+            Console.WriteLine($"    Kiểu thực tế: {type.FullName}");
+            foreach (var method in methods)
+            {
+                // Loại bỏ các hàm hệ thống nhàm chán để dễ nhìn
+                if (new[] { "ToString", "Equals", "GetHashCode", "GetType", "GetEnumerator" }.Contains(method)) continue;
+                Console.WriteLine($"    -> {method}");
+            }
+        }
+        private void InjectUdtMembers(string xmlPath, List<(string Name, string Type)> newMembers)
+        {
+            try
+            {
+                var doc = System.Xml.Linq.XDocument.Load(xmlPath);
+                // Namespace chuẩn cho Interface của Unified
+                System.Xml.Linq.XNamespace ns = "http://www.siemens.com/automation/Openness/SW/Interface/v2";
+
+                // 1. CHỈ XÓA ID CỦA CÁC MEMBER (Không xóa ID của Root/Document)
+                // Điều này giúp TIA tự cấp ID mới cho biến mà không làm hỏng cấu trúc file
+                var members = doc.Descendants().Where(x => x.Name.LocalName == "Member").ToList();
+                foreach (var m in members)
+                {
+                    m.Attribute("ID")?.Remove();
+                }
+
+                // 2. TÌM INTERFACE VÀ THAY THẾ NỘI DUNG
+                var interfaceNode = doc.Descendants().FirstOrDefault(x => x.Name.LocalName == "Interface");
+                if (interfaceNode != null)
+                {
+                    // Tìm ObjectList bên trong Interface
+                    var objectList = interfaceNode.Elements().FirstOrDefault(x => x.Name.LocalName == "ObjectList");
+
+                    // Xóa sạch các Member cũ (Start/Stop...)
+                    objectList?.Remove();
+
+                    // Tạo ObjectList mới
+                    var newObjectList = new System.Xml.Linq.XElement(ns + "ObjectList");
+
+                    foreach (var m in newMembers)
+                    {
+                        // Tạo cấu trúc Member chuẩn cho Unified
+                        var memberElem = new System.Xml.Linq.XElement(ns + "Member",
+                            new System.Xml.Linq.XAttribute("Name", m.Name),
+                            new System.Xml.Linq.XAttribute("Datatype", m.Type),
+                            new System.Xml.Linq.XElement(ns + "AttributeList",
+                                new System.Xml.Linq.XElement(ns + "BooleanAttribute",
+                                    new System.Xml.Linq.XAttribute("Name", "IsReadOnly"), "false")
+                            )
+                        );
+                        newObjectList.Add(memberElem);
+                    }
+
+                    interfaceNode.Add(newObjectList);
+                }
+
+                // 3. CẬP NHẬT COMMENT/VERSION ĐỂ KIỂM CHỨNG
+                // Tìm thẻ Comment trong AttributeList của Version
+                var commentNode = doc.Descendants().FirstOrDefault(x => x.Name.LocalName == "Comment");
+                if (commentNode != null)
+                {
+                    commentNode.Value = "Copilot_v68_Fixed_" + DateTime.Now.ToString("HHmm");
+                }
+
+                doc.Save(xmlPath);
+                Console.WriteLine($"[√] Đã tiêm {newMembers.Count} biến mới và chuẩn hóa XML thành công.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[!] Lỗi phẫu thuật XML: {ex.Message}");
+            }
+        }
+        private void ScanCompositionDefinitions(object composition)
+        {
+            try
+            {
+                Console.WriteLine($"\n{new string('=', 60)}");
+                Console.WriteLine($" SCANNING DEFINITIONS FOR: {composition.GetType().Name}");
+                Console.WriteLine($"{new string('-', 60)}");
+
+                // Lấy tất cả các Method công khai
+                var methods = composition.GetType().GetMethods()
+                    .Where(m => !m.IsSpecialName) // Loại bỏ các hàm get/set mặc định
+                    .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})");
+
+                Console.WriteLine(" [METHODS FOUND]:");
+                foreach (var method in methods.OrderBy(n => n))
+                {
+                    Console.WriteLine($"  -> {method}");
+                }
+
+                // Lấy tất cả các Property
+                var properties = composition.GetType().GetProperties()
+                    .Select(p => $"{p.PropertyType.Name} {p.Name}");
+
+                Console.WriteLine("\n [PROPERTIES FOUND]:");
+                foreach (var prop in properties.OrderBy(n => n))
+                {
+                    Console.WriteLine($"  -> {prop}");
+                }
+                Console.WriteLine($"{new string('=', 60)}\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[!] Không thể quét định nghĩa: {ex.Message}");
+            }
+        }
+
+        private void EditUdtMembers(LibraryTypeVersion draft)
+        {
+            try
+            {
+                dynamic udtVersion = draft;
+                var members = udtVersion.Members;
+
+                Console.WriteLine($"\n{new string('=', 60)}");
+                Console.WriteLine($" STRUCTURE OF: {((dynamic)draft.Parent).Name} (v{draft.VersionNumber})");
+                Console.WriteLine($"{new string('-', 60)}");
+                Console.WriteLine($" {"#",-3} | {"Property Name",-25} | {"Data Type",-15}");
+                Console.WriteLine($"{new string('-', 60)}");
+
+                int index = 1;
+                foreach (var member in members)
+                {
+                    string mName = member.Name;
+                    string mType = member.DataTypeName;
+                    Console.WriteLine($" {index,-3} | {mName,-25} | {mType,-15}");
+                    index++;
+                }
+                Console.WriteLine($"{new string('=', 60)}\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[!] Không thể hiển thị cấu trúc UDT: {ex.Message}");
+            }
+        }
+        public IEngineeringObject FindObjectInProject(string name, string deviceName)
+        {
+            try
+            {
+                // 1. Kiểm tra trong Project Library (Ưu tiên vì UDT của Otis nằm ở đây)
+                LibraryTypeFolder typeFolder = _project.ProjectLibrary.TypeFolder;
+
+                // Tìm kiếm đệ quy trong các Folder của Library
+                var foundInLibrary = FindTypeInLibraryRecursive(typeFolder, name);
+                if (foundInLibrary != null)
+                {
+                    Console.WriteLine("i", $"Tìm thấy '{name}' trong Project Library.", ConsoleColor.Yellow);
+                    return foundInLibrary;
+                }
+
+                // 2. Nếu không thấy trong Library, mới tìm trong Device (Logic cũ)
+                // ... (phần code tìm trong Device nếu bạn muốn giữ lại làm dự phòng)
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[X] Lỗi tìm kiếm Library: {ex.Message}");
+            }
+            return null;
+        }
+
+        // Hàm phụ tìm Type trong Library (Hỗ trợ Unified UDT)
+        private IEngineeringObject FindTypeInLibraryRecursive(LibraryTypeFolder folder, string name)
+        {
+            // Duyệt các Types trong folder hiện tại
+            foreach (var type in folder.Types)
+            {
+                if (type.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return (IEngineeringObject)type;
                 }
             }
 
-            // 6. ĐỒNG BỘ PROJECT
-            try {
-                targetType.UpdateProject(1, 1); 
-            } catch {
-                targetType.UpdateProject();
-            }
-
-            _project.Save();
-            Console.WriteLine($"[√] HOÀN TẤT: Thư viện chỉ còn duy nhất bản v{finalVerStr} sạch sẽ!");
-        }
-    } catch (Exception ex) {
-        Console.WriteLine($"[X] Lỗi Runtime v48.1: {ex.Message}");
-    }
-}
-
-public void DiscoverLibraryCapabilities()
-{
-    try
-    {
-        var projectLibrary = _project.ProjectLibrary;
-        
-        Console.WriteLine("\n======= [ QUÉT HỆ THỐNG THƯ VIỆN SIEMENS V20 ] =======");
-
-        // 1. Quét Cấp độ Folder (Cực kỳ quan trọng để tìm CreateFrom)
-        var folder = projectLibrary.TypeFolder;
-        ScanObjectMethods("FOLDER (LibraryTypeSystemFolder)", folder);
-
-        // 2. Quét Cấp độ Type (Để tìm Update/Merge)
-        if (folder.Types.Count > 0)
-        {
-            var firstType = folder.Types[0];
-            ScanObjectMethods("TYPE (LibraryType)", firstType);
-
-            // 3. Quét Cấp độ Version (Để tìm Edit/Process)
-            if (firstType.Versions.Count > 0)
+            // Duyệt các folder con
+            foreach (var subFolder in folder.Folders)
             {
-                ScanObjectMethods("VERSION (LibraryTypeVersion)", firstType.Versions[0]);
+                var found = FindTypeInLibraryRecursive(subFolder, name);
+                if (found != null) return found;
+            }
+            return null;
+        }
+        // --- HÀM PHỤ (DÙNG ĐỂ FIX LỖI CS0103) ---
+        private string ExtractOnlyMembers(string xml)
+        {
+            // Tìm tất cả các khối <Hmi.Tag.HmiUdtMember> ... </Hmi.Tag.HmiUdtMember>
+            string startTag = "<Hmi.Tag.HmiUdtMember";
+            string endTag = "</Hmi.Tag.HmiUdtMember>";
+
+            int firstMatch = xml.IndexOf(startTag);
+            int lastMatch = xml.LastIndexOf(endTag);
+
+            if (firstMatch != -1 && lastMatch != -1)
+            {
+                // Trích xuất toàn bộ cụm Member
+                return xml.Substring(firstMatch, (lastMatch + endTag.Length) - firstMatch);
+            }
+
+            return "";
+        }
+
+        // Hàm phụ để tính version (Otis có thể tùy biến)
+        private string GetNextVersion(string udtName)
+        {
+            var existingType = _project.ProjectLibrary.TypeFolder.Types.Find(udtName);
+            if (existingType == null) return "0.0.1";
+            var lastV = existingType.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
+            if (lastV == null) return "0.0.1";
+            return $"{lastV.VersionNumber.Major}.{lastV.VersionNumber.Minor}.{lastV.VersionNumber.Build + 1}";
+        }
+        public void ExportLibraryUDT(string udtName)
+        {
+            try
+            {
+                var typeFolder = _project.ProjectLibrary.TypeFolder;
+                dynamic targetType = typeFolder.Types.Find(udtName);
+
+                // Lấy bản mới nhất (v0.0.2 in work)
+                LibraryTypeVersion latest = null;
+                foreach (var v in targetType.Versions) { latest = v; }
+
+                string exportPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Export_Step1_1");
+                if (Directory.Exists(exportPath)) Directory.Delete(exportPath, true);
+                Directory.CreateDirectory(exportPath);
+
+                // 1. KIỂM TRA ĐỊNH DẠNG HỖ TRỢ (Quan trọng nhất)
+                var formats = targetType.GetSupportedExportFormats();
+                Console.WriteLine($"[i] Các định dạng hỗ trợ: {string.Join(", ", formats)}");
+
+                if (formats.Count == 0)
+                {
+                    Console.WriteLine("[X] Hệ thống báo không hỗ trợ bất kỳ định dạng xuất nào cho UDT này!");
+                    return;
+                }
+
+                // 2. THỬ XUẤT VỚI TẤT CẢ ĐỊNH DẠNG TÌM THẤY
+                foreach (var fmt in formats)
+                {
+                    Console.WriteLine($"[>] Đang thử xuất với định dạng: {fmt}...");
+                    try
+                    {
+                        latest.ExportAsDocuments(new DirectoryInfo(exportPath), udtName, fmt, LibraryExportOptions.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($" [!] Lỗi khi dùng {fmt}: {ex.Message}");
+                    }
+                }
+
+                // 3. KIỂM TRA LẠI THƯ MỤC
+                string[] files = Directory.GetFiles(exportPath, "*.*", SearchOption.AllDirectories);
+                if (files.Length > 0)
+                {
+                    Console.WriteLine($"[√] THÀNH CÔNG! Đã thấy file tại: {exportPath}");
+                    foreach (var f in files) Console.WriteLine($" -> {Path.GetFileName(f)}");
+                }
+                else
+                {
+                    Console.WriteLine("[X] Vẫn rỗng. Đây là lỗi sâu của Siemens V20 khi Metadata bị hỏng.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[!] Lỗi thực thi: {ex.Message}");
             }
         }
-        else
-        {
-            Console.WriteLine("[!] Library trống, không thể quét sâu hơn vào Type/Version.");
-        }
-
-        Console.WriteLine("==========================================================\n");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[X] Lỗi khi quét sâu: {ex.Message}");
-    }
-}
-
-private void ScanObjectMethods(string label, object obj)
-{
-    if (obj == null) return;
-    var type = obj.GetType();
-    var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-        .Select(m => m.Name)
-        .Distinct()
-        .OrderBy(n => n);
-
-    Console.WriteLine($"\n[+] Đối tượng: {label}");
-    Console.WriteLine($"    Kiểu thực tế: {type.FullName}");
-    foreach (var method in methods)
-    {
-        // Loại bỏ các hàm hệ thống nhàm chán để dễ nhìn
-        if (new[] { "ToString", "Equals", "GetHashCode", "GetType", "GetEnumerator" }.Contains(method)) continue;
-        Console.WriteLine($"    -> {method}");
-    }
-}
-private void InjectUdtMembers(string xmlPath, List<(string Name, string Type)> newMembers)
-{
-    try {
-        var doc = System.Xml.Linq.XDocument.Load(xmlPath);
-        // Namespace chuẩn cho Interface của Unified
-        System.Xml.Linq.XNamespace ns = "http://www.siemens.com/automation/Openness/SW/Interface/v2";
-
-        // 1. CHỈ XÓA ID CỦA CÁC MEMBER (Không xóa ID của Root/Document)
-        // Điều này giúp TIA tự cấp ID mới cho biến mà không làm hỏng cấu trúc file
-        var members = doc.Descendants().Where(x => x.Name.LocalName == "Member").ToList();
-        foreach (var m in members) {
-            m.Attribute("ID")?.Remove();
-        }
-
-        // 2. TÌM INTERFACE VÀ THAY THẾ NỘI DUNG
-        var interfaceNode = doc.Descendants().FirstOrDefault(x => x.Name.LocalName == "Interface");
-        if (interfaceNode != null) {
-            // Tìm ObjectList bên trong Interface
-            var objectList = interfaceNode.Elements().FirstOrDefault(x => x.Name.LocalName == "ObjectList");
-            
-            // Xóa sạch các Member cũ (Start/Stop...)
-            objectList?.Remove();
-            
-            // Tạo ObjectList mới
-            var newObjectList = new System.Xml.Linq.XElement(ns + "ObjectList");
-
-            foreach (var m in newMembers) {
-                // Tạo cấu trúc Member chuẩn cho Unified
-                var memberElem = new System.Xml.Linq.XElement(ns + "Member",
-                    new System.Xml.Linq.XAttribute("Name", m.Name),
-                    new System.Xml.Linq.XAttribute("Datatype", m.Type),
-                    new System.Xml.Linq.XElement(ns + "AttributeList",
-                        new System.Xml.Linq.XElement(ns + "BooleanAttribute", 
-                            new System.Xml.Linq.XAttribute("Name", "IsReadOnly"), "false")
-                    )
-                );
-                newObjectList.Add(memberElem);
-            }
-            
-            interfaceNode.Add(newObjectList);
-        }
-
-        // 3. CẬP NHẬT COMMENT/VERSION ĐỂ KIỂM CHỨNG
-        // Tìm thẻ Comment trong AttributeList của Version
-        var commentNode = doc.Descendants().FirstOrDefault(x => x.Name.LocalName == "Comment");
-        if (commentNode != null) {
-            commentNode.Value = "Copilot_v68_Fixed_" + DateTime.Now.ToString("HHmm");
-        }
-
-        doc.Save(xmlPath);
-        Console.WriteLine($"[√] Đã tiêm {newMembers.Count} biến mới và chuẩn hóa XML thành công.");
-    } catch (Exception ex) {
-        Console.WriteLine($"[!] Lỗi phẫu thuật XML: {ex.Message}");
-    }
-}
-private void ScanCompositionDefinitions(object composition)
-{
-    try
-    {
-        Console.WriteLine($"\n{new string('=', 60)}");
-        Console.WriteLine($" SCANNING DEFINITIONS FOR: {composition.GetType().Name}");
-        Console.WriteLine($"{new string('-', 60)}");
-
-        // Lấy tất cả các Method công khai
-        var methods = composition.GetType().GetMethods()
-            .Where(m => !m.IsSpecialName) // Loại bỏ các hàm get/set mặc định
-            .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})");
-
-        Console.WriteLine(" [METHODS FOUND]:");
-        foreach (var method in methods.OrderBy(n => n))
-        {
-            Console.WriteLine($"  -> {method}");
-        }
-
-        // Lấy tất cả các Property
-        var properties = composition.GetType().GetProperties()
-            .Select(p => $"{p.PropertyType.Name} {p.Name}");
-
-        Console.WriteLine("\n [PROPERTIES FOUND]:");
-        foreach (var prop in properties.OrderBy(n => n))
-        {
-            Console.WriteLine($"  -> {prop}");
-        }
-        Console.WriteLine($"{new string('=', 60)}\n");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[!] Không thể quét định nghĩa: {ex.Message}");
-    }
-}
-
-private void EditUdtMembers(LibraryTypeVersion draft)
-{
-    try 
-    {
-        dynamic udtVersion = draft;
-        var members = udtVersion.Members;
-
-        Console.WriteLine($"\n{new string('=', 60)}");
-        Console.WriteLine($" STRUCTURE OF: {((dynamic)draft.Parent).Name} (v{draft.VersionNumber})");
-        Console.WriteLine($"{new string('-', 60)}");
-        Console.WriteLine($" {"#",-3} | {"Property Name",-25} | {"Data Type",-15}");
-        Console.WriteLine($"{new string('-', 60)}");
-
-        int index = 1;
-        foreach (var member in members)
-        {
-            string mName = member.Name;
-            string mType = member.DataTypeName;
-            Console.WriteLine($" {index,-3} | {mName,-25} | {mType,-15}");
-            index++;
-        }
-        Console.WriteLine($"{new string('=', 60)}\n");
-    } 
-    catch (Exception ex) 
-    { 
-        Console.WriteLine($"[!] Không thể hiển thị cấu trúc UDT: {ex.Message}");
-    }
-}
-public IEngineeringObject FindObjectInProject(string name, string deviceName)
-{
-    try
-    {
-        // 1. Kiểm tra trong Project Library (Ưu tiên vì UDT của Otis nằm ở đây)
-        LibraryTypeFolder typeFolder = _project.ProjectLibrary.TypeFolder;
-        
-        // Tìm kiếm đệ quy trong các Folder của Library
-        var foundInLibrary = FindTypeInLibraryRecursive(typeFolder, name);
-        if (foundInLibrary != null) 
-        {
-            Console.WriteLine("i", $"Tìm thấy '{name}' trong Project Library.", ConsoleColor.Yellow);
-            return foundInLibrary;
-        }
-
-        // 2. Nếu không thấy trong Library, mới tìm trong Device (Logic cũ)
-        // ... (phần code tìm trong Device nếu bạn muốn giữ lại làm dự phòng)
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[X] Lỗi tìm kiếm Library: {ex.Message}");
-    }
-    return null;
-}
-
-// Hàm phụ tìm Type trong Library (Hỗ trợ Unified UDT)
-private IEngineeringObject FindTypeInLibraryRecursive(LibraryTypeFolder folder, string name)
-{
-    // Duyệt các Types trong folder hiện tại
-    foreach (var type in folder.Types)
-    {
-        if (type.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
-        {
-            return (IEngineeringObject)type;
-        }
-    }
-
-    // Duyệt các folder con
-    foreach (var subFolder in folder.Folders)
-    {
-        var found = FindTypeInLibraryRecursive(subFolder, name);
-        if (found != null) return found;
-    }
-    return null;
-}
-// --- HÀM PHỤ (DÙNG ĐỂ FIX LỖI CS0103) ---
-private string ExtractOnlyMembers(string xml)
-{
-    // Tìm tất cả các khối <Hmi.Tag.HmiUdtMember> ... </Hmi.Tag.HmiUdtMember>
-    string startTag = "<Hmi.Tag.HmiUdtMember";
-    string endTag = "</Hmi.Tag.HmiUdtMember>";
-    
-    int firstMatch = xml.IndexOf(startTag);
-    int lastMatch = xml.LastIndexOf(endTag);
-    
-    if (firstMatch != -1 && lastMatch != -1)
-    {
-        // Trích xuất toàn bộ cụm Member
-        return xml.Substring(firstMatch, (lastMatch + endTag.Length) - firstMatch);
-    }
-    
-    return ""; 
-}
-
-// Hàm phụ để tính version (Otis có thể tùy biến)
-private string GetNextVersion(string udtName)
-{
-    var existingType = _project.ProjectLibrary.TypeFolder.Types.Find(udtName);
-    if (existingType == null) return "0.0.1";
-    var lastV = existingType.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
-    if (lastV == null) return "0.0.1";
-    return $"{lastV.VersionNumber.Major}.{lastV.VersionNumber.Minor}.{lastV.VersionNumber.Build + 1}";
-}
-public void ExportLibraryUDT(string udtName)
-{
-    try 
-    {
-        var typeFolder = _project.ProjectLibrary.TypeFolder;
-        dynamic targetType = typeFolder.Types.Find(udtName);
-        
-        // Lấy bản mới nhất (v0.0.2 in work)
-        LibraryTypeVersion latest = null;
-        foreach (var v in targetType.Versions) { latest = v; }
-
-        string exportPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Export_Step1_1");
-        if (Directory.Exists(exportPath)) Directory.Delete(exportPath, true);
-        Directory.CreateDirectory(exportPath);
-
-        // 1. KIỂM TRA ĐỊNH DẠNG HỖ TRỢ (Quan trọng nhất)
-        var formats = targetType.GetSupportedExportFormats();
-        Console.WriteLine($"[i] Các định dạng hỗ trợ: {string.Join(", ", formats)}");
-
-        if (formats.Count == 0) {
-            Console.WriteLine("[X] Hệ thống báo không hỗ trợ bất kỳ định dạng xuất nào cho UDT này!");
-            return;
-        }
-
-        // 2. THỬ XUẤT VỚI TẤT CẢ ĐỊNH DẠNG TÌM THẤY
-        foreach (var fmt in formats)
-        {
-            Console.WriteLine($"[>] Đang thử xuất với định dạng: {fmt}...");
-            try {
-                latest.ExportAsDocuments(new DirectoryInfo(exportPath), udtName, fmt, LibraryExportOptions.None);
-            } catch (Exception ex) {
-                Console.WriteLine($" [!] Lỗi khi dùng {fmt}: {ex.Message}");
-            }
-        }
-
-        // 3. KIỂM TRA LẠI THƯ MỤC
-        string[] files = Directory.GetFiles(exportPath, "*.*", SearchOption.AllDirectories);
-        if (files.Length > 0) {
-            Console.WriteLine($"[√] THÀNH CÔNG! Đã thấy file tại: {exportPath}");
-            foreach(var f in files) Console.WriteLine($" -> {Path.GetFileName(f)}");
-        } else {
-            Console.WriteLine("[X] Vẫn rỗng. Đây là lỗi sâu của Siemens V20 khi Metadata bị hỏng.");
-        }
-    }
-    catch (Exception ex) {
-        Console.WriteLine($"[!] Lỗi thực thi: {ex.Message}");
-    }
-}
 
 
         #endregion
@@ -2836,10 +2928,10 @@ public void ExportLibraryUDT(string udtName)
         {
             // Nếu người dùng chọn bản cụ thể thì lấy, không thì lấy bản mặc định
             string ver = !string.IsNullOrEmpty(selectedVer) ? selectedVer : Version;
-            
+
             // Đảm bảo có chữ 'V' (TIA bắt buộc format: OrderNumber/V4.4)
             if (!ver.StartsWith("V")) ver = "V" + ver;
-            
+
             return $"OrderNumber:{OrderNumber}/{ver}";
         }
     }

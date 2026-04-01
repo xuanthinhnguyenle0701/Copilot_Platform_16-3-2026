@@ -597,7 +597,7 @@ namespace TIA_Copilot_CLI
             Console.WriteLine("\n[AI MODULE]");
             Console.ResetColor();
 
-            Console.WriteLine("  chat <FB/FC/OB> \"<Query>\" [SessionID]        : Calling AI");
+            Console.WriteLine("  chat <FB/FC/OB/SCADA> \"<Query>\" [SessionID]  : Calling AI");
             Console.WriteLine("  chat load-tags \"<Đường_dẫn_File_Excel/CSV>\"  : Upload desire tags");
             Console.WriteLine("  chat load-spec \"<Đường_dẫn_File_Spec.txt>\"   : Upload system spec");
             Console.WriteLine("  chat clear-data                                : clear uploaded tags/system spec");

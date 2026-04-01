@@ -658,7 +658,9 @@ FodyWeavers.xsd
 # =================================================================
 # CUSTOM TIA COPILOT IGNORE (DO NOT REMOVE)
 # =================================================================
+Genereated_Files/
 Translator_CLI/bin/
+Translator_CLI/obj/
 app_secrets.py
 Translator_CLI/chat_memory.db
 AI_Backend/chat_memory.db
