@@ -263,49 +263,74 @@ namespace Middleware_console
 
 private string GetCombinedDeviceName(Device device)
 {
-    // 1. NHẬN DIỆN TRẠM PC BẰNG TYPE (Không quan tâm tên là gì)
-    // TIA Portal định danh trạm PC là "Simatic.PC" hoặc "System:Device.PC"
-    bool isPcStation = device.TypeIdentifier.Contains("Simatic.PC") || 
-                       device.TypeIdentifier.Contains("System:Device.PC");
-
-    if (isPcStation)
+    // BẢO VỆ 1: Kiểm tra thiết bị hoặc TypeIdentifier có bị rỗng không (tránh lỗi dự án MTS)
+    if (device == null || string.IsNullOrEmpty(device.TypeIdentifier))
     {
-        string stationName = device.Name; // Bây giờ nó sẽ lấy đúng "Sysrup_scada"
-        string runtimeName = "";
+        return device?.Name ?? "Unknown Device";
+    }
 
-        // Duyệt tìm thành phần Runtime bên trong trạm PC
-        foreach (DeviceItem item in device.DeviceItems)
+    try
+    {
+        // BẢO VỆ 2: Nhận diện trạm PC Station dựa trên TypeIdentifier (không quan tâm tên)
+        bool isPcStation = device.TypeIdentifier.Contains("Simatic.PC") || 
+                           device.TypeIdentifier.Contains("System:Device.PC");
+
+        if (isPcStation)
         {
-            // Kiểm tra item nào có chứa Software (WinCC Unified, RT Professional...)
-            var swContainer = item.GetService<SoftwareContainer>();
-            
-            if (swContainer != null || 
-                item.Name.Contains("HMI_RT") || 
-                item.Name.Contains("WinCC") || 
-                item.Name.Contains("RT_"))
+            string stationName = device.Name; // Ví dụ: Syrup_scada
+            string runtimeName = "";
+
+            // BẢO VỆ 3: Kiểm tra danh sách DeviceItems trước khi duyệt
+            if (device.DeviceItems != null && device.DeviceItems.Count > 0)
             {
-                runtimeName = item.Name;
-                break; 
+                foreach (DeviceItem item in device.DeviceItems)
+                {
+                    if (item == null) continue;
+
+                    // Kiểm tra xem Item này có chứa Software (WinCC Unified / RT Professional) không
+                    var swContainer = item.GetService<SoftwareContainer>();
+                    
+                    if (swContainer != null || 
+                        item.Name.Contains("HMI_RT") || 
+                        item.Name.Contains("WinCC") || 
+                        item.Name.Contains("RT_"))
+                    {
+                        runtimeName = item.Name;
+                        break; 
+                    }
+                }
+            }
+
+            // Trả về định dạng gộp: Syrup_scada|HMI_RT_1
+            return !string.IsNullOrEmpty(runtimeName) ? $"{stationName}|{runtimeName}" : stationName;
+        }
+
+        // XỬ LÝ CHO PLC (S7-1500 / S7-1200)
+        if (device.DeviceItems != null && device.DeviceItems.Count > 0)
+        {
+            foreach (DeviceItem item in device.DeviceItems)
+            {
+                if (item == null) continue;
+
+                // Bỏ qua các thành phần rack/rail
+                if (item.Name.StartsWith("Rail") || item.Name.StartsWith("Rack")) continue;
+
+                // Nếu tên item khác tên trạm và không phải từ khóa hệ thống, đó là CPU
+                if (item.Name != device.Name && !item.Name.ToLower().Contains("station"))
+                {
+                    return item.Name; 
+                }
             }
         }
 
-        // Trả về: Sysrup_scada|HMI_RT_1
-        return !string.IsNullOrEmpty(runtimeName) ? $"{stationName}|{runtimeName}" : stationName;
+        return device.Name;
     }
-
-    // 2. XỬ LÝ CHO PLC (S7-1500 / S7-1200)
-    foreach (DeviceItem item in device.DeviceItems)
+    catch
     {
-        if (item.Name.StartsWith("Rail") || item.Name.StartsWith("Rack")) continue;
-        if (item.Name != device.Name && !item.Name.ToLower().Contains("station"))
-        {
-            return item.Name; 
-        }
+        // Nếu có bất kỳ lỗi phát sinh trong quá trình quét, trả về tên cơ bản nhất để không làm sập ứng dụng
+        return device.Name;
     }
-
-            return device.Name;
-        }
-
+}
         public static List<string> GetSystemNetworkAdapters()
         {
             List<string> adapterNames = new List<string>();
@@ -581,7 +606,9 @@ private string GetCombinedDeviceName(Device device)
             string rawDeviceName = !string.IsNullOrEmpty(selectedDeviceFromCli) 
                                 ? selectedDeviceFromCli 
                                 : projectData.DeviceName;
-            
+
+            // LOGIC TÁCH TÊN: Lấy phần ĐẦU (Index 0) để vẽ lên cấp Station/Device
+            // Ví dụ: "PC-System_3|HMI_RT_3" -> lấy "PC-System_3"
             string targetForDrawing = rawDeviceName.Contains("|") 
                                     ? rawDeviceName.Split('|')[0] 
                                     : rawDeviceName;
@@ -623,116 +650,69 @@ private string GetCombinedDeviceName(Device device)
         {
             try
             {
-                var device = _project.Devices.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
+                Device device = FindDeviceRecursive(_project, deviceName);
                 if (device == null) return;
-
-                bool isAssigned = false;
 
                 foreach (var item in device.DeviceItems)
                 {
-                    var softwareContainer = item.GetService<SoftwareContainer>();
-                    if (softwareContainer != null && softwareContainer.Software != null)
+                    var swContainer = item.GetService<SoftwareContainer>();
+                    if (swContainer != null && swContainer.Software is HmiSoftware hmiSw)
                     {
-                        // Ép kiểu sang IEngineeringObject để dùng GetAttribute/SetAttribute
-                        var hmiObj = (Siemens.Engineering.IEngineeringObject)softwareContainer.Software;
-
-                        try
-                        {
-                            // CHIẾN THUẬT MỚI: Truy cập thẳng vào StartScreen thông qua chuỗi thuộc tính
-                            // Trong Unified, đôi khi StartScreen nằm trong một Object con tên là "RuntimeSettings"
-                            
-                            var runtimeSettings = hmiObj.GetComposition("RuntimeSettings") as Siemens.Engineering.IEngineeringComposition;
-                            Siemens.Engineering.IEngineeringObject rtObj = null;
-
-                            if (runtimeSettings != null)
-                            {
-                                foreach (Siemens.Engineering.IEngineeringObject r in runtimeSettings) { rtObj = r; break; }
-                            }
-
-                            // Nếu vẫn không thấy, thử tìm "Settings" -> "RuntimeSettings" theo kiểu phân cấp
-                            if (rtObj == null)
-                            {
-                                var settingsComp = hmiObj.GetComposition("Settings") as Siemens.Engineering.IEngineeringComposition;
-                                if (settingsComp != null)
-                                {
-                                    foreach (Siemens.Engineering.IEngineeringObject s in settingsComp)
-                                    {
-                                        var innerRt = s.GetComposition("RuntimeSettings") as Siemens.Engineering.IEngineeringComposition;
-                                        if (innerRt != null)
-                                        {
-                                            foreach (Siemens.Engineering.IEngineeringObject r in innerRt) { rtObj = r; break; }
-                                        }
-                                        if (rtObj != null) break;
-                                    }
-                                }
-                            }
-
-                            if (rtObj != null)
-                            {
-                                Console.WriteLine($"[√] Đã tìm thấy RuntimeSettings tại '{item.Name}'.");
-                                
-                                // Gán giá trị StartScreen
-                                rtObj.SetAttribute("StartScreen", screenName);
-                                
-                                isAssigned = true;
-                                Console.WriteLine($"[SUCCESS] Đã gán '{screenName}' làm màn hình khởi động.");
-                                
-                                _project.Save();
-                                CompileSpecific(deviceName, false, true, false);
-                                break;
-                            }
+                        // VỚI UNIFIED V20: Gán trực tiếp qua Attribute của Software
+                        try {
+                            hmiSw.SetAttribute("StartScreen", screenName);
+                            Console.WriteLine($"[SUCCESS] Đã gán '{screenName}' làm màn hình khởi động.");
+                            _project.Save();
+                            return;
                         }
-                        catch (Exception exInternal)
-                        {
-                            // PHƯƠNG ÁN CUỐI: Nếu là Unified, StartScreen có thể gán trực tiếp qua Attribute của Software
-                            try {
-                                hmiObj.SetAttribute("StartScreen", screenName);
-                                isAssigned = true;
-                                Console.WriteLine($"[SUCCESS] Đã gán trực tiếp StartScreen vào Software.");
-                                _project.Save();
-                                CompileSpecific(deviceName, false, true, false);
-                                break;
-                            } catch {
-                                Console.WriteLine($"[-] Trạm {item.Name} từ chối gán: {exInternal.Message}");
-                            }
+                        catch {
+                            // Fallback nếu SetAttribute chặn
+                            dynamic dynSw = hmiSw;
+                            dynSw.StartScreen = screenName;
+                            return;
                         }
                     }
                 }
-
-                if (!isAssigned)
-                {
-                    Console.WriteLine($"\n[!] Cảnh báo: TIA V20 từ chối cấu trúc gán này. Hãy thử Compile trạm HMI bằng tay 1 lần.");
-                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[!] Lỗi SetStartScreen: {ex.Message}");
-            }
+            catch (Exception ex) { Console.WriteLine($"[-] Lỗi gán StartScreen: {ex.Message}"); }
         }
 
         public void GenerateScadaScreenFromData(string deviceName, ScadaScreenModel screenData)
         {
-            dynamic hmiTarget = GetHmiTarget(deviceName);
-            dynamic screens = null;
+            // 1. TÌM TRẠM CHA (Syrup_scada)
+            Device device = FindDeviceRecursive(_project, deviceName);
+            if (device == null) throw new Exception($"Không tìm thấy thiết bị: {deviceName}");
 
-            try { screens = hmiTarget.Screens; }
-            catch { screens = hmiTarget.ScreenFolder.Screens; }
+            // 2. TÌM HMI SOFTWARE CHUẨN UNIFIED
+            HmiSoftware hmiSoftware = null;
+            foreach (DeviceItem item in device.DeviceItems)
+            {
+                var container = item.GetService<SoftwareContainer>();
+                if (container != null && container.Software is HmiSoftware sw)
+                {
+                    hmiSoftware = sw;
+                    break;
+                }
+            }
 
-            // Xóa màn hình cũ nếu trùng tên để cập nhật mới
-            var existingScreen = ((System.Collections.IEnumerable)screens)
-                .Cast<dynamic>()
-                .FirstOrDefault(s => s.Name == screenData.ScreenName);
-            if (existingScreen != null) existingScreen.Delete();
+            if (hmiSoftware == null) throw new Exception("Trạm không chứa thành phần WinCC Unified.");
 
-            // Tạo màn hình mới với thông số từ JSON
-            Console.WriteLine($"   -> Đang tạo màn hình: {screenData.ScreenName} ({screenData.Width}x{screenData.Height})");
-            dynamic res = screens.Create(screenData.ScreenName);
+            // 3. TRUY CẬP SCREENS (Trong Unified dùng hmiSoftware.Screens)
+            var screens = hmiSoftware.Screens;
 
-            // Gán kích thước chuẩn từ JSON
+            // 4. XỬ LÝ MÀN HÌNH CŨ
+            var existing = screens.Find(screenData.ScreenName);
+            if (existing != null) existing.Delete();
+
+            // 5. TẠO MÀN HÌNH MỚI
+            Console.WriteLine($"   -> Đang tạo màn hình Unified: {screenData.ScreenName}");
+            var res = screens.Create(screenData.ScreenName);
+
+            // 6. GÁN THUỘC TÍNH (Unified V20 yêu cầu uint)
             res.SetAttribute("Width", (uint)(screenData.Width > 0 ? screenData.Width : 1920));
             res.SetAttribute("Height", (uint)(screenData.Height > 0 ? screenData.Height : 1080));
 
-            // Xử lý Items theo cấu trúc Properties của JSON
+            // 7. VẼ ITEM
             if (screenData.Items != null && screenData.Items.Count > 0)
             {
                 BuildUnifiedItemsRecursive(res.ScreenItems, screenData.Items);
@@ -1441,11 +1421,26 @@ private string GetCombinedDeviceName(Device device)
 
             try
             {
+                // 1. TÌM TRẠM (Sử dụng logic FindDeviceRecursive mới đã hỗ trợ tên gộp/tên đơn)
                 Device hmiDevice = FindDeviceRecursive(_project, hmiName);
                 if (hmiDevice == null) return $"[ERROR] Không tìm thấy thiết bị: {hmiName}";
 
-                var software = GetSoftware(hmiDevice) as HmiSoftware;
-                var connections = software.Connections;
+                // 2. TÌM HMI SOFTWARE (Duyệt DeviceItems để tránh lỗi Null trên Unified)
+                HmiSoftware hmiSoftware = null;
+                foreach (DeviceItem item in hmiDevice.DeviceItems)
+                {
+                    var container = item.GetService<SoftwareContainer>();
+                    if (container != null && container.Software is HmiSoftware sw)
+                    {
+                        hmiSoftware = sw;
+                        break;
+                    }
+                }
+
+                if (hmiSoftware == null) return $"[ERROR] Thiết bị {hmiName} không chứa vùng cấu hình HMI (HmiSoftware).";
+
+                // 3. TRUY CẬP CONNECTIONS
+                var connections = hmiSoftware.Connections;
                 var existing = connections.Find(connectionName);
                 if (existing != null) existing.Delete();
 
@@ -1453,27 +1448,24 @@ private string GetCombinedDeviceName(Device device)
                 var newConn = connections.Create(connectionName);
                 newConn.SetAttribute("CommunicationDriver", "SIMATIC S7 1200/1500");
 
-                // Bước 2: GIẢI PHÁP - Gán trực tiếp từng thuộc tính thay vì gửi chuỗi InitialAddress
-                // Cách này giúp TIA Portal không phải tự phân tách chuỗi, tránh lỗi format
+                // Bước 2: Thiết lập thông số IP
                 try
                 {
-                    newConn.SetAttribute("HostAddress", hmiIp); // IP của HMI
-                    newConn.SetAttribute("PlcAddress", plcIp); // IP của PLC
+                    newConn.SetAttribute("HostAddress", hmiIp);
+                    newConn.SetAttribute("PlcAddress", plcIp);
                     newConn.SetAttribute("HostAccessPoint", "S7ONLINE");
-
-                    // Gán các thông số phụ mà Driver yêu cầu
                     newConn.SetAttribute("PlcExpansionSlot", 1);
                     newConn.SetAttribute("PlcRack", 0);
                     newConn.SetAttribute("PlcIsCyclicOperation", true);
                 }
                 catch
                 {
-                    // Fallback: Nếu gán rời bị chặn, dùng chuỗi tối giản nhất (không có dấu ; ở cuối)
+                    // Fallback cho các bản V20 đời đầu hoặc cấu trúc đặc biệt
                     string minimal = $"Version=16.0.0.0;HostAddress={hmiIp};PlcAddress={plcIp}";
                     newConn.SetAttribute("InitialAddress", minimal);
                 }
 
-                return $"[SUCCESS] Đã tạo và thiết lập kết nối: {connectionName}";
+                return $"[SUCCESS] Đã tạo kết nối '{connectionName}' cho {hmiName}";
             }
             catch (Exception ex)
             {
@@ -2188,22 +2180,28 @@ private string GetCombinedDeviceName(Device device)
         #region 11. Core Helpers (Scanning & Reflection)
         private Device FindDeviceRecursive(Project project, string searchName)
 {
-    // Quét ngoài root
+    if (project == null) return null;
+
+    // 1. Tìm ở cấp Root
     foreach (Device device in project.Devices)
     {
-        // So sánh searchName với tên đã được gộp (Sysrup_scada|HMI_RT_1)
-        if (GetCombinedDeviceName(device).Equals(searchName, StringComparison.OrdinalIgnoreCase))
+        // Kiểm tra 2 trường hợp: 
+        // Trường hợp A: searchName là tên gộp (Syrup_scada|HMI_RT_1)
+        // Trường hợp B: searchName chỉ là tên trạm gốc (Syrup_scada)
+        if (GetCombinedDeviceName(device).Equals(searchName, StringComparison.OrdinalIgnoreCase) || 
+            device.Name.Equals(searchName, StringComparison.OrdinalIgnoreCase))
         {
             return device;
         }
     }
 
-    // Quét trong Group
+    // 2. Tìm sâu vào trong các Group
     foreach (DeviceUserGroup group in project.DeviceGroups)
     {
-        Device d = FindInGroupRecursive(group, searchName);
-        if (d != null) return d;
+        Device found = FindInGroupRecursive(group, searchName);
+        if (found != null) return found;
     }
+
     return null;
 }
 
@@ -2233,9 +2231,13 @@ private Device FindInGroup(DeviceUserGroup group, string searchName)
 {
     foreach (Device device in group.Devices)
     {
-        if (GetCombinedDeviceName(device).Equals(searchName, StringComparison.OrdinalIgnoreCase))
+        if (GetCombinedDeviceName(device).Equals(searchName, StringComparison.OrdinalIgnoreCase) || 
+            device.Name.Equals(searchName, StringComparison.OrdinalIgnoreCase))
+        {
             return device;
+        }
     }
+
     foreach (DeviceUserGroup sub in group.Groups)
     {
         Device d = FindInGroupRecursive(sub, searchName);

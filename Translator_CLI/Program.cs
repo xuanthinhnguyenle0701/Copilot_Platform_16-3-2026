@@ -262,7 +262,7 @@ namespace TIA_Copilot_CLI
 
                 case "hmi-conn": // BỔ SUNG
                     if (args.Length < 4) { PrintIcon("!", "Cú pháp: tia hmi-conn <HMI_IP> <PLC_IP>", ConsoleColor.Yellow); break; }
-                    _tiaEngine.CreateUnifiedConnectionCombined("PC-System_1", args[2], args[3], "HMI_PLC_Conn");
+                    _tiaEngine.CreateUnifiedConnectionCombined(_currentDeviceName, args[2], args[3], "HMI_PLC_Conn");
                     PrintIcon("√", "Đã thiết lập Connection HMI-PLC.", ConsoleColor.Green);
                     break;
 
