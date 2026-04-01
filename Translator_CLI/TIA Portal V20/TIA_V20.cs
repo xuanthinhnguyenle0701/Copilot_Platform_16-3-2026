@@ -263,33 +263,41 @@ namespace Middleware_console
 
 private string GetCombinedDeviceName(Device device)
 {
-    // 1. Xử lý cho trạm PC (WinCC Unified / PC Station)
-    if (device.Name.Contains("PC-System") || device.Name.Contains("PC_Station"))
+    // 1. NHẬN DIỆN TRẠM PC BẰNG TYPE (Không quan tâm tên là gì)
+    // TIA Portal định danh trạm PC là "Simatic.PC" hoặc "System:Device.PC"
+    bool isPcStation = device.TypeIdentifier.Contains("Simatic.PC") || 
+                       device.TypeIdentifier.Contains("System:Device.PC");
+
+    if (isPcStation)
     {
-        string stationName = device.Name;
+        string stationName = device.Name; // Bây giờ nó sẽ lấy đúng "Sysrup_scada"
         string runtimeName = "";
 
+        // Duyệt tìm thành phần Runtime bên trong trạm PC
         foreach (DeviceItem item in device.DeviceItems)
         {
-            // Tìm thành phần HMI Runtime hoặc WinCC Unified bên trong
-            if (item.Name.Contains("HMI_RT") || item.Name.Contains("WinCC") || item.Name.Contains("RT_"))
+            // Kiểm tra item nào có chứa Software (WinCC Unified, RT Professional...)
+            var swContainer = item.GetService<SoftwareContainer>();
+            
+            if (swContainer != null || 
+                item.Name.Contains("HMI_RT") || 
+                item.Name.Contains("WinCC") || 
+                item.Name.Contains("RT_"))
             {
                 runtimeName = item.Name;
                 break; 
             }
         }
 
-        // Nếu tìm thấy runtime thì gộp: PC-System_1|HMI_RT_1
+        // Trả về: Sysrup_scada|HMI_RT_1
         return !string.IsNullOrEmpty(runtimeName) ? $"{stationName}|{runtimeName}" : stationName;
     }
 
-    // 2. Xử lý cho PLC (S7-1500 / S7-1200)
-    // Ưu tiên lấy tên CPU (Nhu_Project2) thay vì tên trạm mặc định
+    // 2. XỬ LÝ CHO PLC (S7-1500 / S7-1200)
     foreach (DeviceItem item in device.DeviceItems)
     {
         if (item.Name.StartsWith("Rail") || item.Name.StartsWith("Rack")) continue;
-
-        if (item.Name != device.Name && !item.Name.Contains("station"))
+        if (item.Name != device.Name && !item.Name.ToLower().Contains("station"))
         {
             return item.Name; 
         }
@@ -565,144 +573,142 @@ private string GetCombinedDeviceName(Device device)
 
         #region 5. WinCC Unified: Screen Management
         // Thêm tham số selectedDevice vào hàm
-public void GenerateScadaProject(ScadaProjectModel projectData, string selectedDeviceFromCli = null)
-{
-    if (_project == null) throw new Exception("Chưa kết nối hoặc mở dự án TIA Portal.");
-
-    // BƯỚC 0: ƯU TIÊN LẤY TÊN TỪ CLI
-    string rawDeviceName = !string.IsNullOrEmpty(selectedDeviceFromCli) 
-                           ? selectedDeviceFromCli 
-                           : projectData.DeviceName;
-
-    // LOGIC TÁCH TÊN: Lấy phần ĐẦU (Index 0) để vẽ lên cấp Station/Device
-    // Ví dụ: "PC-System_3|HMI_RT_3" -> lấy "PC-System_3"
-    string targetForDrawing = rawDeviceName.Contains("|") 
-                              ? rawDeviceName.Split('|')[0] 
-                              : rawDeviceName;
-
-    Console.WriteLine($"\n>>> ĐANG KHỞI TẠO DỰ ÁN SCADA TRÊN THIẾT BỊ (STATION): {targetForDrawing} <<<");
-
-    // BƯỚC 1: VẼ TOÀN BỘ MÀN HÌNH
-    foreach (var screen in projectData.Screens)
-    {
-        try 
+        public void GenerateScadaProject(ScadaProjectModel projectData, string selectedDeviceFromCli = null)
         {
-            // Truyền targetForDrawing (PC-System_3) vào hàm vẽ
-            GenerateScadaScreenFromData(targetForDrawing, screen);
-            Console.WriteLine($"[SUCCESS] Đã vẽ xong màn hình: {screen.ScreenName}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[!] Lỗi khi vẽ màn hình {screen.ScreenName}: {ex.Message}");
-        }
-    }
+            if (_project == null) throw new Exception("Chưa kết nối hoặc mở dự án TIA Portal.");
 
-    // BƯỚC 2: LƯU DỰ ÁN
-    try { _project.Save(); } catch { }
+            // BƯỚC 0: ƯU TIÊN LẤY TÊN TỪ CLI
+            string rawDeviceName = !string.IsNullOrEmpty(selectedDeviceFromCli) 
+                                ? selectedDeviceFromCli 
+                                : projectData.DeviceName;
+            
+            string targetForDrawing = rawDeviceName.Contains("|") 
+                                    ? rawDeviceName.Split('|')[0] 
+                                    : rawDeviceName;
 
-    // BƯỚC 3: CHỈ ĐỊNH MÀN HÌNH CHÍNH
-    string startScreenName = !string.IsNullOrEmpty(projectData.StartScreenName) 
-                            ? projectData.StartScreenName 
-                            : (projectData.Screens.FirstOrDefault()?.ScreenName ?? "Main_Process");
+            Console.WriteLine($"\n>>> ĐANG KHỞI TẠO DỰ ÁN SCADA TRÊN THIẾT BỊ (STATION): {targetForDrawing} <<<");
 
-    Console.WriteLine($"[i] Đang cấu hình màn hình khởi động: {startScreenName}...");
-    
-    // Gán StartScreen cũng dùng tên Trạm cha
-    SetStartScreen(targetForDrawing, startScreenName);
-
-    Console.WriteLine("\n>>> TẤT CẢ MÀN HÌNH ĐÃ ĐƯỢC VẼ VÀ CẤU HÌNH THÀNH CÔNG! <<<");
-}
-
-        private void SetStartScreen(string deviceName, string screenName)
-{
-    try
-    {
-        var device = _project.Devices.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
-        if (device == null) return;
-
-        bool isAssigned = false;
-
-        foreach (var item in device.DeviceItems)
-        {
-            var softwareContainer = item.GetService<SoftwareContainer>();
-            if (softwareContainer != null && softwareContainer.Software != null)
+            // BƯỚC 1: VẼ TOÀN BỘ MÀN HÌNH
+            foreach (var screen in projectData.Screens)
             {
-                // Ép kiểu sang IEngineeringObject để dùng GetAttribute/SetAttribute
-                var hmiObj = (Siemens.Engineering.IEngineeringObject)softwareContainer.Software;
-
-                try
+                try 
                 {
-                    // CHIẾN THUẬT MỚI: Truy cập thẳng vào StartScreen thông qua chuỗi thuộc tính
-                    // Trong Unified, đôi khi StartScreen nằm trong một Object con tên là "RuntimeSettings"
-                    
-                    var runtimeSettings = hmiObj.GetComposition("RuntimeSettings") as Siemens.Engineering.IEngineeringComposition;
-                    Siemens.Engineering.IEngineeringObject rtObj = null;
+                    // Truyền targetForDrawing (PC-System_3) vào hàm vẽ
+                    GenerateScadaScreenFromData(targetForDrawing, screen);
+                    Console.WriteLine($"[SUCCESS] Đã vẽ xong màn hình: {screen.ScreenName}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[!] Lỗi khi vẽ màn hình {screen.ScreenName}: {ex.Message}");
+                }
+            }
 
-                    if (runtimeSettings != null)
-                    {
-                        foreach (Siemens.Engineering.IEngineeringObject r in runtimeSettings) { rtObj = r; break; }
-                    }
+            // BƯỚC 2: LƯU DỰ ÁN
+            try { _project.Save(); } catch { }
 
-                    // Nếu vẫn không thấy, thử tìm "Settings" -> "RuntimeSettings" theo kiểu phân cấp
-                    if (rtObj == null)
+            // BƯỚC 3: CHỈ ĐỊNH MÀN HÌNH CHÍNH
+            string startScreenName = !string.IsNullOrEmpty(projectData.StartScreenName) 
+                                    ? projectData.StartScreenName 
+                                    : (projectData.Screens.FirstOrDefault()?.ScreenName ?? "Main_Process");
+
+            Console.WriteLine($"[i] Đang cấu hình màn hình khởi động: {startScreenName}...");
+            
+            // Gán StartScreen cũng dùng tên Trạm cha
+            SetStartScreen(targetForDrawing, startScreenName);
+
+            Console.WriteLine("\n>>> TẤT CẢ MÀN HÌNH ĐÃ ĐƯỢC VẼ VÀ CẤU HÌNH THÀNH CÔNG! <<<");
+        }
+
+                private void SetStartScreen(string deviceName, string screenName)
+        {
+            try
+            {
+                var device = _project.Devices.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
+                if (device == null) return;
+
+                bool isAssigned = false;
+
+                foreach (var item in device.DeviceItems)
+                {
+                    var softwareContainer = item.GetService<SoftwareContainer>();
+                    if (softwareContainer != null && softwareContainer.Software != null)
                     {
-                        var settingsComp = hmiObj.GetComposition("Settings") as Siemens.Engineering.IEngineeringComposition;
-                        if (settingsComp != null)
+                        // Ép kiểu sang IEngineeringObject để dùng GetAttribute/SetAttribute
+                        var hmiObj = (Siemens.Engineering.IEngineeringObject)softwareContainer.Software;
+
+                        try
                         {
-                            foreach (Siemens.Engineering.IEngineeringObject s in settingsComp)
+                            // CHIẾN THUẬT MỚI: Truy cập thẳng vào StartScreen thông qua chuỗi thuộc tính
+                            // Trong Unified, đôi khi StartScreen nằm trong một Object con tên là "RuntimeSettings"
+                            
+                            var runtimeSettings = hmiObj.GetComposition("RuntimeSettings") as Siemens.Engineering.IEngineeringComposition;
+                            Siemens.Engineering.IEngineeringObject rtObj = null;
+
+                            if (runtimeSettings != null)
                             {
-                                var innerRt = s.GetComposition("RuntimeSettings") as Siemens.Engineering.IEngineeringComposition;
-                                if (innerRt != null)
+                                foreach (Siemens.Engineering.IEngineeringObject r in runtimeSettings) { rtObj = r; break; }
+                            }
+
+                            // Nếu vẫn không thấy, thử tìm "Settings" -> "RuntimeSettings" theo kiểu phân cấp
+                            if (rtObj == null)
+                            {
+                                var settingsComp = hmiObj.GetComposition("Settings") as Siemens.Engineering.IEngineeringComposition;
+                                if (settingsComp != null)
                                 {
-                                    foreach (Siemens.Engineering.IEngineeringObject r in innerRt) { rtObj = r; break; }
+                                    foreach (Siemens.Engineering.IEngineeringObject s in settingsComp)
+                                    {
+                                        var innerRt = s.GetComposition("RuntimeSettings") as Siemens.Engineering.IEngineeringComposition;
+                                        if (innerRt != null)
+                                        {
+                                            foreach (Siemens.Engineering.IEngineeringObject r in innerRt) { rtObj = r; break; }
+                                        }
+                                        if (rtObj != null) break;
+                                    }
                                 }
-                                if (rtObj != null) break;
+                            }
+
+                            if (rtObj != null)
+                            {
+                                Console.WriteLine($"[√] Đã tìm thấy RuntimeSettings tại '{item.Name}'.");
+                                
+                                // Gán giá trị StartScreen
+                                rtObj.SetAttribute("StartScreen", screenName);
+                                
+                                isAssigned = true;
+                                Console.WriteLine($"[SUCCESS] Đã gán '{screenName}' làm màn hình khởi động.");
+                                
+                                _project.Save();
+                                CompileSpecific(deviceName, false, true, false);
+                                break;
+                            }
+                        }
+                        catch (Exception exInternal)
+                        {
+                            // PHƯƠNG ÁN CUỐI: Nếu là Unified, StartScreen có thể gán trực tiếp qua Attribute của Software
+                            try {
+                                hmiObj.SetAttribute("StartScreen", screenName);
+                                isAssigned = true;
+                                Console.WriteLine($"[SUCCESS] Đã gán trực tiếp StartScreen vào Software.");
+                                _project.Save();
+                                CompileSpecific(deviceName, false, true, false);
+                                break;
+                            } catch {
+                                Console.WriteLine($"[-] Trạm {item.Name} từ chối gán: {exInternal.Message}");
                             }
                         }
                     }
-
-                    if (rtObj != null)
-                    {
-                        Console.WriteLine($"[√] Đã tìm thấy RuntimeSettings tại '{item.Name}'.");
-                        
-                        // Gán giá trị StartScreen
-                        rtObj.SetAttribute("StartScreen", screenName);
-                        
-                        isAssigned = true;
-                        Console.WriteLine($"[SUCCESS] Đã gán '{screenName}' làm màn hình khởi động.");
-                        
-                        _project.Save();
-                        CompileSpecific(deviceName, false, true, false);
-                        break;
-                    }
                 }
-                catch (Exception exInternal)
+
+                if (!isAssigned)
                 {
-                    // PHƯƠNG ÁN CUỐI: Nếu là Unified, StartScreen có thể gán trực tiếp qua Attribute của Software
-                    try {
-                        hmiObj.SetAttribute("StartScreen", screenName);
-                        isAssigned = true;
-                        Console.WriteLine($"[SUCCESS] Đã gán trực tiếp StartScreen vào Software.");
-                        _project.Save();
-                        CompileSpecific(deviceName, false, true, false);
-                        break;
-                    } catch {
-                        Console.WriteLine($"[-] Trạm {item.Name} từ chối gán: {exInternal.Message}");
-                    }
+                    Console.WriteLine($"\n[!] Cảnh báo: TIA V20 từ chối cấu trúc gán này. Hãy thử Compile trạm HMI bằng tay 1 lần.");
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[!] Lỗi SetStartScreen: {ex.Message}");
+            }
         }
-
-        if (!isAssigned)
-        {
-            Console.WriteLine($"\n[!] Cảnh báo: TIA V20 từ chối cấu trúc gán này. Hãy thử Compile trạm HMI bằng tay 1 lần.");
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[!] Lỗi SetStartScreen: {ex.Message}");
-    }
-}
 
         public void GenerateScadaScreenFromData(string deviceName, ScadaScreenModel screenData)
         {
@@ -758,280 +764,280 @@ public void GenerateScadaProject(ScadaProjectModel projectData, string selectedD
             
             Console.WriteLine("\n>> [GIAI ĐOẠN 1] Dựng hình & Gán tọa độ thực...");
 
-foreach (var item in items) 
-{
-    try 
-    {
-        // --- BỘ LỌC AN TOÀN: BỎ QUA NGAY TỪ ĐẦU ---
-        string lowerType = item.Type.ToLower();            
-        dynamic newItem = null;
-        string typeId = item.Type;
-
-        // A. TẠO XÁC VẬT THỂ
-        if (item.Properties.ContainsKey("LibraryPath")) 
-        {
-            CreateDynamicWidget(composition, item.Type, item.Name, item.Properties);
-            System.Threading.Thread.Sleep(300);
-            newItem = composition.Find(item.Name);
-        } 
-        else 
-        {                    
-            // Chuẩn hóa tên cho đồng nhất với Openness V20
-            if (typeId == "Text" || typeId == "TextField" || typeId == "HmiTextField") 
-            {
-                typeId = "HmiText"; 
-            }
-            else if (!typeId.StartsWith("Hmi")) 
-            {
-                typeId = "Hmi" + typeId;
-            }
-
-            // Gọi lệnh Create
-            try 
-            {
-                dynamic dynComp = composition;
-                newItem = dynComp.Create((string)typeId, (string)item.Name);
-            } 
-            catch (Exception) 
-            {
-                // Nếu Create trực tiếp fail, gọi Reflection
-                newItem = CreateBaseItem(composition, typeId, item.Name);
-            }
-        }
-
-        // B. CẤU HÌNH THUỘC TÍNH (Khi xác đã dựng xong)
-        if (newItem != null) 
-        {                       
-            // 1. Nhóm hình tròn đặc thù (CenterX, CenterY, Radius)
-            if (typeId == "HmiCircle" || typeId == "HmiCircularArc" || typeId == "HmiCircleSegment") 
+            foreach (var item in items) 
             {
                 try 
                 {
-                    newItem.SetAttribute("CenterX", Convert.ToInt32(item.Properties["CenterX"])); 
-                    newItem.SetAttribute("CenterY", Convert.ToInt32(item.Properties["CenterY"]));
-                    newItem.SetAttribute("Radius", (uint)Convert.ToInt32(item.Properties["Radius"]));
-                    if (typeId != "HmiCircle") 
-                    {
-                        newItem.SetAttribute("StartAngle", Convert.ToInt32(item.Properties["AngleStart"]));
-                        newItem.SetAttribute("AngleRange", Convert.ToInt32(item.Properties["AngleRange"]));
-                    }
-                } catch { }
-            } 
-            // 2. Nhóm vật thể hình học/Widget chuẩn (Left, Top, Width, Height)
-            else 
-            {
-                try 
-                {
-                    int left = item.Properties.ContainsKey("Left") ? Convert.ToInt32(item.Properties["Left"]) : 0;
-                    int top = item.Properties.ContainsKey("Top") ? Convert.ToInt32(item.Properties["Top"]) : 0;
-                    uint width = item.Properties.ContainsKey("Width") ? (uint)Convert.ToInt32(item.Properties["Width"]) : 100;
-                    uint height = item.Properties.ContainsKey("Height") ? (uint)Convert.ToInt32(item.Properties["Height"]) : 40;
+                    // --- BỘ LỌC AN TOÀN: BỎ QUA NGAY TỪ ĐẦU ---
+                    string lowerType = item.Type.ToLower();            
+                    dynamic newItem = null;
+                    string typeId = item.Type;
 
-                    newItem.SetAttribute("Left", left);
-                    newItem.SetAttribute("Top", top);
-                    newItem.SetAttribute("Width", width);
-                    newItem.SetAttribute("Height", height);
-                } catch { }
-            }
-
-            // 3. Xử lý màu sắc chung
-            string[] colorProps = { "BackColor", "AlternateBackColor", "BorderColor", "AlternateBorderColor", "ForeColor" };
-            foreach (var pName in colorProps)
-            {
-                if (item.Properties.ContainsKey(pName) && item.Properties[pName] != null)
-                {
-                    try
+                    // A. TẠO XÁC VẬT THỂ
+                    if (item.Properties.ContainsKey("LibraryPath")) 
                     {
-                        string colorStr = item.Properties[pName].ToString();
-                        string[] rgb = colorStr.Split(',');
-                        if (rgb.Length == 3)
+                        CreateDynamicWidget(composition, item.Type, item.Name, item.Properties);
+                        System.Threading.Thread.Sleep(300);
+                        newItem = composition.Find(item.Name);
+                    } 
+                    else 
+                    {                    
+                        // Chuẩn hóa tên cho đồng nhất với Openness V20
+                        if (typeId == "Text" || typeId == "TextField" || typeId == "HmiTextField") 
                         {
-                            int alpha = 255;
-                            if (item.Properties.ContainsKey("Transparent") && (bool)item.Properties["Transparent"] == true && pName.Contains("BackColor"))
-                            {
-                                alpha = 0; 
-                            }
-                            var color = System.Drawing.Color.FromArgb(alpha, int.Parse(rgb[0]), int.Parse(rgb[1]), int.Parse(rgb[2]));
-                            newItem.SetAttribute(pName, color);
+                            typeId = "HmiText"; 
                         }
-                    } catch { }
-                }
-            }
-
-            // 4. Xử lý Fill Pattern & Opacity
-            try
-            {
-                if (item.Properties.ContainsKey("BackFillPattern"))
-                {
-                    newItem.SetAttribute("BackFillPattern", Convert.ToInt32(item.Properties["BackFillPattern"]));
-                }
-                else if (item.Properties.ContainsKey("Transparent") && (bool)item.Properties["Transparent"] == true)
-                {
-                    newItem.SetAttribute("BackFillPattern", 1);
-                }
-
-                if (item.Properties.ContainsKey("Opacity"))
-                {
-                    newItem.SetAttribute("Opacity", Convert.ToDouble(item.Properties["Opacity"]));
-                }
-            } catch { }
-
-            // 5. XỬ LÝ CHI TIẾT THEO LOẠI
-            try 
-            {
-                if (lowerType.Contains("graphicview")) 
-                {
-                    if (item.Properties.ContainsKey("Graphic")) 
-                    {
-                        string graphicName = item.Properties["Graphic"].ToString();
-                        newItem.SetAttribute("Graphic", graphicName);
-                        if (item.Properties.ContainsKey("GraphicStretchMode")) 
+                        else if (!typeId.StartsWith("Hmi")) 
                         {
-                            newItem.SetAttribute("GraphicStretchMode", (uint)Convert.ToInt32(item.Properties["GraphicStretchMode"]));
+                            typeId = "Hmi" + typeId;
                         }
-                    }
-                }
-                else if (lowerType.Contains("iofield")) 
-                {
-                    string fmt = (item.Properties.ContainsKey("Format") && item.Properties["Format"] != null) 
-                                ? item.Properties["Format"].ToString() : "{F2}";
-                    try { newItem.SetAttribute("OutputFormat", fmt); } catch { }
-                    try { newItem.SetAttribute("ProcessValue", ""); } catch { } 
-                }
-                else if (lowerType.Contains("bar") || lowerType.Contains("gauge") || lowerType.Contains("slider")) 
-                {
-                    double min = item.Properties.ContainsKey("MinValue") ? Convert.ToDouble(item.Properties["MinValue"]) : 0;
-                    double max = item.Properties.ContainsKey("MaxValue") ? Convert.ToDouble(item.Properties["MaxValue"]) : 100;
-                    try 
-                    {
-                        if (lowerType.Contains("gauge")) 
+
+                        // Gọi lệnh Create
+                        try 
                         {
-                            newItem.CurvedScale.SetAttribute("MinValue", min);
-                            newItem.CurvedScale.SetAttribute("MaxValue", max);
+                            dynamic dynComp = composition;
+                            newItem = dynComp.Create((string)typeId, (string)item.Name);
                         } 
+                        catch (Exception) 
+                        {
+                            // Nếu Create trực tiếp fail, gọi Reflection
+                            newItem = CreateBaseItem(composition, typeId, item.Name);
+                        }
+                    }
+
+                    // B. CẤU HÌNH THUỘC TÍNH (Khi xác đã dựng xong)
+                    if (newItem != null) 
+                    {                       
+                        // 1. Nhóm hình tròn đặc thù (CenterX, CenterY, Radius)
+                        if (typeId == "HmiCircle" || typeId == "HmiCircularArc" || typeId == "HmiCircleSegment") 
+                        {
+                            try 
+                            {
+                                newItem.SetAttribute("CenterX", Convert.ToInt32(item.Properties["CenterX"])); 
+                                newItem.SetAttribute("CenterY", Convert.ToInt32(item.Properties["CenterY"]));
+                                newItem.SetAttribute("Radius", (uint)Convert.ToInt32(item.Properties["Radius"]));
+                                if (typeId != "HmiCircle") 
+                                {
+                                    newItem.SetAttribute("StartAngle", Convert.ToInt32(item.Properties["AngleStart"]));
+                                    newItem.SetAttribute("AngleRange", Convert.ToInt32(item.Properties["AngleRange"]));
+                                }
+                            } catch { }
+                        } 
+                        // 2. Nhóm vật thể hình học/Widget chuẩn (Left, Top, Width, Height)
                         else 
                         {
-                            newItem.StraightScale.SetAttribute("MinValue", min);
-                            newItem.StraightScale.SetAttribute("MaxValue", max);
+                            try 
+                            {
+                                int left = item.Properties.ContainsKey("Left") ? Convert.ToInt32(item.Properties["Left"]) : 0;
+                                int top = item.Properties.ContainsKey("Top") ? Convert.ToInt32(item.Properties["Top"]) : 0;
+                                uint width = item.Properties.ContainsKey("Width") ? (uint)Convert.ToInt32(item.Properties["Width"]) : 100;
+                                uint height = item.Properties.ContainsKey("Height") ? (uint)Convert.ToInt32(item.Properties["Height"]) : 40;
+
+                                newItem.SetAttribute("Left", left);
+                                newItem.SetAttribute("Top", top);
+                                newItem.SetAttribute("Width", width);
+                                newItem.SetAttribute("Height", height);
+                            } catch { }
                         }
-                    } catch { }
-                }
-                else if (lowerType.Contains("checkbox") || lowerType.Contains("radiobutton")) 
-                {
-                    var selectionItems = newItem.SelectionItems;
-                    var newItemPart = selectionItems.Create(); 
-                    string itemText = (item.Properties.ContainsKey("Text") && item.Properties["Text"] != null) 
-                                    ? item.Properties["Text"].ToString() : "Option 1";
-                    try { newItemPart.SetAttribute("Text", itemText); } catch { }
-                }
-                else if (typeId == "HmiText" || lowerType.Contains("button")) 
-{
-    try 
-    {
-        // 1. Gán nội dung văn bản
-        string txt = item.Properties.ContainsKey("Text") ? item.Properties["Text"].ToString() : "CAPSTONE PROJECT";
-        var textItems = newItem.Text.Items;
-        if (textItems.Count > 0) 
-        {
-            textItems[0].SetAttribute("Text", $"<body><p>{txt}</p></body>");
-        }
 
-        // 2. Xử lý Font nâng cao
-        float fSize = 45.0f;
-        string currentFontName = "Default";
+                        // 3. Xử lý màu sắc chung
+                        string[] colorProps = { "BackColor", "AlternateBackColor", "BorderColor", "AlternateBorderColor", "ForeColor" };
+                        foreach (var pName in colorProps)
+                        {
+                            if (item.Properties.ContainsKey(pName) && item.Properties[pName] != null)
+                            {
+                                try
+                                {
+                                    string colorStr = item.Properties[pName].ToString();
+                                    string[] rgb = colorStr.Split(',');
+                                    if (rgb.Length == 3)
+                                    {
+                                        int alpha = 255;
+                                        if (item.Properties.ContainsKey("Transparent") && (bool)item.Properties["Transparent"] == true && pName.Contains("BackColor"))
+                                        {
+                                            alpha = 0; 
+                                        }
+                                        var color = System.Drawing.Color.FromArgb(alpha, int.Parse(rgb[0]), int.Parse(rgb[1]), int.Parse(rgb[2]));
+                                        newItem.SetAttribute(pName, color);
+                                    }
+                                } catch { }
+                            }
+                        }
 
-        try 
-        {
-            var fontValue = newItem.GetAttribute("Font");
-            dynamic dynFont = fontValue;
+                        // 4. Xử lý Fill Pattern & Opacity
+                        try
+                        {
+                            if (item.Properties.ContainsKey("BackFillPattern"))
+                            {
+                                newItem.SetAttribute("BackFillPattern", Convert.ToInt32(item.Properties["BackFillPattern"]));
+                            }
+                            else if (item.Properties.ContainsKey("Transparent") && (bool)item.Properties["Transparent"] == true)
+                            {
+                                newItem.SetAttribute("BackFillPattern", 1);
+                            }
 
-            // Lấy Size
-            fSize = item.Properties.ContainsKey("Font.Size") ? (float)Convert.ToDouble(item.Properties["Font.Size"]) : 45.0f;
-            dynFont.Size = fSize;
+                            if (item.Properties.ContainsKey("Opacity"))
+                            {
+                                newItem.SetAttribute("Opacity", Convert.ToDouble(item.Properties["Opacity"]));
+                            }
+                        } catch { }
 
-            // Nhận diện Font Name
-            currentFontName = item.Properties.ContainsKey("Font.Name") ? item.Properties["Font.Name"].ToString() : "Siemens Sans";
-            string fontCheck = currentFontName.ToUpper();
-            Type nameType = dynFont.Name.GetType();
-
-            if (fontCheck.Contains("TIMES")) {
-                dynFont.Name = (dynamic)Enum.Parse(nameType, "TimesNewRoman"); 
-            } else if (fontCheck.Contains("ARIAL")) {
-                dynFont.Name = (dynamic)Enum.Parse(nameType, "Arial");
-            } else if (fontCheck.Contains("SUN")) {
-                dynFont.Name = (dynamic)Enum.Parse(nameType, "SimSun");
-            } else {
-                dynFont.Name = (dynamic)Enum.Parse(nameType, "SiemensSans");
-            }
-
-            // 3. XỬ LÝ BOLD & ITALIC (Nâng cấp)
-            bool isBold = item.Properties.ContainsKey("Font.Bold") ? Convert.ToBoolean(item.Properties["Font.Bold"]) : false;
-            bool isItalic = item.Properties.ContainsKey("Font.Italic") ? Convert.ToBoolean(item.Properties["Font.Italic"]) : false;
-
-            // Xử lý Bold (Weight)
-            try 
+                        // 5. XỬ LÝ CHI TIẾT THEO LOẠI
+                        try 
+                        {
+                            if (lowerType.Contains("graphicview")) 
+                            {
+                                if (item.Properties.ContainsKey("Graphic")) 
+                                {
+                                    string graphicName = item.Properties["Graphic"].ToString();
+                                    newItem.SetAttribute("Graphic", graphicName);
+                                    if (item.Properties.ContainsKey("GraphicStretchMode")) 
+                                    {
+                                        newItem.SetAttribute("GraphicStretchMode", (uint)Convert.ToInt32(item.Properties["GraphicStretchMode"]));
+                                    }
+                                }
+                            }
+                            else if (lowerType.Contains("iofield")) 
+                            {
+                                string fmt = (item.Properties.ContainsKey("Format") && item.Properties["Format"] != null) 
+                                            ? item.Properties["Format"].ToString() : "{F2}";
+                                try { newItem.SetAttribute("OutputFormat", fmt); } catch { }
+                                try { newItem.SetAttribute("ProcessValue", ""); } catch { } 
+                            }
+                            else if (lowerType.Contains("bar") || lowerType.Contains("gauge") || lowerType.Contains("slider")) 
+                            {
+                                double min = item.Properties.ContainsKey("MinValue") ? Convert.ToDouble(item.Properties["MinValue"]) : 0;
+                                double max = item.Properties.ContainsKey("MaxValue") ? Convert.ToDouble(item.Properties["MaxValue"]) : 100;
+                                try 
+                                {
+                                    if (lowerType.Contains("gauge")) 
+                                    {
+                                        newItem.CurvedScale.SetAttribute("MinValue", min);
+                                        newItem.CurvedScale.SetAttribute("MaxValue", max);
+                                    } 
+                                    else 
+                                    {
+                                        newItem.StraightScale.SetAttribute("MinValue", min);
+                                        newItem.StraightScale.SetAttribute("MaxValue", max);
+                                    }
+                                } catch { }
+                            }
+                            else if (lowerType.Contains("checkbox") || lowerType.Contains("radiobutton")) 
+                            {
+                                var selectionItems = newItem.SelectionItems;
+                                var newItemPart = selectionItems.Create(); 
+                                string itemText = (item.Properties.ContainsKey("Text") && item.Properties["Text"] != null) 
+                                                ? item.Properties["Text"].ToString() : "Option 1";
+                                try { newItemPart.SetAttribute("Text", itemText); } catch { }
+                            }
+                            else if (typeId == "HmiText" || lowerType.Contains("button")) 
             {
-                Type wType = dynFont.Weight.GetType();
-                string weightValue = isBold ? "Bold" : "Normal";
-                dynFont.Weight = (dynamic)Enum.Parse(wType, weightValue);
-            } 
-            catch { dynFont.Bold = isBold; }
-
-            // Xử lý Italic (Style/Italic tùy phiên bản Openness)
-            try 
-            {
-                // Một số phiên bản dùng Enum Style, một số dùng bool Italic trực tiếp
-                if (item.Properties.ContainsKey("Font.Italic")) 
+                try 
                 {
-                    try {
-                        Type sType = dynFont.Style.GetType();
-                        string styleValue = isItalic ? "Italic" : "Normal";
-                        dynFont.Style = (dynamic)Enum.Parse(sType, styleValue);
-                    } catch {
-                        dynFont.Italic = isItalic;
+                    // 1. Gán nội dung văn bản
+                    string txt = item.Properties.ContainsKey("Text") ? item.Properties["Text"].ToString() : "CAPSTONE PROJECT";
+                    var textItems = newItem.Text.Items;
+                    if (textItems.Count > 0) 
+                    {
+                        textItems[0].SetAttribute("Text", $"<body><p>{txt}</p></body>");
                     }
+
+                    // 2. Xử lý Font nâng cao
+                    float fSize = 45.0f;
+                    string currentFontName = "Default";
+
+                    try 
+                    {
+                        var fontValue = newItem.GetAttribute("Font");
+                        dynamic dynFont = fontValue;
+
+                        // Lấy Size
+                        fSize = item.Properties.ContainsKey("Font.Size") ? (float)Convert.ToDouble(item.Properties["Font.Size"]) : 45.0f;
+                        dynFont.Size = fSize;
+
+                        // Nhận diện Font Name
+                        currentFontName = item.Properties.ContainsKey("Font.Name") ? item.Properties["Font.Name"].ToString() : "Siemens Sans";
+                        string fontCheck = currentFontName.ToUpper();
+                        Type nameType = dynFont.Name.GetType();
+
+                        if (fontCheck.Contains("TIMES")) {
+                            dynFont.Name = (dynamic)Enum.Parse(nameType, "TimesNewRoman"); 
+                        } else if (fontCheck.Contains("ARIAL")) {
+                            dynFont.Name = (dynamic)Enum.Parse(nameType, "Arial");
+                        } else if (fontCheck.Contains("SUN")) {
+                            dynFont.Name = (dynamic)Enum.Parse(nameType, "SimSun");
+                        } else {
+                            dynFont.Name = (dynamic)Enum.Parse(nameType, "SiemensSans");
+                        }
+
+                        // 3. XỬ LÝ BOLD & ITALIC (Nâng cấp)
+                        bool isBold = item.Properties.ContainsKey("Font.Bold") ? Convert.ToBoolean(item.Properties["Font.Bold"]) : false;
+                        bool isItalic = item.Properties.ContainsKey("Font.Italic") ? Convert.ToBoolean(item.Properties["Font.Italic"]) : false;
+
+                        // Xử lý Bold (Weight)
+                        try 
+                        {
+                            Type wType = dynFont.Weight.GetType();
+                            string weightValue = isBold ? "Bold" : "Normal";
+                            dynFont.Weight = (dynamic)Enum.Parse(wType, weightValue);
+                        } 
+                        catch { dynFont.Bold = isBold; }
+
+                        // Xử lý Italic (Style/Italic tùy phiên bản Openness)
+                        try 
+                        {
+                            // Một số phiên bản dùng Enum Style, một số dùng bool Italic trực tiếp
+                            if (item.Properties.ContainsKey("Font.Italic")) 
+                            {
+                                try {
+                                    Type sType = dynFont.Style.GetType();
+                                    string styleValue = isItalic ? "Italic" : "Normal";
+                                    dynFont.Style = (dynamic)Enum.Parse(sType, styleValue);
+                                } catch {
+                                    dynFont.Italic = isItalic;
+                                }
+                            }
+                        } catch { }
+
+                        // 4. CÚ CHỐT: Đẩy ngược lại Struct Font
+                        newItem.SetAttribute("Font", fontValue);
+
+                        string styleLog = $"{(isBold ? "Bold" : "")}{(isBold && isItalic ? " " : "")}{(isItalic ? "Italic" : "")}";
+                        Console.WriteLine($"      [OK] Font: {currentFontName} ({fSize}pt) - Style: {(styleLog == "" ? "Normal" : styleLog)}");
+                    } 
+                    catch (Exception ex) {}
+                
+
+                    // 5. Căn lề
+                    try 
+                    {
+                        newItem.SetAttribute("HorizontalTextAlignment", (object)1); 
+                        newItem.SetAttribute("VerticalTextAlignment", (object)1);   
+                    } catch { }
+                } 
+                catch (Exception ex) 
+                {
+                    Console.WriteLine($"      [!] Lỗi tổng quát tại {item.Name}: {ex.Message}");
                 }
-            } catch { }
-
-            // 4. CÚ CHỐT: Đẩy ngược lại Struct Font
-            newItem.SetAttribute("Font", fontValue);
-
-            string styleLog = $"{(isBold ? "Bold" : "")}{(isBold && isItalic ? " " : "")}{(isItalic ? "Italic" : "")}";
-            Console.WriteLine($"      [OK] Font: {currentFontName} ({fSize}pt) - Style: {(styleLog == "" ? "Normal" : styleLog)}");
-        } 
-        catch (Exception ex) {}
-       
-
-        // 5. Căn lề
-        try 
-        {
-            newItem.SetAttribute("HorizontalTextAlignment", (object)1); 
-            newItem.SetAttribute("VerticalTextAlignment", (object)1);   
-        } catch { }
-    } 
-    catch (Exception ex) 
-    {
-        Console.WriteLine($"      [!] Lỗi tổng quát tại {item.Name}: {ex.Message}");
-    }
-}
-            } 
-            catch { }
-
-            // --- C. LƯU TRỮ VÀ SCRIPT ---
-            if (!createdObjects.ContainsKey(item.Name)) createdObjects.Add(item.Name, newItem);
-            
-            if (lowerType.Contains("button") && item.Properties.ContainsKey("Scripts")) 
-            {
-                ProcessButtonScripts(newItem, item.Name, item.Properties["Scripts"]);
             }
-            Console.WriteLine($"      [OK] Đã dựng xác: {item.Name}");
-        }
-    } 
-    catch (Exception ex) 
-    { 
-        Console.WriteLine($"      [!] Lỗi GĐ 1 tại {item.Name}: {ex.Message}");
-    }
-}
+                        } 
+                        catch { }
+
+                        // --- C. LƯU TRỮ VÀ SCRIPT ---
+                        if (!createdObjects.ContainsKey(item.Name)) createdObjects.Add(item.Name, newItem);
+                        
+                        if (lowerType.Contains("button") && item.Properties.ContainsKey("Scripts")) 
+                        {
+                            ProcessButtonScripts(newItem, item.Name, item.Properties["Scripts"]);
+                        }
+                        Console.WriteLine($"      [OK] Đã dựng xác: {item.Name}");
+                    }
+                } 
+                catch (Exception ex) 
+                { 
+                    Console.WriteLine($"      [!] Lỗi GĐ 1 tại {item.Name}: {ex.Message}");
+                }
+            }
 
             Console.WriteLine("\n>> [GIAI ĐOẠN 2] Nạp linh hồn THẬT...");
 
@@ -1442,77 +1448,113 @@ foreach (var item in items)
 
             try
             {
-                if (!System.IO.File.Exists(csvPath)) {
-                    Console.WriteLine($"[ERROR] Không tìm thấy file: {csvPath}"); return;
+                if (!System.IO.File.Exists(csvPath))
+                {
+                    Console.WriteLine($"[ERROR] Không tìm thấy file CSV tại: {csvPath}"); 
+                    return;
                 }
 
-                Device hmiDevice = FindDeviceRecursive(_project, hmiName);
-                var software = GetSoftware(hmiDevice) as HmiSoftware;
-                var table = software.TagTables.Find("Default tag table") ?? software.TagTables.Create("Imported_Tags");
+                // BƯỚC 1: XỬ LÝ TÊN GỘP VÀ TÌM ĐÚNG TRẠM (STATION)
+                // Ví dụ hmiName = "SYRUP_SCADA|HMI_RT_1" -> stationName = "SYRUP_SCADA"
+                string stationName = hmiName.Contains("|") ? hmiName.Split('|')[0] : hmiName;
+                string runtimeName = hmiName.Contains("|") ? hmiName.Split('|')[1] : hmiName;
 
+                // Sử dụng hàm FindDeviceRecursive đồng bộ mà anh em mình vừa sửa
+                Device pcStation = FindDeviceRecursive(_project, hmiName);
+                if (pcStation == null)
+                {
+                    Console.WriteLine($"[ERROR] Không tìm thấy thiết bị: {stationName}");
+                    return;
+                }
+
+                // BƯỚC 2: TRUY CẬP VÀO SOFTWARE (TAG TABLES) CỦA RUNTIME
+                HmiSoftware software = null;
+                foreach (DeviceItem item in pcStation.DeviceItems)
+                {
+                    // Kiểm tra nếu tên Item khớp với Runtime cần tìm (HMI_RT_1)
+                    if (item.Name.Equals(runtimeName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var softwareContainer = item.GetService<SoftwareContainer>();
+                        if (softwareContainer != null)
+                        {
+                            software = softwareContainer.Software as HmiSoftware;
+                        }
+                        break;
+                    }
+                }
+
+                if (software == null)
+                {
+                    Console.WriteLine($"[ERROR] Không tìm thấy vùng chứa HMI Tags (HmiSoftware) trong {runtimeName}.");
+                    return;
+                }
+
+                // BƯỚC 3: TRUY CẬP/TẠO BẢNG TAG
+                var table = software.TagTables.Find("Default tag table") ?? software.TagTables.Create("Imported_Tags");
+                
+                // BƯỚC 4: ĐỌC VÀ XỬ LÝ CSV
                 string[] lines = System.IO.File.ReadAllLines(csvPath);
                 int successCount = 0;
 
+                Console.WriteLine($"\n[i] Bắt đầu nạp Tags vào {runtimeName}...");
+
                 for (int i = 1; i < lines.Length; i++)
                 {
-                    // Quan trọng: Thử dùng ';' nếu file export từ Excel Việt Nam/Châu Âu
-                    string[] columns = lines[i].Split(','); 
-                    if (columns.Length < 4) columns = lines[i].Split(';'); 
+                    // Tự động nhận diện dấu phẩy (,) hoặc dấu chấm phẩy (;)
+                    string[] columns = lines[i].Split(lines[i].Contains(";") ? ';' : ',');
+                    if (columns.Length < 4) continue;
 
-                    // Kiểm tra an toàn để tránh lỗi Index outside bounds
-                    if (columns.Length < 4) {
-                        Console.WriteLine($"[ERROR] Dòng {i + 1} không đủ 4 cột dữ liệu cơ bản.");
-                        continue;
-                    }
-
-                    string tagName = columns[0].Trim();      // Cột A
-                    string connName = columns[1].Trim();     // Cột B
-                    string address = columns[2].Trim();      // Cột C
-                    string dataType = columns[3].Trim();     // Cột D
+                    string tagName = columns[0].Trim();
+                    string connName = columns[1].Trim();
+                    string address = columns[2].Trim();
+                    string dataType = columns[3].Trim();
 
                     try 
                     {
                         var tags = table.Tags;
-                        if (tags.Find(tagName) != null) tags.Find(tagName).Delete();
+                        
+                        // Nếu tag đã tồn tại, xóa đi tạo mới để cập nhật thông số (Address/Connection)
+                        var existingTag = tags.Find(tagName);
+                        if (existingTag != null) existingTag.Delete();
                         
                         var newTag = tags.Create(tagName);
 
-                        // 1. Gán Connection trước để "Unlock" các trường dữ liệu
+                        // Gán các thuộc tính quan trọng
                         newTag.SetAttribute("Connection", connName); 
-
-                        // 2. Gán DataType (Phải viết hoa chữ đầu: Bool, Int, Real)
                         newTag.SetAttribute("DataType", dataType); 
-
-                        // 3. Thiết lập chế độ Tuyệt đối (1 = AbsoluteAccess)
-                        newTag.SetAttribute("AccessMode", 1); 
-
-                        // 4. Gán địa chỉ tuyệt đối (ví dụ %M1.0)
+                        newTag.SetAttribute("AccessMode", 1); // 1 = Absolute Access
                         newTag.SetAttribute("Address", address);
-                        // Kiểm tra nếu cột IsLogging là True thì gọi hàm kích hoạt Log
+
+                        // LOGIC LOGGING (Cột E và F)
                         if (columns.Length >= 6 && columns[4].Trim().ToLower() == "true")
                         {
                             string logName = columns[5].Trim();
-                            EnableLoggingForTag(hmiName, tagName, logName);
+                            // Lưu ý: Phải truyền runtimeName đã tách vào hàm EnableLogging
+                            EnableLoggingForTag(runtimeName, tagName, logName);
                         }
 
-                        // 5. Gán Acquisition Cycle nếu có (Cột G)
-                        if (columns.Length >= 7) {
+                        // Gán Acquisition Cycle (Cột G)
+                        if (columns.Length >= 7 && !string.IsNullOrEmpty(columns[6])) 
+                        {
                             newTag.SetAttribute("AcquisitionCycle", columns[6].Trim());
                         }
 
                         successCount++;
-                        Console.WriteLine($"[INFO] Đã nạp thành công: {tagName}");
+                        Console.WriteLine($"   [OK] {tagName} -> {address}");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[ERROR] Dòng {i + 1} ({tagName}): {ex.Message}");
+                        Console.WriteLine($"   [X] Lỗi tại dòng {i + 1} ({tagName}): {ex.Message}");
                     }
                 }
-                Console.WriteLine($"[SUCCESS] Hoàn thành! Đã nạp {successCount}/{lines.Length - 1} tags vào {hmiName}.");
-            }
-            catch (Exception ex) { Console.WriteLine($"[ERROR] Fatal: {ex.Message}"); }
-        }
 
+                Console.WriteLine($"\n[SUCCESS] Hoàn thành! Đã nạp thành công {successCount}/{lines.Length - 1} tags.");
+            }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine($"[FATAL ERROR] {ex.Message}"); 
+            }
+        }
 
         public void ImportPlcTagsFromCsv(string plcName, string csvPath)
         {
@@ -2099,29 +2141,63 @@ foreach (var item in items)
         #endregion
 
         #region 11. Core Helpers (Scanning & Reflection)
-        private Device FindDeviceRecursive(Project project, string deviceName)
+        private Device FindDeviceRecursive(Project project, string searchName)
+{
+    // Quét ngoài root
+    foreach (Device device in project.Devices)
+    {
+        // So sánh searchName với tên đã được gộp (Sysrup_scada|HMI_RT_1)
+        if (GetCombinedDeviceName(device).Equals(searchName, StringComparison.OrdinalIgnoreCase))
         {
-            Device d = project.Devices.Find(deviceName);
-            if (d != null) return d;
-            foreach (var group in project.DeviceGroups)
-            {
-                d = FindDeviceInGroupRecursive(group, deviceName);
-                if (d != null) return d;
-            }
-            return null;
+            return device;
         }
+    }
 
-        private Device FindDeviceInGroupRecursive(DeviceUserGroup group, string deviceName)
+    // Quét trong Group
+    foreach (DeviceUserGroup group in project.DeviceGroups)
+    {
+        Device d = FindInGroupRecursive(group, searchName);
+        if (d != null) return d;
+    }
+    return null;
+}
+
+// Hàm phụ để quét đệ quy trong Group
+private Device FindInGroup(DeviceUserGroup group, string searchName)
+{
+    // Quét thiết bị trong group hiện tại
+    foreach (Device device in group.Devices)
+    {
+        if (GetCombinedDeviceName(device).Equals(searchName, StringComparison.OrdinalIgnoreCase))
         {
-            Device d = group.Devices.Find(deviceName);
-            if (d != null) return d;
-            foreach (var sub in group.Groups)
-            {
-                d = FindDeviceInGroupRecursive(sub, deviceName);
-                if (d != null) return d;
-            }
-            return null;
+            return device;
         }
+    }
+
+    // Quét tiếp vào các group con (Đệ quy)
+    foreach (DeviceUserGroup subGroup in group.Groups)
+    {
+        Device found = FindInGroup(subGroup, searchName);
+        if (found != null) return found;
+    }
+
+    return null;
+}
+
+        private Device FindInGroupRecursive(DeviceUserGroup group, string searchName)
+{
+    foreach (Device device in group.Devices)
+    {
+        if (GetCombinedDeviceName(device).Equals(searchName, StringComparison.OrdinalIgnoreCase))
+            return device;
+    }
+    foreach (DeviceUserGroup sub in group.Groups)
+    {
+        Device d = FindInGroupRecursive(sub, searchName);
+        if (d != null) return d;
+    }
+    return null;
+}
 
         private Software GetSoftware(Device device) => FindSoftwareRecursive(device);
 

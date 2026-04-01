@@ -281,7 +281,7 @@ namespace TIA_Copilot_CLI
 
                 case "tag-hmi":
                     string hTagPath = GetPathOrOpenDialog(args, 2, "CSV Tags (*.csv)|*.csv");
-                    if (!string.IsNullOrEmpty(hTagPath)) _tiaEngine.ImportHmiTagsFromCsv("PC-System_1", hTagPath);
+                    if (!string.IsNullOrEmpty(hTagPath)) _tiaEngine.ImportHmiTagsFromCsv(_currentDeviceName, hTagPath);
                     break;
 
                 // --- NHÓM 4: SCADA & GRAPHICS ---

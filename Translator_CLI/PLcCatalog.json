@@ -8,6 +8,18 @@
     }
   ],
   "S71500": [
+     {
+      "Name": "S7-1500 CPU 1511-1 PN",
+      "OrderNumber": "6ES7 511-1AK00-0AB0",
+      "Version": "V2.9",
+      "AvailableVersions": ["V1.0", "V1.1", "V1.5", "V1.6","V1.7","V1.8"]
+    },
+    {
+      "Name": "S7-1500 CPU 1511-1 PN",
+      "OrderNumber": "6ES7 511-1AK01-0AB0",
+      "Version": "V2.8",
+      "AvailableVersions": ["V1.8", "V2.0", "V2.1","V2.5", "V2.6","V2.8"]
+    },
     {
       "Name": "S7-1500 CPU 1511-1 PN",
       "OrderNumber": "6ES7 511-1AK02-0AB0",
@@ -15,10 +27,46 @@
       "AvailableVersions": ["V2.5", "V2.6", "V2.8", "V2.9"]
     },
     {
+      "Name": "S7-1500 CPU 1511-1 PN",
+      "OrderNumber": "6ES7 511-1AL03-0AB0",
+      "Version": "V3.0",
+      "AvailableVersions": ["V3.0", "V3.1", "V4.0"]
+    },
+    {
+      "Name": "S7-1500 CPU 1511C-1 PN",
+      "OrderNumber": "6ES7 511-1CK00-0AB0",
+      "Version": "V2.8",
+      "AvailableVersions":  ["V1.8", "V2.0", "V2.1","V2.5", "V2.6","V2.8", "V2.9"]
+    },
+    {
+      "Name": "S7-1500 CPU 1511C-1 PN",
+      "OrderNumber": "6ES7 511-1CK01-0AB0",
+      "Version": "V2.8",
+      "AvailableVersions":  ["V2.5", "V2.6","V2.8", "V2.9"]
+    },
+    {
+      "Name": "S7-1500 CPU 1511C-1 PN",
+      "OrderNumber": "6ES7 511-1CL03-0AB0",
+      "Version": "V4.0",
+      "AvailableVersions":  ["V3.1", "V4.0"]
+    },
+    {
+      "Name": "S7-1500 CPU 1512C-1 PN",
+      "OrderNumber": "6ES7 512-1CK00-0AB0",
+      "Version": "V2.9",
+      "AvailableVersions": ["V1.8", "V2.0", "V2.1","V2.5", "V2.6","V2.8", "V2.9"]
+    },
+    {
       "Name": "S7-1500 CPU 1512C-1 PN",
       "OrderNumber": "6ES7 512-1CK01-0AB0",
-      "Version": "V2.8",
-      "AvailableVersions": ["V2.0", "V2.1", "V2.5", "V2.8"]
+      "Version": "V2.9",
+      "AvailableVersions": ["V2.5", "V2.6","V2.8", "V2.9"]
+    },
+    {
+      "Name": "S7-1500 CPU 1512C-1 PN",
+      "OrderNumber": "6ES7 512-1CM03-0AB0",
+      "Version": "V4.0",
+      "AvailableVersions": ["V3.1", "V4.0"]
     }
   ],
   "WinCC_Unified": [
@@ -26,13 +74,13 @@
       "Name": "MTP700 Unified Comfort Panel",
       "OrderNumber": "6AV2 128-3GB06-0AX1",
       "Version": "V20.0.0.0",
-      "AvailableVersions": ["V17.0.0.0", "V18.0.0.0", "V19.0.0.0", "V20.0.0.0"]
+      "AvailableVersions": ["V17.0.0.1", "V17.0.0.2", "V18.0.0.3", "V19.0.0.0", "V20.0.0.0"]
     },
     {
       "Name": "Simatic WinCC Unified PC",
       "OrderNumber": "6AV2 155-xxxxx-xxxx",
       "Version": "V20.0.0.0",
-      "AvailableVersions": ["V16.0.0.0", "V17.0.0.0", "V18.0.0.0", "V19.0.0.0", "V20.0.0.0"]
+      "AvailableVersions": ["V17.0.0.1", "V17.0.0.2", "V18.0.0.3", "V19.0.0.0", "V20.0.0.0"]
     }
   ]
 }
