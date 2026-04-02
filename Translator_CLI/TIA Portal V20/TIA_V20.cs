@@ -923,96 +923,98 @@ private string GetCombinedDeviceName(Device device)
                                                 ? item.Properties["Text"].ToString() : "Option 1";
                                 try { newItemPart.SetAttribute("Text", itemText); } catch { }
                             }
+                            
+                            
                             else if (typeId == "HmiText" || lowerType.Contains("button")) 
-            {
-                try 
-                {
-                    // 1. Gán nội dung văn bản
-                    string txt = item.Properties.ContainsKey("Text") ? item.Properties["Text"].ToString() : "CAPSTONE PROJECT";
-                    var textItems = newItem.Text.Items;
-                    if (textItems.Count > 0) 
-                    {
-                        textItems[0].SetAttribute("Text", $"<body><p>{txt}</p></body>");
-                    }
-
-                    // 2. Xử lý Font nâng cao
-                    float fSize = 45.0f;
-                    string currentFontName = "Default";
-
-                    try 
-                    {
-                        var fontValue = newItem.GetAttribute("Font");
-                        dynamic dynFont = fontValue;
-
-                        // Lấy Size
-                        fSize = item.Properties.ContainsKey("Font.Size") ? (float)Convert.ToDouble(item.Properties["Font.Size"]) : 45.0f;
-                        dynFont.Size = fSize;
-
-                        // Nhận diện Font Name
-                        currentFontName = item.Properties.ContainsKey("Font.Name") ? item.Properties["Font.Name"].ToString() : "Siemens Sans";
-                        string fontCheck = currentFontName.ToUpper();
-                        Type nameType = dynFont.Name.GetType();
-
-                        if (fontCheck.Contains("TIMES")) {
-                            dynFont.Name = (dynamic)Enum.Parse(nameType, "TimesNewRoman"); 
-                        } else if (fontCheck.Contains("ARIAL")) {
-                            dynFont.Name = (dynamic)Enum.Parse(nameType, "Arial");
-                        } else if (fontCheck.Contains("SUN")) {
-                            dynFont.Name = (dynamic)Enum.Parse(nameType, "SimSun");
-                        } else {
-                            dynFont.Name = (dynamic)Enum.Parse(nameType, "SiemensSans");
-                        }
-
-                        // 3. XỬ LÝ BOLD & ITALIC (Nâng cấp)
-                        bool isBold = item.Properties.ContainsKey("Font.Bold") ? Convert.ToBoolean(item.Properties["Font.Bold"]) : false;
-                        bool isItalic = item.Properties.ContainsKey("Font.Italic") ? Convert.ToBoolean(item.Properties["Font.Italic"]) : false;
-
-                        // Xử lý Bold (Weight)
-                        try 
-                        {
-                            Type wType = dynFont.Weight.GetType();
-                            string weightValue = isBold ? "Bold" : "Normal";
-                            dynFont.Weight = (dynamic)Enum.Parse(wType, weightValue);
-                        } 
-                        catch { dynFont.Bold = isBold; }
-
-                        // Xử lý Italic (Style/Italic tùy phiên bản Openness)
-                        try 
-                        {
-                            // Một số phiên bản dùng Enum Style, một số dùng bool Italic trực tiếp
-                            if (item.Properties.ContainsKey("Font.Italic")) 
                             {
-                                try {
-                                    Type sType = dynFont.Style.GetType();
-                                    string styleValue = isItalic ? "Italic" : "Normal";
-                                    dynFont.Style = (dynamic)Enum.Parse(sType, styleValue);
-                                } catch {
-                                    dynFont.Italic = isItalic;
+                                try 
+                                {
+                                    // 1. Gán nội dung văn bản
+                                    string txt = item.Properties.ContainsKey("Text") ? item.Properties["Text"].ToString() : "CAPSTONE PROJECT";
+                                    var textItems = newItem.Text.Items;
+                                    if (textItems.Count > 0) 
+                                    {
+                                        textItems[0].SetAttribute("Text", $"<body><p>{txt}</p></body>");
+                                    }
+
+                                    // 2. Xử lý Font nâng cao
+                                    float fSize = 45.0f;
+                                    string currentFontName = "Default";
+
+                                    try 
+                                    {
+                                        var fontValue = newItem.GetAttribute("Font");
+                                        dynamic dynFont = fontValue;
+
+                                        // Lấy Size
+                                        fSize = item.Properties.ContainsKey("Font.Size") ? (float)Convert.ToDouble(item.Properties["Font.Size"]) : 45.0f;
+                                        dynFont.Size = fSize;
+
+                                        // Nhận diện Font Name
+                                        currentFontName = item.Properties.ContainsKey("Font.Name") ? item.Properties["Font.Name"].ToString() : "Siemens Sans";
+                                        string fontCheck = currentFontName.ToUpper();
+                                        Type nameType = dynFont.Name.GetType();
+
+                                        if (fontCheck.Contains("TIMES")) {
+                                            dynFont.Name = (dynamic)Enum.Parse(nameType, "TimesNewRoman"); 
+                                        } else if (fontCheck.Contains("ARIAL")) {
+                                            dynFont.Name = (dynamic)Enum.Parse(nameType, "Arial");
+                                        } else if (fontCheck.Contains("SUN")) {
+                                            dynFont.Name = (dynamic)Enum.Parse(nameType, "SimSun");
+                                        } else {
+                                            dynFont.Name = (dynamic)Enum.Parse(nameType, "SiemensSans");
+                                        }
+
+                                        // 3. XỬ LÝ BOLD & ITALIC (Nâng cấp)
+                                        bool isBold = item.Properties.ContainsKey("Font.Bold") ? Convert.ToBoolean(item.Properties["Font.Bold"]) : false;
+                                        bool isItalic = item.Properties.ContainsKey("Font.Italic") ? Convert.ToBoolean(item.Properties["Font.Italic"]) : false;
+
+                                        // Xử lý Bold (Weight)
+                                        try 
+                                        {
+                                            Type wType = dynFont.Weight.GetType();
+                                            string weightValue = isBold ? "Bold" : "Normal";
+                                            dynFont.Weight = (dynamic)Enum.Parse(wType, weightValue);
+                                        } 
+                                        catch { dynFont.Bold = isBold; }
+
+                                        // Xử lý Italic (Style/Italic tùy phiên bản Openness)
+                                        try 
+                                        {
+                                            // Một số phiên bản dùng Enum Style, một số dùng bool Italic trực tiếp
+                                            if (item.Properties.ContainsKey("Font.Italic")) 
+                                            {
+                                                try {
+                                                    Type sType = dynFont.Style.GetType();
+                                                    string styleValue = isItalic ? "Italic" : "Normal";
+                                                    dynFont.Style = (dynamic)Enum.Parse(sType, styleValue);
+                                                } catch {
+                                                    dynFont.Italic = isItalic;
+                                                }
+                                            }
+                                        } catch { }
+
+                                        // 4. CÚ CHỐT: Đẩy ngược lại Struct Font
+                                        newItem.SetAttribute("Font", fontValue);
+
+                                        string styleLog = $"{(isBold ? "Bold" : "")}{(isBold && isItalic ? " " : "")}{(isItalic ? "Italic" : "")}";
+                                        Console.WriteLine($"      [OK] Font: {currentFontName} ({fSize}pt) - Style: {(styleLog == "" ? "Normal" : styleLog)}");
+                                    } 
+                                    catch (Exception ex) {}
+                                
+
+                                    // 5. Căn lề
+                                    try 
+                                    {
+                                        newItem.SetAttribute("HorizontalTextAlignment", (object)1); 
+                                        newItem.SetAttribute("VerticalTextAlignment", (object)1);   
+                                    } catch { }
+                                } 
+                                catch (Exception ex) 
+                                {
+                                    Console.WriteLine($"      [!] Lỗi tổng quát tại {item.Name}: {ex.Message}");
                                 }
                             }
-                        } catch { }
-
-                        // 4. CÚ CHỐT: Đẩy ngược lại Struct Font
-                        newItem.SetAttribute("Font", fontValue);
-
-                        string styleLog = $"{(isBold ? "Bold" : "")}{(isBold && isItalic ? " " : "")}{(isItalic ? "Italic" : "")}";
-                        Console.WriteLine($"      [OK] Font: {currentFontName} ({fSize}pt) - Style: {(styleLog == "" ? "Normal" : styleLog)}");
-                    } 
-                    catch (Exception ex) {}
-                
-
-                    // 5. Căn lề
-                    try 
-                    {
-                        newItem.SetAttribute("HorizontalTextAlignment", (object)1); 
-                        newItem.SetAttribute("VerticalTextAlignment", (object)1);   
-                    } catch { }
-                } 
-                catch (Exception ex) 
-                {
-                    Console.WriteLine($"      [!] Lỗi tổng quát tại {item.Name}: {ex.Message}");
-                }
-            }
                         } 
                         catch { }
 
@@ -1028,7 +1030,26 @@ private string GetCombinedDeviceName(Device device)
                 } 
                 catch (Exception ex) 
                 { 
-                    Console.WriteLine($"      [!] Lỗi GĐ 1 tại {item.Name}: {ex.Message}");
+                    //Console.WriteLine($"      [!] Lỗi GĐ 1 tại {item.Name}: {ex.Message}");
+                    // Bóc tách lỗi thực sự từ Siemens
+    Exception realError = ex;
+    while (realError.InnerException != null)
+    {
+        realError = realError.InnerException;
+    }
+
+    Console.WriteLine($"\n[!] LỖI CHI TIẾT TẠI {item.Name}:");
+    Console.WriteLine($"    -> Thông báo: {realError.Message}");
+    
+    // Nếu là lỗi phân quyền hoặc không tìm thấy khuôn mẫu
+    if (realError.Message.Contains("TypeIdentifier"))
+    {
+        Console.WriteLine("    [Gợi ý] TypeIdentifier không hợp lệ. Hãy kiểm tra SubType trong JSON.");
+    }
+    else if (realError.Message.Contains("Access denied"))
+    {
+        Console.WriteLine("    [Gợi ý] TIA Portal chặn quyền tạo đối tượng. Hãy chạy CLI với quyền Admin.");
+    }
                 }
             }
 
@@ -1428,62 +1449,59 @@ private string GetCombinedDeviceName(Device device)
         #endregion
 
         #region 7. WinCC Unified: Connection & Tag Import
-        public string CreateUnifiedConnectionCombined(string hmiName, string hmiIp, string plcIp, string connectionName = "Connection_1")
+        public string CreateUnifiedConnectionCombined(string hmiName, string hmiIp, string plcIp)
         {
-            if (_project == null) return "Project chưa mở."; 
-
+            if (_project == null) return "Project chưa mở.";
             try
             {
-                // 1. TÌM TRẠM (Sử dụng logic FindDeviceRecursive mới đã hỗ trợ tên gộp/tên đơn)
                 Device hmiDevice = FindDeviceRecursive(_project, hmiName);
                 if (hmiDevice == null) return $"[ERROR] Không tìm thấy thiết bị: {hmiName}";
 
-                // 2. TÌM HMI SOFTWARE (Duyệt DeviceItems để tránh lỗi Null trên Unified)
+                // 1. Lấy HmiSoftware chuẩn Unified
                 HmiSoftware hmiSoftware = null;
-                foreach (DeviceItem item in hmiDevice.DeviceItems)
-                {
+                foreach (DeviceItem item in hmiDevice.DeviceItems) {
                     var container = item.GetService<SoftwareContainer>();
-                    if (container != null && container.Software is HmiSoftware sw)
-                    {
+                    if (container != null && container.Software is HmiSoftware sw) {
                         hmiSoftware = sw;
                         break;
                     }
                 }
 
-                if (hmiSoftware == null) return $"[ERROR] Thiết bị {hmiName} không chứa vùng cấu hình HMI (HmiSoftware).";
+                if (hmiSoftware == null) return "[ERROR] Không tìm thấy vùng HMI Software.";
 
-                // 3. TRUY CẬP CONNECTIONS
+                // 2. LOGIC TỰ TĂNG TÊN CONNECTION
                 var connections = hmiSoftware.Connections;
-                var existing = connections.Find(connectionName);
-                if (existing != null) existing.Delete();
+                int nextIndex = 1;
+                string baseName = "HMI_PLC_Conn_";
+                
+                // Quét các kết nối hiện có để tìm ID lớn nhất
+                foreach (var conn in connections) {
+                    if (conn.Name.StartsWith(baseName)) {
+                        string suffix = conn.Name.Replace(baseName, "");
+                        if (int.TryParse(suffix, out int currentId)) {
+                            if (currentId >= nextIndex) nextIndex = currentId + 1;
+                        }
+                    }
+                }
+                string finalName = baseName + nextIndex;
 
-                // Bước 1: Tạo kết nối và định danh Driver
-                var newConn = connections.Create(connectionName);
+                // 3. TẠO KẾT NỐI MỚI
+                var newConn = connections.Create(finalName);
                 newConn.SetAttribute("CommunicationDriver", "SIMATIC S7 1200/1500");
 
-                // Bước 2: Thiết lập thông số IP
-                try
-                {
+                // Thiết lập IP
+                try {
                     newConn.SetAttribute("HostAddress", hmiIp);
                     newConn.SetAttribute("PlcAddress", plcIp);
                     newConn.SetAttribute("HostAccessPoint", "S7ONLINE");
-                    newConn.SetAttribute("PlcExpansionSlot", 1);
                     newConn.SetAttribute("PlcRack", 0);
-                    newConn.SetAttribute("PlcIsCyclicOperation", true);
-                }
-                catch
-                {
-                    // Fallback cho các bản V20 đời đầu hoặc cấu trúc đặc biệt
-                    string minimal = $"Version=16.0.0.0;HostAddress={hmiIp};PlcAddress={plcIp}";
-                    newConn.SetAttribute("InitialAddress", minimal);
-                }
+                    newConn.SetAttribute("PlcExpansionSlot", 1);
+                } catch { }
 
-                return $"[SUCCESS] Đã tạo kết nối '{connectionName}' cho {hmiName}";
+                _project.Save(); // Lưu để TIA vẽ lại UI
+                return finalName; // Trả về tên đã tạo để in ra CLI
             }
-            catch (Exception ex)
-            {
-                return $"[ERROR] Lỗi hệ thống: {ex.Message}";
-            }
+            catch (Exception ex) { return $"[ERROR] {ex.Message}"; }
         }
 
 
