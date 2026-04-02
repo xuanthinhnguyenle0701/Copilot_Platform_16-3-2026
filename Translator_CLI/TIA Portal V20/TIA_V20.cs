@@ -1430,7 +1430,7 @@ private string GetCombinedDeviceName(Device device)
         #region 7. WinCC Unified: Connection & Tag Import
         public string CreateUnifiedConnectionCombined(string hmiName, string hmiIp, string plcIp, string connectionName = "Connection_1")
         {
-            if (_project == null) return "Project chưa mở.";
+            if (_project == null) return "Project chưa mở."; 
 
             try
             {

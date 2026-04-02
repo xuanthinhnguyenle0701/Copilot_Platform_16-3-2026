@@ -24,32 +24,10 @@ namespace TIA_Copilot_CLI
 
             string root = dir != null
                 ? dir.FullName
-                : AppDomain.CurrentDomain.BaseDirectory; // fallback — folder not found
+                : AppDomain.CurrentDomain.BaseDirectory; // fallback — folder rename guard
 
-            string targetPath = Path.Combine(root, "Generated_Files");
-
-            try
-            {
-                Directory.CreateDirectory(targetPath);
-                // Verify it actually exists after creation — CreateDirectory can silently no-op
-                if (!Directory.Exists(targetPath))
-                    throw new IOException($"Directory could not be created: {targetPath}");
-
-                _cached = targetPath;
-            }
-            catch (Exception ex)
-            {
-                // Fall back to BaseDirectory/Generated_Files — always writable since the exe runs from there
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"[OUTPUT PATH WARNING] Could not create '{targetPath}': {ex.Message}");
-                Console.WriteLine($"[OUTPUT PATH WARNING] Falling back to BaseDirectory.");
-                Console.ResetColor();
-
-                string fallback = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Generated_Files");
-                Directory.CreateDirectory(fallback);
-                _cached = fallback;
-            }
-
+            _cached = Path.Combine(root, "Generated_Files");
+            Directory.CreateDirectory(_cached); // create on first use if missing
             return _cached;
         }
     }
@@ -513,6 +491,11 @@ namespace TIA_Copilot_CLI
         // C# stamps coordinates based on type and a running slot counter per zone.
         // [TO BE REFINED] — adjust zone origins and sizes to match your screen layout.
 
+        // --- CONNECTION COUNTER ---
+        // Increments by 1 each time a new HMI Tags CSV is exported.
+        // Produces connection names: HMI_PLC_Conn_1, HMI_PLC_Conn_2, ...
+        private static int _connectionCounter = 0;
+
         private static readonly int SIDEBAR_X       = 30;
         private static readonly int SIDEBAR_Y_START = 180;
         private static readonly int SIDEBAR_BTN_W   = 120;
@@ -897,6 +880,10 @@ namespace TIA_Copilot_CLI
         {
             try
             {
+                // Increment counter for each new CSV file — produces HMI_PLC_Conn_1, HMI_PLC_Conn_2, ...
+                _connectionCounter++;
+                string connectionName = $"HMI_PLC_Conn_{_connectionCounter}";
+
                 var csv = new StringBuilder();
 
                 // WinCC Unified HMI tag import header — exact column order required by TIA Portal
@@ -917,7 +904,7 @@ namespace TIA_Copilot_CLI
                         ? "T1s"
                         : "T100ms";
 
-                    csv.AppendLine($"{tag.Name},Connection_1,{address},{hmiType},Cyclic in operation,Absolute access,{cycle}");
+                    csv.AppendLine($"{tag.Name},{connectionName},{address},{hmiType},Cyclic in operation,Absolute access,{cycle}");
                 }
 
                 string safeName = string.IsNullOrWhiteSpace(data.ScreenName) ? "AI_Screen" : data.ScreenName;
@@ -929,6 +916,7 @@ namespace TIA_Copilot_CLI
 
                 Console.ForegroundColor = ConsoleColor.Magenta;
                 Console.WriteLine($"\n[HMI TAGS] Exported {data.GlobalTags.Count} HMI tags → {fileName}");
+                Console.WriteLine($" Connection name: {connectionName}");
                 Console.WriteLine($" Run 'tia tag-hmi \"{fullPath}\"' to push tags to TIA Portal.");
                 Console.ResetColor();
             }
