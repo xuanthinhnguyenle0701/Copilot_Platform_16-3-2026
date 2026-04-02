@@ -24,10 +24,32 @@ namespace TIA_Copilot_CLI
 
             string root = dir != null
                 ? dir.FullName
-                : AppDomain.CurrentDomain.BaseDirectory; // fallback — folder rename guard
+                : AppDomain.CurrentDomain.BaseDirectory; // fallback — folder not found
 
-            _cached = Path.Combine(root, "Genereated_Files");
-            Directory.CreateDirectory(_cached); // create on first use if missing
+            string targetPath = Path.Combine(root, "Generated_Files");
+
+            try
+            {
+                Directory.CreateDirectory(targetPath);
+                // Verify it actually exists after creation — CreateDirectory can silently no-op
+                if (!Directory.Exists(targetPath))
+                    throw new IOException($"Directory could not be created: {targetPath}");
+
+                _cached = targetPath;
+            }
+            catch (Exception ex)
+            {
+                // Fall back to BaseDirectory/Generated_Files — always writable since the exe runs from there
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"[OUTPUT PATH WARNING] Could not create '{targetPath}': {ex.Message}");
+                Console.WriteLine($"[OUTPUT PATH WARNING] Falling back to BaseDirectory.");
+                Console.ResetColor();
+
+                string fallback = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Generated_Files");
+                Directory.CreateDirectory(fallback);
+                _cached = fallback;
+            }
+
             return _cached;
         }
     }

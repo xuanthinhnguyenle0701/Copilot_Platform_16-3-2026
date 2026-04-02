@@ -1,0 +1,70 @@
+﻿{
+  "ProjectName": "AI_HMI_Project",
+  "DeviceName": "PC-System_1",
+  "StartScreenName": "Main_Screen",
+  "Screens": [
+    {
+      "ScreenName": "Main_Screen",
+      "Width": 1024,
+      "Height": 600,
+      "Items": [
+        {
+          "Name": "Button_Start",
+          "Type": "Button",
+          "Properties": {
+            "Left": 30,
+            "Top": 180,
+            "Width": 120,
+            "Height": 40,
+            "Text": "START",
+            "Font.Size": 100,
+"Font.Name": "TimesNewRoman",
+"Font.Bold": true,
+"Font.Italic": true,
+            "Scripts": {
+              "KeyDown": "Tags(\"TAG_StartBtn_01\").Write(1);",
+              "KeyUp": "Tags(\"TAG_StartBtn_01\").Write(0);"
+            }
+          }
+        },
+        {
+          "Name": "Button_Stop",
+          "Type": "Button",
+          "Properties": {
+            "Left": 30,
+            "Top": 230,
+            "Width": 120,
+            "Height": 40,
+            "Text": "STOP",
+            "Scripts": {
+              "KeyDown": "Tags(\"TAG_StopBtn_01\").Write(1);",
+              "KeyUp": "Tags(\"TAG_StopBtn_01\").Write(0);"
+            }
+          }
+        },
+        {
+          "Name": "Signal_Light_Green",
+          "Type": "Circle",
+          "Properties": {
+            "CenterX": 602,
+            "CenterY": 172,
+            "Radius": 12,
+            "Tag": "TAG_Status_Green",
+            "ColorScript": "var status = Tags('TAG_Status_Green').Read(); return status ? HMIRuntime.Math.RGB(0, 255, 0) : HMIRuntime.Math.RGB(255, 0, 0);"
+          }
+        },
+        {
+          "Name": "Signal_Light_Red",
+          "Type": "Circle",
+          "Properties": {
+            "CenterX": 602,
+            "CenterY": 207,
+            "Radius": 12,
+            "Tag": "TAG_Status_Red",
+            "ColorScript": "var status = Tags('TAG_Status_Red').Read(); return status ? HMIRuntime.Math.RGB(0, 255, 0) : HMIRuntime.Math.RGB(255, 0, 0);"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -658,12 +658,13 @@ FodyWeavers.xsd
 # =================================================================
 # CUSTOM TIA COPILOT IGNORE (DO NOT REMOVE)
 # =================================================================
-Genereated_Files/
+Generated_Files/
 Translator_CLI/bin/
 Translator_CLI/obj/
 app_secrets.py
 Translator_CLI/chat_memory.db
 AI_Backend/chat_memory.db
+AI_Backend/__pycache__/
 # 2. CHỈ bỏ qua thư mục ChromaDB nằm trong Translator_CLI
 Translator_CLI/chroma_db_data/
 Translator_CLI/chroma_db_data/chroma.sqlite3
