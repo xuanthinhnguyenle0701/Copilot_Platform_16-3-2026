@@ -267,10 +267,23 @@ namespace TIA_Copilot_CLI
                     HandleChooseDevice(args);
                     break;
 
-                case "hmi-conn": // BỔ SUNG
-                    if (args.Length < 4) { PrintIcon("!", "Cú pháp: tia hmi-conn <HMI_IP> <PLC_IP>", ConsoleColor.Yellow); break; }
-                    _tiaEngine.CreateUnifiedConnectionCombined(_currentDeviceName, args[2], args[3], "HMI_PLC_Conn");
-                    PrintIcon("√", "Đã thiết lập Connection HMI-PLC.", ConsoleColor.Green);
+                case "hmi-conn":
+                    if (args.Length < 4) { 
+                        PrintIcon("!", "Cú pháp: tia hmi-conn <HMI_IP> <PLC_IP>", ConsoleColor.Yellow); 
+                        break; 
+                    }
+                    
+                    PrintIcon("i", "Đang phân tích kết nối...", ConsoleColor.Cyan);
+                    
+                    // Gọi hàm và nhận về tên Connection thực tế đã tạo (ví dụ: HMI_PLC_Conn_2)
+                    string resultName = _tiaEngine.CreateUnifiedConnectionCombined(_currentDeviceName, args[2], args[3]);
+                    
+                    if (resultName.StartsWith("[ERROR]")) {
+                        PrintIcon("×", resultName, ConsoleColor.Red);
+                    } else {
+                        PrintIcon("√", $"Đã tạo kết nối thành công: {resultName}", ConsoleColor.Green);
+                        PrintIcon("i", $"Địa chỉ: {args[2]} <-> {args[3]}", ConsoleColor.DarkGray);
+                    }
                     break;
 
                 // --- NHÓM 3: LOGIC & DATA ---
