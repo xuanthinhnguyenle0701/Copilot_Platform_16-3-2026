@@ -18,6 +18,7 @@ namespace TIA_Copilot_CLI
     {
         private static TIA_V20 _tiaEngine = new TIA_V20();
         private static string _currentProjectName = "None";
+        private static string _currentProjectPath = "None";
         private static string _currentDeviceName = "None";
         private static string _currentDeviceType = "None";
         private static string _currentIp = "0.0.0.0";
@@ -201,6 +202,8 @@ namespace TIA_Copilot_CLI
                     if (_tiaEngine.ConnectToTIA())
                     {
                         _currentProjectName = _tiaEngine.GetProjectName();
+                        _currentProjectPath = _tiaEngine.GetProjectPath();
+                        Console.WriteLine($"   [Path]: {_currentProjectPath}");
                         PrintIcon("√", $"Đã kết nối: {_currentProjectName}", ConsoleColor.Green);
                     }
                     else PrintIcon("×", "Không thấy TIA Portal đang chạy.", ConsoleColor.Red);
@@ -214,6 +217,8 @@ namespace TIA_Copilot_CLI
                         if (_tiaEngine.CreateTIAproject(openPath, "", false))
                         {
                             _currentProjectName = Path.GetFileNameWithoutExtension(openPath);
+                            _currentProjectPath = _tiaEngine.GetProjectPath();
+                            Console.WriteLine($"   [Path]: {_currentProjectPath}");
                             PrintIcon("√", $"Đã mở: {_currentProjectName}", ConsoleColor.Green);
                         }
                     }
@@ -224,7 +229,9 @@ namespace TIA_Copilot_CLI
                     if (_tiaEngine.CreateTIAproject(args[2], args[3], true))
                     {
                         _currentProjectName = args[3];
-                        PrintIcon("√", $"Đã tạo dự án: {args[3]}", ConsoleColor.Green);
+                        _currentProjectPath = _tiaEngine.GetProjectPath();
+                        Console.WriteLine($"   [Path]: {_currentProjectPath}");
+                        PrintIcon("√", $"Đã tạo dự án: {args[3]}", ConsoleColor.Green);                        
                     }
                     break;
 

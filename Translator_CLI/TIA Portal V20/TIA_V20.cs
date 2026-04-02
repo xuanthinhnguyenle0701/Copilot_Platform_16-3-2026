@@ -127,9 +127,22 @@ namespace Middleware_console
 
         public string GetProjectName()
         {
-            if (_project != null)
+            if (_project != null)   
             {
                 try { return _project.Name; } catch { }
+            }
+            return "Unknown";
+        }
+        public string GetProjectPath()
+        {
+            if (_project != null)
+            {
+                try 
+                { 
+                    // .Path trả về đối tượng FileInfo, .FullName lấy đường dẫn tuyệt đối
+                    return _project.Path.FullName; 
+                } 
+                catch { }
             }
             return "Unknown";
         }
