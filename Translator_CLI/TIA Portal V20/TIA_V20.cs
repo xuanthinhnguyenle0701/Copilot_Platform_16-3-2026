@@ -139,10 +139,29 @@ namespace Middleware_console
             {
                 try 
                 { 
-                    // .Path trả về đối tượng FileInfo, .FullName lấy đường dẫn tuyệt đối
-                    return _project.Path.FullName; 
+                    // 1. Lấy đường dẫn file dự án (.ap20)
+                    string projectFilePath = _project.Path.FullName; 
+                    
+                    // 2. Lấy đường dẫn thư mục cha chứa file dự án
+                    string projectDirectory = Path.GetDirectoryName(projectFilePath);
+
+                    if (Directory.Exists(projectDirectory))
+                    {
+                        // 3. Quét tất cả thư mục con (như IM, Logs, src, System... trong hình của Otis)
+                        var subDirectories = Directory.GetDirectories(projectDirectory)
+                                                    .Select(d => Path.GetFileName(d));
+
+                        string dirList = string.Join(", ", subDirectories);
+
+                        return $"Path: {projectFilePath}\nFolders: {dirList}";
+                    }
+                    
+                    return projectFilePath;
                 } 
-                catch { }
+                catch (Exception ex) 
+                { 
+                    return "Error scanning: " + ex.Message; 
+                }
             }
             return "Unknown";
         }
