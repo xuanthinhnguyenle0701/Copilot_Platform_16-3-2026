@@ -41,6 +41,7 @@ namespace Middleware_console
         #region 1. Fields, Constructor & Connectivity Status
         private TiaPortal _tiaPortal;
         private Project _project;
+        private string _userFilesPath = string.Empty;
 
         public TIA_V20() { }
 
@@ -139,31 +140,68 @@ namespace Middleware_console
             {
                 try 
                 { 
-                    // 1. Lấy đường dẫn file dự án (.ap20)
                     string projectFilePath = _project.Path.FullName; 
-                    
-                    // 2. Lấy đường dẫn thư mục cha chứa file dự án
                     string projectDirectory = Path.GetDirectoryName(projectFilePath);
 
                     if (Directory.Exists(projectDirectory))
                     {
-                        // 3. Quét tất cả thư mục con (như IM, Logs, src, System... trong hình của Otis)
-                        var subDirectories = Directory.GetDirectories(projectDirectory)
-                                                    .Select(d => Path.GetFileName(d));
+                        var subDirs = Directory.GetDirectories(projectDirectory);
+                        
+                        // 1. Tìm folder gốc UserFiles
+                        string rootUserFiles = subDirs.FirstOrDefault(d => Path.GetFileName(d).Equals("UserFiles", StringComparison.OrdinalIgnoreCase));
 
-                        string dirList = string.Join(", ", subDirectories);
+                        if (!string.IsNullOrEmpty(rootUserFiles))
+                        {
+                            // 2. GÁN BIẾN: Trỏ sâu vào CustomControls
+                            _userFilesPath = Path.Combine(rootUserFiles, "CustomControls");
 
-                        return $"Path: {projectFilePath}\nFolders: {dirList}";
+                            // 3. TỰ TẠO: Nếu trong UserFiles chưa có folder CustomControls thì tạo mới luôn
+                            if (!Directory.Exists(_userFilesPath))
+                            {
+                                Directory.CreateDirectory(_userFilesPath);
+                                Console.WriteLine("[i] Đã tạo thư mục: UserFiles/CustomControls");
+                            }
+                        }
+
+                        var dirNames = subDirs.Select(d => Path.GetFileName(d));
+                        return $"Path: {projectFilePath}\nFolders: {string.Join(", ", dirNames)}";
                     }
-                    
                     return projectFilePath;
                 } 
-                catch (Exception ex) 
-                { 
-                    return "Error scanning: " + ex.Message; 
-                }
+                catch (Exception ex) { return "Error: " + ex.Message; }
             }
             return "Unknown";
+        }
+
+        // HÀM THÊM FILE VẬT LÝ (KHÔNG DÙNG OPENNESS)
+        public void AddFileToUserFilesFolder(string sourceFilePath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_userFilesPath))
+                {
+                    Console.WriteLine("[-] Lỗi: Chưa xác định được đường dẫn CustomControls. Hãy chạy GetProjectPath trước.");
+                    return;
+                }
+
+                if (!File.Exists(sourceFilePath))
+                {
+                    Console.WriteLine("[-] Lỗi: File nguồn không tồn tại.");
+                    return;
+                }
+
+                // Đường dẫn đích bây giờ là: .../UserFiles/CustomControls/ten_file.ext
+                string fileName = Path.GetFileName(sourceFilePath);
+                string destinationPath = Path.Combine(_userFilesPath, fileName);
+
+                File.Copy(sourceFilePath, destinationPath, true);
+
+                Console.WriteLine($"[SUCCESS] Đã add file '{fileName}' vào UserFiles/CustomControls.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[-] Lỗi thao tác file: {ex.Message}");
+            }
         }
         #endregion
 
