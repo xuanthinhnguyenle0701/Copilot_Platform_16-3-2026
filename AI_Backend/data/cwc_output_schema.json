@@ -1,0 +1,94 @@
+{
+  "_comment": "CWC LOGICAL SCHEMA — AI returns this. C# assembler builds the real manifest.json (Siemens nested format), index.html, code.js, styles.css and packages the zip. AI writes the COMPLETE code.js including WebCC.start() with real method implementations.",
+
+  "cwc_info": {
+    "name": "GaugeMeter",
+    "displayname": "Gauge Meter",
+    "description": "A circular gauge control bound to a PLC analog tag",
+    "keywords": ["gauge", "analog", "meter"]
+  },
+
+  "properties": [
+    {
+      "_comment": "SIMPLE NUMBER PROPERTY — becomes type:number in manifest",
+      "name": "GaugeValue",
+      "type": "number",
+      "default": 20,
+      "description": "Current value shown on the gauge"
+    },
+    {
+      "_comment": "SIMPLE NUMBER PROPERTY",
+      "name": "MinValue",
+      "type": "number",
+      "default": 0,
+      "description": "Minimum scale value"
+    },
+    {
+      "_comment": "SIMPLE NUMBER PROPERTY",
+      "name": "MaxValue",
+      "type": "number",
+      "default": 100,
+      "description": "Maximum scale value"
+    },
+    {
+      "_comment": "SIMPLE BOOLEAN PROPERTY",
+      "name": "PumpStatus",
+      "type": "boolean",
+      "default": false,
+      "description": "Pump running state — true=running, false=stopped"
+    },
+    {
+      "_comment": "SIMPLE STRING PROPERTY",
+      "name": "UnitLabel",
+      "type": "string",
+      "default": "%",
+      "description": "Unit string shown below the numeric value"
+    }
+  ],
+
+  "events": [
+    {
+      "_comment": "EVENT WITH TYPED ARGUMENT — fires from control up to WinCC",
+      "name": "ZoneChanged",
+      "arguments": [
+        { "name": "zoneIndex", "type": "number" }
+      ],
+      "description": "Fired when the gauge value moves into a new zone"
+    },
+    {
+      "_comment": "EVENT WITHOUT ARGUMENT — use empty arguments array",
+      "name": "OnAlarmTriggered",
+      "arguments": [],
+      "description": "Fired when value exceeds MaxValue"
+    }
+  ],
+
+  "methods": [
+    {
+      "_comment": "METHOD WITH PARAMETER — WinCC calls this on the control from outside",
+      "name": "BlinkZone",
+      "parameters": [
+        { "name": "zoneIndex", "type": "number" }
+      ],
+      "description": "Makes the specified zone blink visually"
+    },
+    {
+      "_comment": "METHOD WITHOUT PARAMETER — use empty parameters array",
+      "name": "ResetDisplay",
+      "parameters": [],
+      "description": "Resets the gauge to its minimum visual state"
+    }
+  ],
+
+  "_comment_libs": "List filenames only of third-party libraries needed. Must exist in cwc_assets/ folder. C# copies them to control/js/ in the zip. Use [] if no libraries are needed.",
+  "third_party_libs": ["gauge.min.js"],
+
+  "_comment_html": "COMPLETE index.html. Load ./js/webcc.min.js FIRST in <head>. Load third-party libs in <head> after webcc. Load ./styles.css in <head>. Load ./code.js at END of <body> only.",
+  "html_content": "<!DOCTYPE html>\n<html lang='en'>\n<head>\n  <meta charset='utf-8'>\n  <title>GaugeMeter</title>\n  <meta name='viewport' content='width=device-width, initial-scale=1.0'>\n  <link rel='stylesheet' href='./styles.css'>\n  <script src='./js/webcc.min.js'></script>\n  <script src='./js/gauge.min.js'></script>\n</head>\n<body>\n  <canvas id='gauge'></canvas>\n  <div id='unit-label'></div>\n  <script src='./code.js'></script>\n</body>\n</html>",
+
+  "_comment_js": "COMPLETE code.js. AI writes the FULL file including WebCC.start(). The contract passed to WebCC.start() MUST have: methods as an object with real implementations, events as an array of name strings, properties as an object with default values. All names must EXACTLY match the 'properties'/'events'/'methods' arrays declared above — same case, same spelling.",
+  "js_content": "let gauge;\nlet currentZoneIndex = -1;\n\nfunction initGauge() {\n  gauge = new Gauge(document.getElementById('gauge')).setOptions({\n    pointer: { length: 0.6, strokeWidth: 0.035, color: '#000' },\n    limitMax: true, limitMin: true,\n    staticZones: [\n      { strokeStyle: 'rgba(0,200,0,1)', min: 0, max: 60 },\n      { strokeStyle: 'rgba(255,180,0,1)', min: 60, max: 80 },\n      { strokeStyle: 'rgba(220,0,0,1)', min: 80, max: 100 }\n    ]\n  });\n  gauge.animationSpeed = 11;\n  gauge.setMinValue(WebCC.Properties.MinValue);\n  gauge.maxValue = WebCC.Properties.MaxValue;\n  gauge.set(WebCC.Properties.GaugeValue);\n  document.getElementById('unit-label').textContent = WebCC.Properties.UnitLabel;\n}\n\nfunction setProperty(data) {\n  switch (data.key) {\n    case 'GaugeValue': gauge.set(data.value); break;\n    case 'MinValue':   gauge.setMinValue(data.value); break;\n    case 'MaxValue':   gauge.maxValue = data.value; break;\n    case 'UnitLabel':  document.getElementById('unit-label').textContent = data.value; break;\n  }\n}\n\nWebCC.start(\n  function(result) {\n    if (result) {\n      initGauge();\n      WebCC.onPropertyChanged.subscribe(setProperty);\n    } else {\n      console.error('[CWC] WinCC connection failed.');\n    }\n  },\n  {\n    methods: {\n      BlinkZone: function(zoneIndex) { /* blink logic here */ },\n      ResetDisplay: function() { gauge.set(WebCC.Properties.MinValue); }\n    },\n    events: ['ZoneChanged', 'OnAlarmTriggered'],\n    properties: {\n      GaugeValue: 20,\n      MinValue: 0,\n      MaxValue: 100,\n      PumpStatus: false,\n      UnitLabel: '%'\n    }\n  },\n  [],\n  10000\n);",
+
+  "_comment_css": "COMPLETE styles.css content",
+  "css_content": "html, body { margin: 0; height: 100%; }\nbody { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; }\n#gauge { width: 100%; position: absolute; bottom: 0; }\n#unit-label { position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 1.2em; }"
+}

@@ -985,3 +985,424 @@ namespace TIA_Copilot_CLI
         }
     }
 }
+
+// ==========================================================================
+// CWC SECTION — Models, Normalizer, and Generator
+// Handles AI logical JSON → zip package ready to import into TIA Portal
+// Manifest format follows real Siemens CWC schema (mver 1.2.0)
+// ==========================================================================
+namespace TIA_Copilot_CLI
+{
+    // -----------------------------------------------------------------------
+    // DATA MODELS
+    // -----------------------------------------------------------------------
+    public class CwcParamInfo
+    {
+        public string Name { get; set; }
+        public string Type { get; set; }  // "number" | "boolean" | "string"
+    }
+
+    public class CwcPropertyInfo
+    {
+        public string Name        { get; set; }
+        public string Type        { get; set; }   // "number" | "boolean" | "string"
+        public JToken Default     { get; set; }   // preserved as JToken to handle any JSON type
+        public string Description { get; set; }
+    }
+
+    public class CwcEventInfo
+    {
+        public string Name                  { get; set; }
+        public List<CwcParamInfo> Arguments { get; set; } = new List<CwcParamInfo>();
+        public string Description           { get; set; }
+    }
+
+    public class CwcMethodInfo
+    {
+        public string Name                   { get; set; }
+        public List<CwcParamInfo> Parameters { get; set; } = new List<CwcParamInfo>();
+        public string Description            { get; set; }
+    }
+
+    public class CwcScreenData
+    {
+        public string Name           { get; set; }
+        public string DisplayName    { get; set; }
+        public string Description    { get; set; }
+        public List<string> Keywords { get; set; } = new List<string>();
+        public List<CwcPropertyInfo> Properties    { get; set; } = new List<CwcPropertyInfo>();
+        public List<CwcEventInfo>    Events        { get; set; } = new List<CwcEventInfo>();
+        public List<CwcMethodInfo>   Methods       { get; set; } = new List<CwcMethodInfo>();
+        public List<string>          ThirdPartyLibs { get; set; } = new List<string>();
+        public string HtmlContent    { get; set; }
+        public string JsContent      { get; set; }   // complete code.js including WebCC.start()
+        public string CssContent     { get; set; }
+    }
+
+    // -----------------------------------------------------------------------
+    // NORMALIZER: AI logical JSON → CwcScreenData
+    // -----------------------------------------------------------------------
+    public static class CwcDataNormalizer
+    {
+        public static CwcScreenData Normalize(JObject root)
+        {
+            var data = new CwcScreenData();
+
+            var info = root["cwc_info"];
+            if (info != null)
+            {
+                data.Name        = info["name"]?.ToString()        ?? "AI_Control";
+                data.DisplayName = info["displayname"]?.ToString() ?? data.Name;
+                data.Description = info["description"]?.ToString() ?? "";
+
+                if (info["keywords"] is JArray kw)
+                    foreach (var k in kw) data.Keywords.Add(k.ToString());
+            }
+
+            // Properties
+            if (root["properties"] is JArray props)
+            {
+                foreach (JObject p in props)
+                {
+                    if (!p.ContainsKey("name") || !p.ContainsKey("type")) continue;
+                    data.Properties.Add(new CwcPropertyInfo
+                    {
+                        Name        = p["name"]?.ToString(),
+                        Type        = p["type"]?.ToString()        ?? "number",
+                        Default     = p["default"],   // keep as JToken
+                        Description = p["description"]?.ToString() ?? ""
+                    });
+                }
+            }
+
+            // Events (with optional arguments)
+            if (root["events"] is JArray events)
+            {
+                foreach (JObject e in events)
+                {
+                    if (!e.ContainsKey("name")) continue;
+                    var ev = new CwcEventInfo
+                    {
+                        Name        = e["name"].ToString(),
+                        Description = e["description"]?.ToString() ?? ""
+                    };
+                    if (e["arguments"] is JArray args)
+                        foreach (JObject a in args)
+                            ev.Arguments.Add(new CwcParamInfo
+                            {
+                                Name = a["name"]?.ToString() ?? "",
+                                Type = a["type"]?.ToString() ?? "number"
+                            });
+                    data.Events.Add(ev);
+                }
+            }
+
+            // Methods (with optional parameters)
+            if (root["methods"] is JArray methods)
+            {
+                foreach (JObject m in methods)
+                {
+                    if (!m.ContainsKey("name")) continue;
+                    var method = new CwcMethodInfo
+                    {
+                        Name        = m["name"].ToString(),
+                        Description = m["description"]?.ToString() ?? ""
+                    };
+                    if (m["parameters"] is JArray parms)
+                        foreach (JObject par in parms)
+                            method.Parameters.Add(new CwcParamInfo
+                            {
+                                Name = par["name"]?.ToString() ?? "",
+                                Type = par["type"]?.ToString() ?? "number"
+                            });
+                    data.Methods.Add(method);
+                }
+            }
+
+            // Third-party library filenames
+            if (root["third_party_libs"] is JArray libs)
+                foreach (var lib in libs) data.ThirdPartyLibs.Add(lib.ToString());
+
+            data.HtmlContent = root["html_content"]?.ToString() ?? "";
+            data.JsContent   = root["js_content"]?.ToString()   ?? "";   // complete — no injection needed
+            data.CssContent  = root["css_content"]?.ToString()  ?? "";
+
+            return data;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // GENERATOR: CwcScreenData → complete zip package (Siemens mver 1.2.0 format)
+    // -----------------------------------------------------------------------
+    public static class CwcGenerator
+    {
+        // Cached path to cwc_assets/ — resolved once via GetAssetsDir()
+        private static string _assetsDir = null;
+
+        /// <summary>
+        /// Resolves the cwc_assets/ folder using the same walk-up strategy as OutputPaths.
+        /// Looks for Translator_CLI/cwc_assets/ first, falls back to BaseDirectory/cwc_assets/.
+        /// Prints the resolved path on first call so the user knows exactly where to place files.
+        /// </summary>
+        private static string GetAssetsDir()
+        {
+            if (_assetsDir != null) return _assetsDir;
+
+            DirectoryInfo dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            while (dir != null && !dir.Name.Equals("Translator_CLI", StringComparison.OrdinalIgnoreCase))
+                dir = dir.Parent;
+
+            string root = dir != null
+                ? dir.FullName
+                : AppDomain.CurrentDomain.BaseDirectory;
+
+            _assetsDir = Path.Combine(root, "cwc_assets");
+
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"[CWC] Static assets folder: {_assetsDir}");
+            Console.ResetColor();
+
+            if (!Directory.Exists(_assetsDir))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[CWC ERROR] cwc_assets/ folder does not exist!");
+                Console.WriteLine($"  Create it at: {_assetsDir}");
+                Console.WriteLine($"  Required files inside:");
+                Console.WriteLine($"    webcc.min.js          (Siemens SWAC engine)");
+                Console.WriteLine($"    webcc.d.ts            (TypeScript declarations)");
+                Console.WriteLine($"    CWC_manifest_Schema.json (Siemens manifest schema)");
+                Console.WriteLine($"    logo.ico              (default icon)");
+                Console.WriteLine($"    gauge.min.js, ...     (optional third-party libs)");
+                Console.ResetColor();
+            }
+
+            return _assetsDir;
+        }
+
+        public static void GenerateAndSave(CwcScreenData data)
+        {
+            try
+            {
+                // 1. Generate GUID — becomes both the zip filename and the manifest type field
+                string guidRaw  = Guid.NewGuid().ToString().ToUpper(); // XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+                string guidFull = $"{{{guidRaw}}}";                    // {XXXXXXXX-...} for zip name
+                string safeName = string.IsNullOrWhiteSpace(data.Name) ? "AI_Control" : data.Name;
+
+                // 2. Build manifest.json in real Siemens mver 1.2.0 format
+                string manifestJson = BuildManifestJson(data, guidRaw, safeName);
+
+                // 3. Package zip
+                string zipFileName = $"{guidFull}.zip";
+                string outputDir   = OutputPaths.GetGeneratedDir();
+                string zipPath     = Path.Combine(outputDir, zipFileName);
+
+                using (var zipStream = new FileStream(zipPath, FileMode.Create))
+                using (var archive   = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Create))
+                {
+                    // Root files
+                    WriteZipEntry(archive, "manifest.json", manifestJson);
+                    CopyStaticAsset(archive, "CWC_manifest_Schema.json", "CWC_manifest_Schema.json");
+
+                    // assets/ — icon
+                    CopyStaticAssetWithFallback(archive, new[] { "logo.ico", "logo.png", "icon.png" }, "assets/logo.ico");
+
+                    // control/ — generated files
+                    WriteZipEntry(archive, "control/index.html", data.HtmlContent);
+                    WriteZipEntry(archive, "control/code.js",    data.JsContent);
+                    WriteZipEntry(archive, "control/styles.css", data.CssContent);
+
+                    // control/ — static dev helpers
+                    CopyStaticAsset(archive, "webcc.d.ts", "control/webcc.d.ts");
+
+                    // control/js/ — always include webcc.min.js
+                    CopyStaticAsset(archive, "webcc.min.js", "control/js/webcc.min.js");
+
+                    // control/js/ — third-party libraries AI declared
+                    foreach (string lib in data.ThirdPartyLibs)
+                        CopyStaticAsset(archive, lib, $"control/js/{lib}");
+                }
+
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"\n[SUCCESS] CWC package exported: {zipFileName}");
+                Console.WriteLine($" Control    : {safeName} ({data.DisplayName})");
+                Console.WriteLine($" GUID       : {guidFull}");
+                Console.WriteLine($" Properties : {data.Properties.Count} | Events: {data.Events.Count} | Methods: {data.Methods.Count}");
+                if (data.ThirdPartyLibs.Count > 0)
+                    Console.WriteLine($" Libraries  : {string.Join(", ", data.ThirdPartyLibs)}");
+                Console.ResetColor();
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine($" Drop into TIA Portal: UserFiles/CustomControls/");
+                Console.ResetColor();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"\n[CWC GENERATOR ERROR]: {ex.Message}");
+                Console.ResetColor();
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // Build manifest.json in real Siemens mver 1.2.0 nested format
+        // -----------------------------------------------------------------------
+        private static string BuildManifestJson(CwcScreenData data, string guidRaw, string safeName)
+        {
+            // --- Properties object (keyed by name) ---
+            var propsObj = new JObject();
+            foreach (var p in data.Properties)
+            {
+                var propEntry = new JObject();
+                propEntry["type"] = p.Type;
+                if (p.Default != null)
+                    propEntry["default"] = p.Default;
+                if (!string.IsNullOrEmpty(p.Description))
+                    propEntry["description"] = p.Description;
+                propsObj[p.Name] = propEntry;
+            }
+
+            // --- Methods object (keyed by name, with parameters) ---
+            var methodsObj = new JObject();
+            foreach (var m in data.Methods)
+            {
+                var methodEntry = new JObject();
+                if (m.Parameters.Count > 0)
+                {
+                    var paramsObj = new JObject();
+                    foreach (var par in m.Parameters)
+                        paramsObj[par.Name] = new JObject { ["type"] = par.Type };
+                    methodEntry["parameters"] = paramsObj;
+                }
+                if (!string.IsNullOrEmpty(m.Description))
+                    methodEntry["description"] = m.Description;
+                methodsObj[m.Name] = methodEntry;
+            }
+
+            // --- Events object (keyed by name, with arguments) ---
+            var eventsObj = new JObject();
+            foreach (var e in data.Events)
+            {
+                var eventEntry = new JObject();
+                if (e.Arguments.Count > 0)
+                {
+                    var argsObj = new JObject();
+                    foreach (var arg in e.Arguments)
+                        argsObj[arg.Name] = new JObject { ["type"] = arg.Type };
+                    eventEntry["arguments"] = argsObj;
+                }
+                if (!string.IsNullOrEmpty(e.Description))
+                    eventEntry["description"] = e.Description;
+                eventsObj[e.Name] = eventEntry;
+            }
+
+            // --- Keywords array ---
+            var keywordsArr = new JArray();
+            if (data.Keywords.Count > 0)
+                foreach (var k in data.Keywords) keywordsArr.Add(k);
+            else
+                keywordsArr.Add(safeName);
+
+            // --- Assemble the full manifest in Siemens mver 1.2.0 format ---
+            var manifest = new JObject
+            {
+                ["$schema"] = "./CWC_manifest_Schema.json",
+                ["mver"]    = "1.2.0",
+                ["control"] = new JObject
+                {
+                    ["identity"] = new JObject
+                    {
+                        ["name"]        = safeName,
+                        ["version"]     = "1.0",
+                        ["displayname"] = string.IsNullOrWhiteSpace(data.DisplayName) ? safeName : data.DisplayName,
+                        ["icon"]        = "./assets/logo.ico",
+                        ["type"]        = $"guid://{guidRaw}",
+                        ["start"]       = "./control/index.html"
+                    },
+                    ["metadata"] = new JObject
+                    {
+                        ["author"]   = "TIA Copilot AI",
+                        ["keywords"] = keywordsArr
+                    },
+                    ["contracts"] = new JObject
+                    {
+                        ["api"] = new JObject
+                        {
+                            ["methods"]    = methodsObj,
+                            ["events"]     = eventsObj,
+                            ["properties"] = propsObj
+                        }
+                    }
+                }
+            };
+
+            return manifest.ToString(Newtonsoft.Json.Formatting.Indented);
+        }
+
+        // -----------------------------------------------------------------------
+        // Helpers
+        // -----------------------------------------------------------------------
+        private static void WriteZipEntry(System.IO.Compression.ZipArchive archive, string entryPath, string content)
+        {
+            var entry = archive.CreateEntry(entryPath, System.IO.Compression.CompressionLevel.Optimal);
+            // encoderShouldEmitUTF8Identifier: false → no BOM
+            // TIA Portal's JSON parser rejects files that start with the UTF-8 BOM character
+            using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            writer.Write(content);
+        }
+
+        private static void CopyStaticAsset(System.IO.Compression.ZipArchive archive, string assetFileName, string entryPath)
+        {
+            string sourcePath = Path.Combine(GetAssetsDir(), assetFileName);
+            if (!File.Exists(sourcePath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[CWC ERROR] Missing static asset: {assetFileName}");
+                Console.WriteLine($"  Expected at: {sourcePath}");
+                Console.WriteLine($"  Place the file in the cwc_assets/ folder and try again.");
+                Console.ResetColor();
+                // Throw so the zip generation aborts cleanly rather than producing a broken zip
+                throw new FileNotFoundException(
+                    $"Required CWC static asset not found: {assetFileName}", sourcePath);
+            }
+
+            var entry = archive.CreateEntry(entryPath, System.IO.Compression.CompressionLevel.Optimal);
+            using var entryStream  = entry.Open();
+            using var sourceStream = File.OpenRead(sourcePath);
+            sourceStream.CopyTo(entryStream);
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"[CWC] Packed: {assetFileName} → {entryPath}");
+            Console.ResetColor();
+        }
+
+        /// <summary>
+        /// Tries multiple filenames in order (logo.ico → logo.png → icon.png) and uses first found.
+        /// Throws if none are found — the icon is mandatory for TIA Portal Toolbox display.
+        /// </summary>
+        private static void CopyStaticAssetWithFallback(System.IO.Compression.ZipArchive archive,
+            string[] candidates, string entryPath)
+        {
+            foreach (string candidate in candidates)
+            {
+                string sourcePath = Path.Combine(GetAssetsDir(), candidate);
+                if (File.Exists(sourcePath))
+                {
+                    var entry = archive.CreateEntry(entryPath, System.IO.Compression.CompressionLevel.Optimal);
+                    using var entryStream  = entry.Open();
+                    using var sourceStream = File.OpenRead(sourcePath);
+                    sourceStream.CopyTo(entryStream);
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.WriteLine($"[CWC] Packed: {candidate} → {entryPath}");
+                    Console.ResetColor();
+                    return;
+                }
+            }
+
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"[CWC ERROR] No icon file found in cwc_assets/");
+            Console.WriteLine($"  Tried: {string.Join(", ", candidates)}");
+            Console.WriteLine($"  Place one of these files in: {GetAssetsDir()}");
+            Console.ResetColor();
+            throw new FileNotFoundException(
+                $"No icon found. Tried: {string.Join(", ", candidates)}", GetAssetsDir());
+        }
+    }
+}

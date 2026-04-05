@@ -37,10 +37,20 @@ def get_hmi_system_prompt():
     except:
         return "You are an expert Siemens WinCC Unified HMI screen designer."
 
+def get_cwc_system_prompt():
+    try:
+        with open("data/cwc_siemens_base.md", "r", encoding="utf-8") as f:
+            return f.read().split("# [PART 2] RAG_CONTEXT")[0]
+    except:
+        return "You are an expert Siemens WinCC Unified Custom Web Control developer."
+
 def get_output_schema(target_block_type="AUTO"):
     if target_block_type == "HMI_SCREEN":
         schema_file = "data/siemenshmi_output_schema.json"
         fallback = '{"screen_info": {"name": "AI_Screen", "width": 1024, "height": 600}, "items": [], "global_tags": []}'
+    elif target_block_type == "CWC_SCREEN":
+        schema_file = "data/cwc_output_schema.json"
+        fallback = '{"cwc_info": {"name": "AI_Control", "displayname": "AI Control", "description": ""}, "properties": [], "events": [], "methods": [], "third_party_libs": [], "html_content": "", "js_content": "", "css_content": ""}'
     else:
         schema_file = "data/siemensplc_output_schema.json"
         fallback = """
@@ -190,7 +200,40 @@ def main():
         kb_context = ""
         spec_context = ""
 
-        if target_block_type == "HMI_SCREEN":
+        if target_block_type == "CWC_SCREEN":
+            # --- CWC PATH: retrieve from cwc_standard_kb ---
+            # Smart filter: match query keywords to chunk types
+            # PROPERTY covers property declaration rules
+            # EVENT    covers event/method patterns
+            # UI       covers visual element patterns (gauge, button, chart, table)
+            # LIFECYCLE covers WebCC API lifecycle patterns
+            cwc_search_kwargs = {"k": 5}
+
+            query_upper = user_query.upper()
+            cwc_filter = {}
+            if any(w in query_upper for w in ["GAUGE", "CHART", "TABLE", "BUTTON", "INDICATOR", "BAR", "LED", "DISPLAY"]):
+                cwc_filter = {"type": {"$in": ["UI", "LIFECYCLE"]}}
+            elif any(w in query_upper for w in ["PROPERTY", "TAG", "BOOL", "NUMBER", "STRING", "REAL", "INT"]):
+                cwc_filter = {"type": {"$in": ["PROPERTY", "EVENT"]}}
+            elif any(w in query_upper for w in ["EVENT", "METHOD", "FIRE", "CLICK", "PRESS"]):
+                cwc_filter = {"type": {"$in": ["EVENT", "UI"]}}
+
+            if cwc_filter:
+                cwc_search_kwargs["filter"] = cwc_filter
+
+            try:
+                cwc_kb_db = Chroma(
+                    persist_directory=app_secrets.CHROMA_DB_PATH,
+                    embedding_function=embeddings,
+                    collection_name="cwc_standard_kb"
+                )
+                cwc_retriever = cwc_kb_db.as_retriever(search_kwargs=cwc_search_kwargs)
+                cwc_docs = cwc_retriever.invoke(user_query)
+                kb_context = "\n\n".join([d.page_content for d in cwc_docs])
+            except Exception:
+                kb_context = ""  # cwc_standard_kb not ingested yet — prompt still works without it
+
+        elif target_block_type == "HMI_SCREEN":
             # --- HMI PATH: retrieve from hmi_standard_kb ---
             # Smart filter: query drives which object categories to pull
             # WIDGET covers library objects (Tank/Valve/Motor/Pipe/shapes)
@@ -262,7 +305,7 @@ def main():
         
         # region Prompt assembly — branches on target_block_type
         block_type_constraint = ""
-        if target_block_type not in ["AUTO", "HMI_SCREEN"]:
+        if target_block_type not in ["AUTO", "HMI_SCREEN", "CWC_SCREEN"]:
             block_type_constraint = f"""
             ### HARD CONSTRAINT - FORCED BLOCK TYPE:
             You MUST set the "type" field to "{target_block_type}".
@@ -285,7 +328,99 @@ def main():
         system_rules = get_system_prompt_part1()
         target_schema = get_output_schema(target_block_type)
 
-        if target_block_type == "HMI_SCREEN":
+        if target_block_type == "CWC_SCREEN":
+            cwc_system_rules = get_cwc_system_prompt()
+
+            cwc_tags_constraint = ""
+            if user_tags:
+                cwc_tags_constraint = f"""
+        ### 🎯 AVAILABLE PLC TAGS — USE THESE AS PROPERTY NAMES:
+        The following tags exist on the PLC. When declaring properties in the "properties" array,
+        name them after the relevant tags below. The same names MUST appear in your js_content
+        when calling WebCC.onPropertyChanged and WebCC.Properties.
+        DO NOT invent tag names that are not in this list.
+
+        [AVAILABLE TAGS]:
+        {user_tags}
+                """
+
+            full_prompt = f"""
+        {cwc_system_rules}
+
+        {cwc_tags_constraint}
+
+        ### 🛑 PROJECT OPERATIONAL REQUIREMENTS (MUST FOLLOW):
+        {spec_context}
+
+        ### 📚 CWC OBJECT REFERENCE (RETRIEVED FROM KNOWLEDGE BASE):
+        Use these rules to select correct property types, event patterns, and UI element implementations.
+        {kb_context}
+
+        ### CHAT HISTORY:
+        {chat_history_str}
+
+        ### REQUIRED JSON OUTPUT SCHEMA:
+        You MUST return JSON that EXACTLY matches this structure.
+        Remove all "_comment" and "_comment_*" fields from your output — they are reference only.
+
+        {target_schema}
+
+        ### ⚙️ CRITICAL RULES (VIOLATIONS BREAK THE CONTROL):
+
+        1. **WebCC.start() — WRITE IT COMPLETELY IN js_content:**
+           - js_content must contain the FULL WebCC.start() call.
+           - The contract object inside WebCC.start() MUST match your declared arrays:
+             - methods: object with REAL function implementations (not empty stubs)
+             - events: array of event name strings exactly as declared in "events"
+             - properties: object with default values exactly as declared in "properties"
+           - Pattern: WebCC.start(function(result){{ if(result){{ init(); WebCC.onPropertyChanged.subscribe(setProperty); }} }}, {{ methods:{{...}}, events:[...], properties:{{...}} }}, [], 10000);
+
+        2. **NAME CONSISTENCY (CRITICAL — case-sensitive):**
+           - Every name in "properties" array → used in WebCC.Properties.Name AND in the properties object inside WebCC.start()
+           - Every name in "events" array → used in WebCC.Events.fire("Name") AND in events array inside WebCC.start()
+           - Every name in "methods" array → implemented as a function in methods object inside WebCC.start()
+           - One mismatch silently breaks TIA Portal tag binding.
+
+        3. **PROPERTY TYPES:**
+           - "boolean" → BOOL PLC tags. Default value must be false (not "false").
+           - "number"  → INT, REAL, DINT tags. Default value must be a number (not string).
+           - "string"  → STRING tags. Default value must be "" (empty string).
+
+        4. **HTML STRUCTURE (MANDATORY LOAD ORDER):**
+           - In <head>: webcc.min.js FIRST, then third-party libs, then styles.css
+           - At END of <body>: code.js ONLY
+           - No inline JS anywhere in html_content.
+           - Give every interactive element a unique id attribute.
+
+        5. **THIRD-PARTY LIBRARIES:**
+           - Only declare in "third_party_libs" if user explicitly requests one OR the UI requires it.
+           - Use filenames only (e.g. "gauge.min.js"). File must exist in cwc_assets/ folder.
+           - If none needed: "third_party_libs": []
+           - Load in html_content as: <script src='./js/gauge.min.js'></script>
+
+        6. **DESIGN MODE GUARD (MUST INCLUDE):**
+           - Inside the WebCC.start() success callback, check design mode first:
+             if (WebCC.isDesignMode) {{ showPlaceholder(); return; }}
+           - showPlaceholder() renders a static labeled preview of the control.
+
+        7. **RESPONSIVE SIZING:**
+           - body: width:100%; height:100%; overflow:hidden; margin:0
+           - Use %, flex, or canvas resize logic — no hardcoded px on outer containers.
+
+        8. **CSS STYLE:**
+           - Default: dark industrial (#1a1a2e background, high contrast text).
+           - Unless the user requests a specific color scheme.
+
+        9. **cwc_info NAME FIELD:**
+           - PascalCase, underscores for spaces. Example: "Tank_Level_Monitor".
+           - This becomes the control's display name in TIA Portal Toolbox.
+
+        ### USER REQUEST:
+        {user_query}
+
+        GENERATE JSON ONLY. No markdown, no explanation, no code fences.
+        """
+        elif target_block_type == "HMI_SCREEN":
             hmi_system_rules = get_hmi_system_prompt()
 
             hmi_tags_constraint = ""

@@ -130,12 +130,13 @@ namespace TIA_Copilot_CLI
                                 //PrintIcon("i", "Tính năng 'check-data' đang được thi công...", ConsoleColor.Cyan);
                                 await CommandHandler.HandleCheckDataAsync(sessionId);
                                 break;
-                                
+
 
                             case "fb":
                             case "fc":
                             case "ob":
                             case "scada":
+                            case "cwc":
                                 string targetType = CommandHandler.GetBlockType(chatAction);
                                 string query = args.Length > 2 ? args[2] : "";
                                 if (args.Length > 3) sessionId = args[3];
@@ -231,7 +232,7 @@ namespace TIA_Copilot_CLI
                         _currentProjectName = args[3];
                         _currentProjectPath = _tiaEngine.GetProjectPath();
                         Console.WriteLine($"   [Path]: {_currentProjectPath}");
-                        PrintIcon("√", $"Đã tạo dự án: {args[3]}", ConsoleColor.Green);                        
+                        PrintIcon("√", $"Đã tạo dự án: {args[3]}", ConsoleColor.Green);
                     }
                     break;
 
@@ -258,7 +259,7 @@ namespace TIA_Copilot_CLI
                     }
                     else
                     {
-                       
+
                         HandleCreateDeviceWizard();
                     }
                     break;
@@ -268,19 +269,23 @@ namespace TIA_Copilot_CLI
                     break;
 
                 case "hmi-conn":
-                    if (args.Length < 4) { 
-                        PrintIcon("!", "Cú pháp: tia hmi-conn <HMI_IP> <PLC_IP>", ConsoleColor.Yellow); 
-                        break; 
+                    if (args.Length < 4)
+                    {
+                        PrintIcon("!", "Cú pháp: tia hmi-conn <HMI_IP> <PLC_IP>", ConsoleColor.Yellow);
+                        break;
                     }
-                    
+
                     PrintIcon("i", "Đang phân tích kết nối...", ConsoleColor.Cyan);
-                    
+
                     // Gọi hàm và nhận về tên Connection thực tế đã tạo (ví dụ: HMI_PLC_Conn_2)
                     string resultName = _tiaEngine.CreateUnifiedConnectionCombined(_currentDeviceName, args[2], args[3]);
-                    
-                    if (resultName.StartsWith("[ERROR]")) {
+
+                    if (resultName.StartsWith("[ERROR]"))
+                    {
                         PrintIcon("×", resultName, ConsoleColor.Red);
-                    } else {
+                    }
+                    else
+                    {
                         PrintIcon("√", $"Đã tạo kết nối thành công: {resultName}", ConsoleColor.Green);
                         PrintIcon("i", $"Địa chỉ: {args[2]} <-> {args[3]}", ConsoleColor.DarkGray);
                     }
@@ -305,6 +310,24 @@ namespace TIA_Copilot_CLI
                     break;
 
                 // --- NHÓM 4: SCADA & GRAPHICS ---
+                case "cwc-deploy":                   
+                    _tiaEngine.GetProjectPath(); 
+                    string importPath = GetPathOrOpenDialog(args, 2, "All files (*.*)|*.*|Zip files (*.zip)|*.zip|Widget files (*.vwdgt)|*.vwdgt");
+                    if (!string.IsNullOrEmpty(importPath))
+                    {
+                        PrintIcon("i", $"Đang Import vào CustomControls: {Path.GetFileName(importPath)}...", ConsoleColor.Cyan);
+                        
+                        // 3. Thực hiện copy vật lý vào UserFiles/CustomControls
+                        _tiaEngine.AddFileToUserFilesFolder(importPath);
+                        
+                        PrintIcon("√", "Đã Import vật lý thành công.", ConsoleColor.Green);
+                    }
+                    else
+                    {
+                        PrintIcon("!", "Không có file nào được chọn để Import.", ConsoleColor.Yellow);
+                    }
+                    break;
+
                 case "draw":
                     string jPath = GetPathOrOpenDialog(args, 2, "JSON SCADA (*.json)|*.json");
                     if (!string.IsNullOrEmpty(jPath))
@@ -617,7 +640,7 @@ namespace TIA_Copilot_CLI
             Console.WriteLine("\n[AI MODULE]");
             Console.ResetColor();
 
-            Console.WriteLine("  chat <FB/FC/OB/SCADA> \"<Query>\" [SessionID]  : Calling AI");
+            Console.WriteLine("  chat <FB/FC/OB/SCADA/CWC> \"<Query>\" [SessionID]  : Calling AI");
             Console.WriteLine("  chat load-tags \"<Đường_dẫn_File_Excel/CSV>\"  : Upload desire tags");
             Console.WriteLine("  chat load-spec \"<Đường_dẫn_File_Spec.txt>\"   : Upload system spec");
             Console.WriteLine("  chat clear-data                                : clear uploaded tags/system spec");
@@ -654,6 +677,7 @@ namespace TIA_Copilot_CLI
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("\n[14-16: WINCC UNIFIED & SCADA]");
             Console.ResetColor();
+            Console.WriteLine("  tia cwc-deploy [Path]       : Deploy CWC zip → project CustomControls. VD: tia cwc-deploy");
             Console.WriteLine("  tia draw <Path>             : Vẽ màn hình từ JSON. VD: tia draw \"screen.json\"");
             Console.WriteLine("  tia img <Path/Folder>       : Import ảnh đơn hoặc thư mục. VD: tia img \"D:\\Assets\"");
             Console.WriteLine("  tia export <ScreenName>     : Xuất Symbol Path. VD: tia export \"MainScreen\"");
@@ -707,7 +731,7 @@ namespace TIA_Copilot_CLI
                 {
                     var json = File.ReadAllText(catalogPath);
                     var catalogData = JsonConvert.DeserializeObject<PlcCatalogWrapper>(json);
-                    
+
                     // BƯỚC 1: CHỌN VÙNG THIẾT BỊ
                     Console.WriteLine("\n--- CHỌN DÒNG THIẾT BỊ ---");
                     Console.WriteLine(" 1. SIMATIC S7-1200");

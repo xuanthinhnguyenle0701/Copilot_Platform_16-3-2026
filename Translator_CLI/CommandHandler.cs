@@ -22,6 +22,7 @@ namespace TIA_Copilot_CLI
             if (up == "FB" || up == "FUNCTION_BLOCK") return "FUNCTION_BLOCK";
             if (up == "FC" || up == "FUNCTION") return "FUNCTION";
             if (up == "SCADA" || up == "HMI") return "HMI_SCREEN";
+            if (up == "CWC") return "CWC_SCREEN";
             return "AUTO";
         }
 
@@ -59,8 +60,8 @@ namespace TIA_Copilot_CLI
 
             string userTagsContent = "";
 
-            // Nếu là OB, tự động đi mò file Cache xem có tồn tại không
-            if (targetType == "ORGANIZATION_BLOCK" || targetType == "HMI_SCREEN")
+            // Nếu là OB, HMI hoặc CWC, tự động đi mò file Cache xem có tồn tại không
+            if (targetType == "ORGANIZATION_BLOCK" || targetType == "HMI_SCREEN" || targetType == "CWC_SCREEN")
             {
                 if (File.Exists(TagCacheFile))
                 {
@@ -588,25 +589,25 @@ namespace TIA_Copilot_CLI
                 {
                     int startIndex = jsonResponse.IndexOf('{');
                     int endIndex = jsonResponse.LastIndexOf('}');
- 
+
                     if (startIndex != -1 && endIndex != -1 && endIndex > startIndex)
                     {
                         // Cắt lấy đúng phần lõi, mọi dấu phẩy hay text dư bên ngoài sẽ bị vứt bỏ
                         jsonResponse = jsonResponse.Substring(startIndex, endIndex - startIndex + 1);
                     }
- 
+
                     jsonResponse = Regex.Replace(jsonResponse, @"\}\s*,\s*""global_tags""", @", ""global_tags""");
                     jsonResponse = Regex.Replace(jsonResponse, @"\}\s*""global_tags""", @", ""global_tags""");
- 
+
                     JObject responseObj = JObject.Parse(jsonResponse);
- 
+
                     if (responseObj.ContainsKey("token_usage"))
                     {
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine($"\n [TOKEN MONITOR] Prompt's token amount: {responseObj["token_usage"]} tokens");
                         Console.ResetColor();
                     }
- 
+
                     if (responseObj.ContainsKey("status") && responseObj["status"].ToString() == "error")
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -618,8 +619,14 @@ namespace TIA_Copilot_CLI
                     else
                     {
                         // ROUTING GATE: Detect response type from JSON structure.
-                        // HMI responses contain "screen_info". SCL responses contain "block_info" or "iec_61131_3_code".
-                        if (responseObj.ContainsKey("screen_info"))
+                        // CWC responses contain "cwc_info". HMI responses contain "screen_info".
+                        // SCL responses contain "block_info" or "iec_61131_3_code".
+                        if (responseObj.ContainsKey("cwc_info"))
+                        {
+                            var cwcData = CwcDataNormalizer.Normalize(responseObj);
+                            CwcGenerator.GenerateAndSave(cwcData);
+                        }
+                        else if (responseObj.ContainsKey("screen_info"))
                         {
                             var hmiData = HmiDataNormalizer.Normalize(responseObj);
                             HmiGenerator.GenerateAndSave(hmiData);
@@ -635,7 +642,7 @@ namespace TIA_Copilot_CLI
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"\n[ERROR C# PARSE JSON]: {ex.Message}");
- 
+
                     Console.ForegroundColor = ConsoleColor.DarkGray;
                     Console.WriteLine("\n--- RAW DATA SENT FROM AI ---");
                     Console.WriteLine(jsonResponse);
