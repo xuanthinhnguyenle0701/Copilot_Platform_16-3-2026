@@ -780,10 +780,16 @@ private string GetCombinedDeviceName(Device device)
                         {
                             typeId = "HmiText"; 
                         }
+                        else if (typeId.Contains("HmiToggleSwitch")) 
+                        {
+                            // LUÔN LUÔN tạo bằng cái tên gốc này
+                            typeId = "HmiToggleSwitch"; 
+                        }
                         else if (!typeId.StartsWith("Hmi")) 
                         {
                             typeId = "Hmi" + typeId;
                         }
+                       
 
                         // Gọi lệnh Create
                         try 
@@ -923,7 +929,59 @@ private string GetCombinedDeviceName(Device device)
                                                 ? item.Properties["Text"].ToString() : "Option 1";
                                 try { newItemPart.SetAttribute("Text", itemText); } catch { }
                             }
-                            
+                            else if (typeId == "HmiToggleSwitch")
+                            {
+                                try 
+                                {
+                                    // 1. Ép Style ĐỂ PHÂN BIỆT THUẬN/ĐẢO
+                                    try { newItem.SetAttribute("StyleItem", item.Type); } catch { }
+
+                                    // 2. Tọa độ & Kích thước
+                                    newItem.SetAttribute("Left", Convert.ToInt32(item.Properties["Left"]));
+                                    newItem.SetAttribute("Top", Convert.ToInt32(item.Properties["Top"]));
+                                    newItem.SetAttribute("Width", (uint)Convert.ToInt32(item.Properties["Width"]));
+                                    newItem.SetAttribute("Height", (uint)Convert.ToUInt32(item.Properties["Height"]));
+
+                                    // 3. Thiết lập trạng thái ban đầu
+                                    if (item.Properties.ContainsKey("SwitchState")) {
+                                        bool val = Convert.ToBoolean(item.Properties["SwitchState"]);
+                                        try { newItem.SetAttribute("SwitchState", val); } 
+                                        catch { try { newItem.SetAttribute("ProcessValue", val); } catch { } }
+                                    }
+
+                                    // 4. GẮN EVENT "STATUS CHANGED" (Dựa trên logic ProcessButtonScripts)
+                                    try {
+                                        // Chuẩn bị đoạn mã JS đúng như ảnh Otis chụp
+                                        string jsCode = $@"Tags(""k1"").Write(item.IsAlternateState);";
+                                        
+                                        // Dùng Dictionary để khớp với tham số 'dynamic scriptsJson' của hàm ProcessButtonScripts
+                                        // Lưu ý: Ta dùng key "OnStateChanged" vì nó thường khớp với Enum của Siemens cho 'Status changed'
+                                        var eventData = new System.Dynamic.ExpandoObject() as IDictionary<string, object>;
+                                        eventData.Add("StateChanged", jsCode); 
+
+                                        // Gọi hàm xử lý script tổng quát mà Otis đã viết
+                                        ProcessButtonScripts(newItem, item.Name, eventData);
+                                    } 
+                                    catch (Exception ex) { 
+                                        Console.WriteLine($"      [!] Lỗi gắn Event cho {item.Name}: {ex.Message}"); 
+                                    }
+
+                                    // 5. GẮN DYNAMIZATION ĐỔI MÀU (BackColor)
+                                    try {
+                                        // Bản đảo gạt sang xanh hiện đỏ, bản thuận gạt sang xanh hiện xanh (tùy ý Otis)
+                                        string colorOn = (item.Type == "HmiToggleSwitchInverted") ? "255, 0, 0" : "0, 255, 0";
+                                        
+                                        string colorScript = $@"var v = Tags(""k1"").Read();
+                            return v ? HMIRuntime.Math.RGB({colorOn}) : HMIRuntime.Math.RGB(242, 244, 255);";
+                                        
+                                        // Gọi hàm BindTagToBasicWithStates để nạp Script đổi màu
+                                        BindTagToBasicWithStates(newItem, "k1", "BackColor", colorScript);
+                                    } catch { }
+
+                                    Console.WriteLine($"      [SUCCESS] Đã dựng & gán Logic cho {item.Name}");
+                                }
+                                catch (Exception ex) { Console.WriteLine($"      [!] Lỗi gán thuộc tính {item.Name}: {ex.Message}"); }
+                            }
                             
                             else if (typeId == "HmiText" || lowerType.Contains("button")) 
                             {
@@ -1158,46 +1216,54 @@ private string GetCombinedDeviceName(Device device)
         }
 
         private void ProcessButtonScripts(dynamic dynItem, string itemName, dynamic scriptsJson)
-        {
-            // Kiểm tra null để tránh crash
-            if (scriptsJson == null) return;
+{
+    if (scriptsJson == null) return;
 
-            Type enumType = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a => a.GetTypes())
-                .FirstOrDefault(t => t.Name == "HmiButtonEventType");
+    var eventHandlers = dynItem.EventHandlers;
+    // FIX CS1977: Ép kiểu GetMethods() về MethodInfo[]
+    var methods = (System.Reflection.MethodInfo[])eventHandlers.GetType().GetMethods();
+    
+    var createMethod = methods.FirstOrDefault(m => 
+        m.Name == "Create" && 
+        m.GetParameters().Length == 1);
 
-            if (enumType == null) return;
+    if (createMethod == null) return;
+    
+    Type enumType = createMethod.GetParameters()[0].ParameterType;
 
-            // QUAN TRỌNG: Duyệt qua các thuộc tính của đối tượng JSON
-            foreach (var scriptEntry in scriptsJson) {
-                try {
-                    // Nếu dùng Newtonsoft.Json, scriptEntry sẽ có Name và Value
-                    string evName = scriptEntry.Name;
-                    string jsCode = scriptEntry.Value.ToString();
+    foreach (var scriptEntry in (IDictionary<string, object>)scriptsJson) 
+    {
+        try {
+            string evName = scriptEntry.Key;
+            string jsCode = scriptEntry.Value.ToString();
 
-                    var evEnum = Enum.Parse(enumType, evName);
-                    dynamic handler = null;
-
-                    // Tìm hoặc tạo Handler
-                    foreach (dynamic h in dynItem.EventHandlers) {
-                        if (h.EventType.ToString() == evName) { handler = h; break; }
-                    }
-
-                    if (handler == null) {
-                        var method = dynItem.EventHandlers.GetType().GetMethod("Create", new Type[] { enumType });
-                        handler = method.Invoke(dynItem.EventHandlers, new object[] { evEnum });
-                    }
-
-                    if (handler != null && handler.Script != null) {
-                        handler.Script.ScriptCode = jsCode;
-                        Console.WriteLine($"      [SCRIPT OK] {itemName} {evName} -> Code Loaded");
-                    }
-                } catch (Exception ex) {
-                    // Log này sẽ báo cho Otis biết nếu evName không khớp với Enum KeyDown/KeyUp
-                    Console.WriteLine($"      [!] Bỏ qua Script không hợp lệ: {ex.Message}");
-                }
+            object evEnum;
+            try {
+                evEnum = Enum.Parse(enumType, evName);
+            } catch {
+                evEnum = Enum.Parse(enumType, evName.Replace(" ", ""));
             }
+
+            dynamic handler = null;
+            // FIX CS1977: Ép kiểu eventHandlers về IEnumerable<dynamic>
+            var handlersList = (System.Collections.IEnumerable)eventHandlers;
+            foreach (dynamic h in handlersList) {
+                if (h.EventType.Equals(evEnum)) { handler = h; break; }
+            }
+
+            if (handler == null) {
+                handler = createMethod.Invoke(eventHandlers, new object[] { evEnum });
+            }
+
+            if (handler != null && handler.Script != null) {
+                handler.Script.ScriptCode = jsCode;
+                Console.WriteLine($"      [SCRIPT OK] {itemName} [{evName}] -> Loaded");
+            }
+        } catch (Exception ex) {
+            Console.WriteLine($"      [!] Bỏ qua Event [{scriptEntry.Key}]: {ex.Message}");
         }
+    }
+}
 
         public void BindTagToBasicWithStates(dynamic item, string tagName, string propName, string scriptCode)
         {
