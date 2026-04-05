@@ -138,15 +138,15 @@ namespace Middleware_console
         {
             if (_project != null)
             {
-                try
-                {
-                    string projectFilePath = _project.Path.FullName;
+                try 
+                { 
+                    string projectFilePath = _project.Path.FullName; 
                     string projectDirectory = Path.GetDirectoryName(projectFilePath);
 
                     if (Directory.Exists(projectDirectory))
                     {
                         var subDirs = Directory.GetDirectories(projectDirectory);
-
+                        
                         // 1. Tìm folder gốc UserFiles
                         string rootUserFiles = subDirs.FirstOrDefault(d => Path.GetFileName(d).Equals("UserFiles", StringComparison.OrdinalIgnoreCase));
 
@@ -167,7 +167,7 @@ namespace Middleware_console
                         return $"Path: {projectFilePath}\nFolders: {string.Join(", ", dirNames)}";
                     }
                     return projectFilePath;
-                }
+                } 
                 catch (Exception ex) { return "Error: " + ex.Message; }
             }
             return "Unknown";
@@ -730,15 +730,15 @@ namespace Middleware_console
                     if (swContainer != null && swContainer.Software is HmiSoftware hmiSw)
                     {
                         // VỚI UNIFIED: StartScreen nằm trong RuntimeSettings -> General
-                        try
+                        try 
                         {
                             // 1. Truy cập vào RuntimeSettings
                             var rtSettings = hmiSw.RuntimeSettings;
-
+                            
                             // 2. Với Unified, thuộc tính này thường nằm ở mục "General"
                             // Tên chính xác của Attribute thường là "StartScreen" hoặc "DefaultStartScreen"
                             rtSettings.SetAttribute("StartScreen", screenName);
-
+                            
                             Console.WriteLine($"[SUCCESS] Runtime Settings: Đã gán '{screenName}' làm màn hình khởi động.");
                             _project.Save();
                             return;
@@ -746,15 +746,13 @@ namespace Middleware_console
                         catch (Exception exInner)
                         {
                             // Fallback: Một số bản V20 yêu cầu gán qua tên đầy đủ trong cấu trúc Folder
-                            try
-                            {
+                            try {
                                 dynamic dynRt = hmiSw.RuntimeSettings;
                                 dynRt.General.StartScreen = screenName;
                                 Console.WriteLine($"[SUCCESS] Runtime General: Đã gán '{screenName}' thành công.");
                                 return;
                             }
-                            catch
-                            {
+                            catch {
                                 Console.WriteLine($"[-] Không tìm thấy thuộc tính StartScreen trong Runtime Settings: {exInner.Message}");
                             }
                         }
@@ -855,16 +853,16 @@ namespace Middleware_console
                         {
                             typeId = "HmiText";
                         }
-                        else if (typeId.Contains("HmiToggleSwitch"))
+                        else if (typeId.Contains("HmiToggleSwitch")) 
                         {
                             // LUÔN LUÔN tạo bằng cái tên gốc này
-                            typeId = "HmiToggleSwitch";
+                            typeId = "HmiToggleSwitch"; 
                         }
-                        else if (!typeId.StartsWith("Hmi"))
+                        else if (!typeId.StartsWith("Hmi")) 
                         {
                             typeId = "Hmi" + typeId;
                         }
-
+                       
 
                         // Gọi lệnh Create
                         try
@@ -1011,7 +1009,7 @@ namespace Middleware_console
                             }
                             else if (typeId == "HmiToggleSwitch")
                             {
-                                try
+                                try 
                                 {
                                     // 1. Ép Style ĐỂ PHÂN BIỆT THUẬN/ĐẢO
                                     try { newItem.SetAttribute("StyleItem", item.Type); } catch { }
@@ -1023,52 +1021,47 @@ namespace Middleware_console
                                     newItem.SetAttribute("Height", (uint)Convert.ToUInt32(item.Properties["Height"]));
 
                                     // 3. Thiết lập trạng thái ban đầu
-                                    if (item.Properties.ContainsKey("SwitchState"))
-                                    {
+                                    if (item.Properties.ContainsKey("SwitchState")) {
                                         bool val = Convert.ToBoolean(item.Properties["SwitchState"]);
-                                        try { newItem.SetAttribute("SwitchState", val); }
+                                        try { newItem.SetAttribute("SwitchState", val); } 
                                         catch { try { newItem.SetAttribute("ProcessValue", val); } catch { } }
                                     }
 
                                     // 4. GẮN EVENT "STATUS CHANGED" (Dựa trên logic ProcessButtonScripts)
-                                    try
-                                    {
+                                    try {
                                         // Chuẩn bị đoạn mã JS đúng như ảnh Otis chụp
                                         string jsCode = $@"Tags(""k1"").Write(item.IsAlternateState);";
-
+                                        
                                         // Dùng Dictionary để khớp với tham số 'dynamic scriptsJson' của hàm ProcessButtonScripts
                                         // Lưu ý: Ta dùng key "OnStateChanged" vì nó thường khớp với Enum của Siemens cho 'Status changed'
                                         var eventData = new System.Dynamic.ExpandoObject() as IDictionary<string, object>;
-                                        eventData.Add("StateChanged", jsCode);
+                                        eventData.Add("StateChanged", jsCode); 
 
                                         // Gọi hàm xử lý script tổng quát mà Otis đã viết
                                         ProcessButtonScripts(newItem, item.Name, eventData);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Console.WriteLine($"      [!] Lỗi gắn Event cho {item.Name}: {ex.Message}");
+                                    } 
+                                    catch (Exception ex) { 
+                                        Console.WriteLine($"      [!] Lỗi gắn Event cho {item.Name}: {ex.Message}"); 
                                     }
 
                                     // 5. GẮN DYNAMIZATION ĐỔI MÀU (BackColor)
-                                    try
-                                    {
+                                    try {
                                         // Bản đảo gạt sang xanh hiện đỏ, bản thuận gạt sang xanh hiện xanh (tùy ý Otis)
                                         string colorOn = (item.Type == "HmiToggleSwitchInverted") ? "255, 0, 0" : "0, 255, 0";
-
+                                        
                                         string colorScript = $@"var v = Tags(""k1"").Read();
                             return v ? HMIRuntime.Math.RGB({colorOn}) : HMIRuntime.Math.RGB(242, 244, 255);";
-
+                                        
                                         // Gọi hàm BindTagToBasicWithStates để nạp Script đổi màu
                                         BindTagToBasicWithStates(newItem, "k1", "BackColor", colorScript);
-                                    }
-                                    catch { }
+                                    } catch { }
 
                                     Console.WriteLine($"      [SUCCESS] Đã dựng & gán Logic cho {item.Name}");
                                 }
                                 catch (Exception ex) { Console.WriteLine($"      [!] Lỗi gán thuộc tính {item.Name}: {ex.Message}"); }
                             }
-
-                            else if (typeId == "HmiText" || lowerType.Contains("button"))
+                            
+                            else if (typeId == "HmiText" || lowerType.Contains("button")) 
                             {
                                 try
                                 {
@@ -1195,7 +1188,7 @@ namespace Middleware_console
 
                     Console.WriteLine($"\n[!] LỖI CHI TIẾT TẠI {item.Name}:");
                     Console.WriteLine($"    -> Thông báo: {realError.Message}");
-
+                    
                     // Nếu là lỗi phân quyền hoặc không tìm thấy khuôn mẫu
                     if (realError.Message.Contains("TypeIdentifier"))
                     {
@@ -1322,42 +1315,36 @@ namespace Middleware_console
             var eventHandlers = dynItem.EventHandlers;
             // FIX CS1977: Ép kiểu GetMethods() về MethodInfo[]
             var methods = (System.Reflection.MethodInfo[])eventHandlers.GetType().GetMethods();
-
-            var createMethod = methods.FirstOrDefault(m =>
-                m.Name == "Create" &&
+            
+            var createMethod = methods.FirstOrDefault(m => 
+                m.Name == "Create" && 
                 m.GetParameters().Length == 1);
 
             if (createMethod == null) return;
-
+            
             Type enumType = createMethod.GetParameters()[0].ParameterType;
 
-            foreach (var scriptEntry in (IDictionary<string, object>)scriptsJson)
+            foreach (var scriptEntry in (IDictionary<string, object>)scriptsJson) 
             {
-                try
-                {
+                try {
                     string evName = scriptEntry.Key;
                     string jsCode = scriptEntry.Value.ToString();
 
                     object evEnum;
-                    try
-                    {
+                    try {
                         evEnum = Enum.Parse(enumType, evName);
-                    }
-                    catch
-                    {
+                    } catch {
                         evEnum = Enum.Parse(enumType, evName.Replace(" ", ""));
                     }
 
                     dynamic handler = null;
                     // FIX CS1977: Ép kiểu eventHandlers về IEnumerable<dynamic>
                     var handlersList = (System.Collections.IEnumerable)eventHandlers;
-                    foreach (dynamic h in handlersList)
-                    {
+                    foreach (dynamic h in handlersList) {
                         if (h.EventType.Equals(evEnum)) { handler = h; break; }
                     }
 
-                    if (handler == null)
-                    {
+                    if (handler == null) {
                         handler = createMethod.Invoke(eventHandlers, new object[] { evEnum });
                     }
 
@@ -1366,9 +1353,7 @@ namespace Middleware_console
                         handler.Script.ScriptCode = jsCode;
                         Console.WriteLine($"      [SCRIPT OK] {itemName} [{evName}] -> Loaded");
                     }
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     Console.WriteLine($"      [!] Bỏ qua Event [{scriptEntry.Key}]: {ex.Message}");
                 }
             }
