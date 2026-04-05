@@ -671,23 +671,37 @@ private string GetCombinedDeviceName(Device device)
                     var swContainer = item.GetService<SoftwareContainer>();
                     if (swContainer != null && swContainer.Software is HmiSoftware hmiSw)
                     {
-                        // VỚI UNIFIED V20: Gán trực tiếp qua Attribute của Software
-                        try {
-                            hmiSw.SetAttribute("StartScreen", screenName);
-                            Console.WriteLine($"[SUCCESS] Đã gán '{screenName}' làm màn hình khởi động.");
+                        // VỚI UNIFIED: StartScreen nằm trong RuntimeSettings -> General
+                        try 
+                        {
+                            // 1. Truy cập vào RuntimeSettings
+                            var rtSettings = hmiSw.RuntimeSettings;
+                            
+                            // 2. Với Unified, thuộc tính này thường nằm ở mục "General"
+                            // Tên chính xác của Attribute thường là "StartScreen" hoặc "DefaultStartScreen"
+                            rtSettings.SetAttribute("StartScreen", screenName);
+                            
+                            Console.WriteLine($"[SUCCESS] Runtime Settings: Đã gán '{screenName}' làm màn hình khởi động.");
                             _project.Save();
                             return;
                         }
-                        catch {
-                            // Fallback nếu SetAttribute chặn
-                            dynamic dynSw = hmiSw;
-                            dynSw.StartScreen = screenName;
-                            return;
+                        catch (Exception exInner)
+                        {
+                            // Fallback: Một số bản V20 yêu cầu gán qua tên đầy đủ trong cấu trúc Folder
+                            try {
+                                dynamic dynRt = hmiSw.RuntimeSettings;
+                                dynRt.General.StartScreen = screenName;
+                                Console.WriteLine($"[SUCCESS] Runtime General: Đã gán '{screenName}' thành công.");
+                                return;
+                            }
+                            catch {
+                                Console.WriteLine($"[-] Không tìm thấy thuộc tính StartScreen trong Runtime Settings: {exInner.Message}");
+                            }
                         }
                     }
                 }
             }
-            catch (Exception ex) { Console.WriteLine($"[-] Lỗi gán StartScreen: {ex.Message}"); }
+            catch (Exception ex) { Console.WriteLine($"[-] Lỗi gán StartScreen tổng quát: {ex.Message}"); }
         }
 
         public void GenerateScadaScreenFromData(string deviceName, ScadaScreenModel screenData)
@@ -1090,24 +1104,24 @@ private string GetCombinedDeviceName(Device device)
                 { 
                     //Console.WriteLine($"      [!] Lỗi GĐ 1 tại {item.Name}: {ex.Message}");
                     // Bóc tách lỗi thực sự từ Siemens
-    Exception realError = ex;
-    while (realError.InnerException != null)
-    {
-        realError = realError.InnerException;
-    }
+                    Exception realError = ex;
+                    while (realError.InnerException != null)
+                    {
+                        realError = realError.InnerException;
+                    }
 
-    Console.WriteLine($"\n[!] LỖI CHI TIẾT TẠI {item.Name}:");
-    Console.WriteLine($"    -> Thông báo: {realError.Message}");
-    
-    // Nếu là lỗi phân quyền hoặc không tìm thấy khuôn mẫu
-    if (realError.Message.Contains("TypeIdentifier"))
-    {
-        Console.WriteLine("    [Gợi ý] TypeIdentifier không hợp lệ. Hãy kiểm tra SubType trong JSON.");
-    }
-    else if (realError.Message.Contains("Access denied"))
-    {
-        Console.WriteLine("    [Gợi ý] TIA Portal chặn quyền tạo đối tượng. Hãy chạy CLI với quyền Admin.");
-    }
+                    Console.WriteLine($"\n[!] LỖI CHI TIẾT TẠI {item.Name}:");
+                    Console.WriteLine($"    -> Thông báo: {realError.Message}");
+                    
+                    // Nếu là lỗi phân quyền hoặc không tìm thấy khuôn mẫu
+                    if (realError.Message.Contains("TypeIdentifier"))
+                    {
+                        Console.WriteLine("    [Gợi ý] TypeIdentifier không hợp lệ. Hãy kiểm tra SubType trong JSON.");
+                    }
+                    else if (realError.Message.Contains("Access denied"))
+                    {
+                        Console.WriteLine("    [Gợi ý] TIA Portal chặn quyền tạo đối tượng. Hãy chạy CLI với quyền Admin.");
+                    }
                 }
             }
 
@@ -1216,54 +1230,54 @@ private string GetCombinedDeviceName(Device device)
         }
 
         private void ProcessButtonScripts(dynamic dynItem, string itemName, dynamic scriptsJson)
-{
-    if (scriptsJson == null) return;
+        {
+            if (scriptsJson == null) return;
 
-    var eventHandlers = dynItem.EventHandlers;
-    // FIX CS1977: Ép kiểu GetMethods() về MethodInfo[]
-    var methods = (System.Reflection.MethodInfo[])eventHandlers.GetType().GetMethods();
-    
-    var createMethod = methods.FirstOrDefault(m => 
-        m.Name == "Create" && 
-        m.GetParameters().Length == 1);
+            var eventHandlers = dynItem.EventHandlers;
+            // FIX CS1977: Ép kiểu GetMethods() về MethodInfo[]
+            var methods = (System.Reflection.MethodInfo[])eventHandlers.GetType().GetMethods();
+            
+            var createMethod = methods.FirstOrDefault(m => 
+                m.Name == "Create" && 
+                m.GetParameters().Length == 1);
 
-    if (createMethod == null) return;
-    
-    Type enumType = createMethod.GetParameters()[0].ParameterType;
+            if (createMethod == null) return;
+            
+            Type enumType = createMethod.GetParameters()[0].ParameterType;
 
-    foreach (var scriptEntry in (IDictionary<string, object>)scriptsJson) 
-    {
-        try {
-            string evName = scriptEntry.Key;
-            string jsCode = scriptEntry.Value.ToString();
+            foreach (var scriptEntry in (IDictionary<string, object>)scriptsJson) 
+            {
+                try {
+                    string evName = scriptEntry.Key;
+                    string jsCode = scriptEntry.Value.ToString();
 
-            object evEnum;
-            try {
-                evEnum = Enum.Parse(enumType, evName);
-            } catch {
-                evEnum = Enum.Parse(enumType, evName.Replace(" ", ""));
+                    object evEnum;
+                    try {
+                        evEnum = Enum.Parse(enumType, evName);
+                    } catch {
+                        evEnum = Enum.Parse(enumType, evName.Replace(" ", ""));
+                    }
+
+                    dynamic handler = null;
+                    // FIX CS1977: Ép kiểu eventHandlers về IEnumerable<dynamic>
+                    var handlersList = (System.Collections.IEnumerable)eventHandlers;
+                    foreach (dynamic h in handlersList) {
+                        if (h.EventType.Equals(evEnum)) { handler = h; break; }
+                    }
+
+                    if (handler == null) {
+                        handler = createMethod.Invoke(eventHandlers, new object[] { evEnum });
+                    }
+
+                    if (handler != null && handler.Script != null) {
+                        handler.Script.ScriptCode = jsCode;
+                        Console.WriteLine($"      [SCRIPT OK] {itemName} [{evName}] -> Loaded");
+                    }
+                } catch (Exception ex) {
+                    Console.WriteLine($"      [!] Bỏ qua Event [{scriptEntry.Key}]: {ex.Message}");
+                }
             }
-
-            dynamic handler = null;
-            // FIX CS1977: Ép kiểu eventHandlers về IEnumerable<dynamic>
-            var handlersList = (System.Collections.IEnumerable)eventHandlers;
-            foreach (dynamic h in handlersList) {
-                if (h.EventType.Equals(evEnum)) { handler = h; break; }
-            }
-
-            if (handler == null) {
-                handler = createMethod.Invoke(eventHandlers, new object[] { evEnum });
-            }
-
-            if (handler != null && handler.Script != null) {
-                handler.Script.ScriptCode = jsCode;
-                Console.WriteLine($"      [SCRIPT OK] {itemName} [{evName}] -> Loaded");
-            }
-        } catch (Exception ex) {
-            Console.WriteLine($"      [!] Bỏ qua Event [{scriptEntry.Key}]: {ex.Message}");
         }
-    }
-}
 
         public void BindTagToBasicWithStates(dynamic item, string tagName, string propName, string scriptCode)
         {
