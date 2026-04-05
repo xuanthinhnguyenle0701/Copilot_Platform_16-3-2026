@@ -241,23 +241,7 @@ namespace TIA_Copilot_CLI
                     _tiaEngine.SaveProject();
                     PrintIcon("√", "Lưu thành công.", ConsoleColor.Green);
                     break;
-                case "import":                   
-                    _tiaEngine.GetProjectPath(); 
-                    string importPath = GetPathOrOpenDialog(args, 2, "All files (*.*)|*.*|Zip files (*.zip)|*.zip|Widget files (*.vwdgt)|*.vwdgt");
-                    if (!string.IsNullOrEmpty(importPath))
-                    {
-                        PrintIcon("i", $"Đang Import vào CustomControls: {Path.GetFileName(importPath)}...", ConsoleColor.Cyan);
-                        
-                        // 3. Thực hiện copy vật lý vào UserFiles/CustomControls
-                        _tiaEngine.AddFileToUserFilesFolder(importPath);
-                        
-                        PrintIcon("√", "Đã Import vật lý thành công.", ConsoleColor.Green);
-                    }
-                    else
-                    {
-                        PrintIcon("!", "Không có file nào được chọn để Import.", ConsoleColor.Yellow);
-                    }
-                    break;
+
                 case "close":
                     _tiaEngine.CloseTIA();
                     _currentProjectName = "None";
