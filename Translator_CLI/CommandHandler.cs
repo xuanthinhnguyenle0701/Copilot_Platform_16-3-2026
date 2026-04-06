@@ -509,7 +509,7 @@ namespace TIA_Copilot_CLI
             }
         }
 
-        public static async Task<T> RunWithSpinner<T>(Task<T> targetTask, string waitingMessage, int timeoutSeconds = 180)
+        public static async Task<T> RunWithSpinner<T>(Task<T> targetTask, string waitingMessage, int timeoutSeconds = 300)
         {
             char[] spinnerChars = new char[] { '|', '/', '-', '\\' };
             int spinnerIndex = 0;

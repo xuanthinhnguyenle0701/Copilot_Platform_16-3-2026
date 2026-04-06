@@ -1038,7 +1038,7 @@ namespace Middleware_console
                                         eventData.Add("StateChanged", jsCode); 
 
                                         // Gọi hàm xử lý script tổng quát mà Otis đã viết
-                                        ProcessButtonScripts(newItem, item.Name, eventData);
+                                        ProcessStatusScripts(newItem, item.Name, eventData);
                                     } 
                                     catch (Exception ex) { 
                                         Console.WriteLine($"      [!] Lỗi gắn Event cho {item.Name}: {ex.Message}"); 
@@ -1074,7 +1074,7 @@ namespace Middleware_console
                                     }
 
                                     // 2. Xử lý Font nâng cao
-                                    float fSize = 45.0f;
+                                    float fSize = 19.0f;
                                     string currentFontName = "Default";
 
                                     try
@@ -1083,7 +1083,7 @@ namespace Middleware_console
                                         dynamic dynFont = fontValue;
 
                                         // Lấy Size
-                                        fSize = item.Properties.ContainsKey("Font.Size") ? (float)Convert.ToDouble(item.Properties["Font.Size"]) : 45.0f;
+                                        fSize = item.Properties.ContainsKey("Font.Size") ? (float)Convert.ToDouble(item.Properties["Font.Size"]) : 19.0f;
                                         dynFont.Size = fSize;
 
                                         // Nhận diện Font Name
@@ -1309,6 +1309,48 @@ namespace Middleware_console
         }
 
         private void ProcessButtonScripts(dynamic dynItem, string itemName, dynamic scriptsJson)
+        {
+            // Kiểm tra null để tránh crash
+            if (scriptsJson == null) return;
+
+            Type enumType = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .FirstOrDefault(t => t.Name == "HmiButtonEventType");
+
+            if (enumType == null) return;
+
+            // QUAN TRỌNG: Duyệt qua các thuộc tính của đối tượng JSON
+            foreach (var scriptEntry in scriptsJson) {
+                try {
+                    // Nếu dùng Newtonsoft.Json, scriptEntry sẽ có Name và Value
+                    string evName = scriptEntry.Name;
+                    string jsCode = scriptEntry.Value.ToString();
+
+                    var evEnum = Enum.Parse(enumType, evName);
+                    dynamic handler = null;
+
+                    // Tìm hoặc tạo Handler
+                    foreach (dynamic h in dynItem.EventHandlers) {
+                        if (h.EventType.ToString() == evName) { handler = h; break; }
+                    }
+
+                    if (handler == null) {
+                        var method = dynItem.EventHandlers.GetType().GetMethod("Create", new Type[] { enumType });
+                        handler = method.Invoke(dynItem.EventHandlers, new object[] { evEnum });
+                    }
+
+                    if (handler != null && handler.Script != null) {
+                        handler.Script.ScriptCode = jsCode;
+                        Console.WriteLine($"      [SCRIPT OK] {itemName} {evName} -> Code Loaded");
+                    }
+                } catch (Exception ex) {
+                    // Log này sẽ báo cho Otis biết nếu evName không khớp với Enum KeyDown/KeyUp
+                    Console.WriteLine($"      [!] Bỏ qua Script không hợp lệ: {ex.Message}");
+                }
+            }
+        }
+
+        private void ProcessStatusScripts(dynamic dynItem, string itemName, dynamic scriptsJson)
         {
             if (scriptsJson == null) return;
 

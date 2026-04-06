@@ -498,6 +498,7 @@ namespace TIA_Copilot_CLI
         // Produces connection names: HMI_PLC_Conn_1, HMI_PLC_Conn_2, ...
         private static int _connectionCounter = 0;
 
+        // 
         private static readonly int SIDEBAR_X = 30;
         private static readonly int SIDEBAR_Y_START = 180;
         private static readonly int SIDEBAR_BTN_W = 120;
@@ -598,7 +599,7 @@ namespace TIA_Copilot_CLI
                 // --- LIBRARY OBJECTS ---
                 case "Tank":
                     props["LibraryPath"] = "IndustryGraphicLibrary/Tanks";
-                    props["SubType"] = "Tank";
+                    props["SubType"] = item.SubType ?? "Tank";
                     props["Left"] = PROCESS_X + 160;
                     props["Top"] = PROCESS_Y + 35;
                     props["Width"] = 160;

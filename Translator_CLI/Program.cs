@@ -401,7 +401,7 @@ namespace TIA_Copilot_CLI
 
                                 string screenPath = Path.Combine(saveFolder, $"{exportName}_{timeStamp}.json");
 
-                                _tiaEngine.ExportUnifiedScreenToJson(_currentDeviceName, exportName, screenPath);
+                                _tiaEngine.ExportUnifiedScreenWithTextToJson(_currentDeviceName, exportName, screenPath);
 
                                 PrintIcon("√", $"Đã xuất màn hình ra: {Path.GetFileName(screenPath)}", ConsoleColor.Green);
 

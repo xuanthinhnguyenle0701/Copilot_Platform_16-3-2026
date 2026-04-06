@@ -50,6 +50,9 @@ Your job is to analyze the user's request and generate a structured LOGICAL JSON
 [PLACEHOLDER — TO BE IMPLEMENTED]
 Describe rules for generating Tank objects:
 - When to use a Tank vs a Bar
+- Subtypes: Barrel, ElementMove,FlatVessel,FlatVessel1,FlatVesselBodyHorizontal,FlatVesselBodyVertical,FlatVesselHead,FlatVesselHead1,FlatVesselHeadHorizontalLeft,FlatVesselHeadHorizontalRight,FlatVesselHopper,Hopper,HopperWindow,HopperWithWindow,
+Reactor,Silo,SphericalTank,StorageFacility,StorageFacility1,StorageFacilityHorizontal,Tank
+Tank1,Tank2,Tank2WithScale,Tank3,Tank3WithBolts,Tank4,Tank4WithRivets,TankCutaway,TankDoor,TankDoor1,TankHead,TankHorizontal,TankOpening,TankPorthole,TankPorthole1,TankPorthole2.
 - Required fields: bind_tag (analog), behaviors list
 - Supported behaviors: fill_level, color_on_status
 - Naming convention for tank objects
@@ -58,7 +61,7 @@ METADATA_TYPE: WIDGET
 ## STRATEGY: LIBRARY OBJECT — VALVE
 [PLACEHOLDER — TO BE IMPLEMENTED]
 Describe rules for generating Valve objects:
-- ControlValve vs GateValve subtypes
+- Subtypes: ControlValve, HandValve, HandValve1, HandValve2, HandValve2HorizentalFront, HandValvae2Vertical, HandValve2VerticalFront, MiniElectricSafetyShutoffValve, SafetyShutoffValve, ValveOpen, ValveShut
 - Required fields: bind_tag (boolean status tag)
 - Supported behaviors: color_on_status
 - Naming convention
@@ -67,7 +70,8 @@ METADATA_TYPE: WIDGET
 ## STRATEGY: LIBRARY OBJECT — MOTOR / PUMP
 [PLACEHOLDER — TO BE IMPLEMENTED]
 Describe rules for generating Motor and Pump objects:
-- Motor subtypes (Motor2, Motor9Vertical, etc.)
+- Motor subtypes:Motor,Motor1,Motor2,Motor3,Motor4,Motor5,Motor5Front,Motor6,Motor7,Motor7Front,Motor8,Motor8Front,Motor9Vertical,MotorBase,MotorVentilator,RailClip
+- Pump subtypes: 90DegreePump,ClassicPump,CoolPump,DrivePump,EndsuctionCentrifugalPump,ExplosionProofPump,HeavyDutyPlasticCentrifugalPump,HorizontalPumpLeft,HorizontalSplitCasePump,MagneticDrivePump,Pump,Pump1,Pump2,SeallessPump,SelfprimingCentrifugalPump,Ventilator,VerticalPump,VerticalPump1,VerticalPumpDown,VerticalPumpUp.
 - Required fields: bind_tag (boolean status tag)
 - Supported behaviors: color_on_status
 - Naming convention
@@ -184,6 +188,54 @@ Rules for HmiToggleSwitch objects:
 - Naming convention: Switch_<DeviceName> e.g. Switch_Bom_Chinh, Switch_Van_1
 - Placed in the left sidebar zone alongside buttons — shares buttonSlot counter
 - Behavior: toggle click writes IsAlternateState (true=ON, false=OFF) to the bound tag
+METADATA_TYPE: CONTROL
+
+## STRATEGY: COMPOUND CONTROL — DEVICE FACEPLATE
+Rules for generating a standard Device Control Faceplate (Motor/Pump/Actuator control group):
+- Use cases: Providing a unified control interface for a single process device (e.g., Motor_Main, Pump_Fuel).
+- A Faceplate is a conceptual grouping of multiple controls, generated as individual objects by the C# assembler.
+
+### SUB-COMPONENTS & BINDING RULES:
+1. *Start Button*: 
+   - Pattern: Momentary pulse.
+   - Logic: keydown_write = true, keyup_write = false.
+   - Target Tag: <DeviceName>_Start (BOOL).
+   - Label: "START".
+2. *Stop Button*: 
+   - Pattern: Momentary pulse.
+   - Logic: keydown_write = true, keyup_write = false.
+   - Target Tag: <DeviceName>_Stop (BOOL).
+   - Label: "STOP". 
+   - Visual: Use red background "220, 50, 50" if specified.
+3. *Reset Button*: 
+   - Pattern: Momentary pulse.
+   - Target Tag: <DeviceName>_Reset (BOOL).
+   - Label: "RESET".
+4. *Mode Switch (Man/Auto)*: 
+   - Type: HmiToggleSwitch.
+   - Target Tag: <DeviceName>_Mode (BOOL: False = Manual, True = Auto).
+   - Label: "MAN / AUTO".
+5. *Run Indicator (Running Lamp)*: 
+   - Type: Circle or CircleSegment.
+   - Behavior: color_on_status.
+   - Target Tag: <DeviceName>_Running (BOOL).
+   - Active Color: Green "0, 255, 0".
+6. *Error Indicator (Fault Lamp)*: 
+   - Type: Circle or CircleSegment.
+   - Behavior: color_on_status.
+   - Target Tag: <DeviceName>_Fault (BOOL).
+   - Active Color: Red "255, 0, 0".
+7. *Runtime Display*: 
+   - Type: IOField.
+   - Mode: Read-only.
+   - Format: "{F2} h" (for hours) or "{D} m" (for minutes).
+   - Target Tag: <DeviceName>_Runtime (Analog).
+
+### LAYOUT CONSTRAINTS:
+- Faceplate objects should be grouped vertically in the Control Panel zone (left sidebar).
+- Naming Convention: Prefix all sub-objects with FP_<DeviceName>_ (e.g., FP_Motor1_BtnStart).
+- Default grouping: Indicators at the top, IOField in the middle, Buttons and Switch at the bottom.
+
 METADATA_TYPE: CONTROL
 
 ## STRATEGY: LAYOUT GUIDANCE — GENERAL SCREEN COMPOSITION
