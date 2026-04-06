@@ -1307,7 +1307,6 @@ namespace Middleware_console
             }
             catch { }
         }
-
         private void ProcessButtonScripts(dynamic dynItem, string itemName, dynamic scriptsJson)
         {
             // Kiểm tra null để tránh crash
