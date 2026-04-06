@@ -380,6 +380,8 @@ namespace TIA_Copilot_CLI
         public string Url { get; set; }          // MediaControl / WebControl
         public string ScreenName { get; set; }   // ScreenWindow sub-screen name
         public string BindTagWrite { get; set; } // CheckBox / RadioButton write tag
+        public string BackColor { get; set; } // HmiToggleSwitch default state color (R, G, B)
+        public string AlternateBackColor { get; set; } // HmiToggleSwitch alternate/active state color (R, G, B)
     }
 
     public class HmiScreenData
@@ -404,7 +406,7 @@ namespace TIA_Copilot_CLI
             if (screenInfo != null)
             {
                 data.ScreenName = screenInfo["name"]?.ToString() ?? "AI_Generated_Screen";
-                data.Width  = screenInfo["width"]?.ToObject<int>()  ?? 1024;
+                data.Width = screenInfo["width"]?.ToObject<int>() ?? 1024;
                 data.Height = screenInfo["height"]?.ToObject<int>() ?? 600;
             }
 
@@ -418,22 +420,22 @@ namespace TIA_Copilot_CLI
 
                     var hmiItem = new HmiItemData
                     {
-                        Name     = item["name"]?.ToString(),
-                        Type     = item["type"]?.ToString(),
-                        SubType  = item["subtype"]?.ToString(),
-                        BindTag  = item["bind_tag"]?.ToString(),
-                        Hint     = item["hint"]?.ToString(),
-                        Label    = item["label"]?.ToString(),
+                        Name = item["name"]?.ToString(),
+                        Type = item["type"]?.ToString(),
+                        SubType = item["subtype"]?.ToString(),
+                        BindTag = item["bind_tag"]?.ToString(),
+                        Hint = item["hint"]?.ToString(),
+                        Label = item["label"]?.ToString(),
                         NavigateTo = item["navigate_to"]?.ToString(),
-                        Format   = item["format"]?.ToString(),
+                        Format = item["format"]?.ToString(),
                         MinValue = item["min_value"]?.ToObject<double?>(),
                         MaxValue = item["max_value"]?.ToObject<double?>(),
                         ClockMode = item["clock_mode"]?.ToString(),
-                        Tooltip  = item["tooltip"]?.ToString(),
+                        Tooltip = item["tooltip"]?.ToString(),
                         TrendTag = item["trend_tag"]?.ToString(),
                         ShowRuler = item["show_ruler"]?.ToObject<bool>() ?? false,
                         ParameterSetId = item["parameter_set_id"]?.ToObject<int?>(),
-                        Url      = item["url"]?.ToString(),
+                        Url = item["url"]?.ToString(),
                         ScreenName = item["screen_name"]?.ToString(),
                         BindTagWrite = item["bind_tag_write"]?.ToString(),
                     };
@@ -447,14 +449,14 @@ namespace TIA_Copilot_CLI
                     if (item["keydown_write"] != null)
                         hmiItem.KeydownWrite = new TagWrite
                         {
-                            Tag   = item["keydown_write"]["tag"]?.ToString(),
+                            Tag = item["keydown_write"]["tag"]?.ToString(),
                             Value = item["keydown_write"]["value"]?.ToObject<int>() ?? 1
                         };
 
                     if (item["keyup_write"] != null)
                         hmiItem.KeyupWrite = new TagWrite
                         {
-                            Tag   = item["keyup_write"]["tag"]?.ToString(),
+                            Tag = item["keyup_write"]["tag"]?.ToString(),
                             Value = item["keyup_write"]["value"]?.ToObject<int>() ?? 0
                         };
 
@@ -469,8 +471,8 @@ namespace TIA_Copilot_CLI
                 {
                     data.GlobalTags.Add(new GlobalTag
                     {
-                        Name    = tag["name"]?.ToString()    ?? "",
-                        Type    = tag["type"]?.ToString()    ?? "BOOL",
+                        Name = tag["name"]?.ToString() ?? "",
+                        Type = tag["type"]?.ToString() ?? "BOOL",
                         Comment = tag["comment"]?.ToString() ?? "HMI Tag"
                     });
                 }
@@ -496,32 +498,32 @@ namespace TIA_Copilot_CLI
         // Produces connection names: HMI_PLC_Conn_1, HMI_PLC_Conn_2, ...
         private static int _connectionCounter = 0;
 
-        private static readonly int SIDEBAR_X       = 30;
+        private static readonly int SIDEBAR_X = 30;
         private static readonly int SIDEBAR_Y_START = 180;
-        private static readonly int SIDEBAR_BTN_W   = 120;
-        private static readonly int SIDEBAR_BTN_H   = 40;
-        private static readonly int SIDEBAR_GAP      = 10;
+        private static readonly int SIDEBAR_BTN_W = 120;
+        private static readonly int SIDEBAR_BTN_H = 40;
+        private static readonly int SIDEBAR_GAP = 10;
 
-        private static readonly int PROCESS_X       = 300;
-        private static readonly int PROCESS_Y       = 100;
+        private static readonly int PROCESS_X = 300;
+        private static readonly int PROCESS_Y = 100;
 
-        private static readonly int INDICATOR_X     = 590;
+        private static readonly int INDICATOR_X = 590;
         private static readonly int INDICATOR_Y_START = 160;
 
-        private static readonly int DATACTL_X       = 10;
+        private static readonly int DATACTL_X = 10;
         private static readonly int DATACTL_Y_START = 10;
-        private static readonly int DATACTL_W       = 500;
-        private static readonly int DATACTL_H       = 280;
-        private static readonly int DATACTL_GAP     = 10;
+        private static readonly int DATACTL_W = 500;
+        private static readonly int DATACTL_H = 280;
+        private static readonly int DATACTL_GAP = 10;
 
         public static void GenerateAndSave(HmiScreenData data)
         {
             try
             {
                 // Slot counters per zone — increment as objects are placed
-                int buttonSlot     = 0;
-                int indicatorSlot  = 0;
-                int dataCtlSlot    = 0;
+                int buttonSlot = 0;
+                int indicatorSlot = 0;
+                int dataCtlSlot = 0;
 
                 var itemsJson = new JArray();
 
@@ -541,8 +543,8 @@ namespace TIA_Copilot_CLI
                 // Wrap in single-screen project structure (matches ScadaProjectModel)
                 var projectJson = new JObject
                 {
-                    ["ProjectName"]     = "AI_HMI_Project",
-                    ["DeviceName"]      = "PC-System_1",
+                    ["ProjectName"] = "AI_HMI_Project",
+                    ["DeviceName"] = "PC-System_1",
                     ["StartScreenName"] = data.ScreenName,
                     ["Screens"] = new JArray
                     {
@@ -557,9 +559,9 @@ namespace TIA_Copilot_CLI
                 };
 
                 // Save physical JSON
-                string safeName  = string.IsNullOrWhiteSpace(data.ScreenName) ? "AI_Screen" : data.ScreenName;
-                string fileName  = $"{safeName}.json";
-                string fullPath  = Path.Combine(OutputPaths.GetGeneratedDir(), fileName);
+                string safeName = string.IsNullOrWhiteSpace(data.ScreenName) ? "AI_Screen" : data.ScreenName;
+                string fileName = $"{safeName}.json";
+                string fullPath = Path.Combine(OutputPaths.GetGeneratedDir(), fileName);
 
                 File.WriteAllText(fullPath, projectJson.ToString(Newtonsoft.Json.Formatting.Indented), Encoding.UTF8);
 
@@ -595,57 +597,57 @@ namespace TIA_Copilot_CLI
             {
                 // --- LIBRARY OBJECTS ---
                 case "Tank":
-                    props["LibraryPath"]       = "IndustryGraphicLibrary/Tanks";
-                    props["SubType"]           = "Tank";
-                    props["Left"]              = PROCESS_X + 160;
-                    props["Top"]               = PROCESS_Y + 35;
-                    props["Width"]             = 160;
-                    props["Height"]            = 340;
-                    props["LevelTag"]          = item.BindTag ?? "";
-                    props["DisplayFillLevel"]  = item.Behaviors.Contains("fill_level");
+                    props["LibraryPath"] = "IndustryGraphicLibrary/Tanks";
+                    props["SubType"] = "Tank";
+                    props["Left"] = PROCESS_X + 160;
+                    props["Top"] = PROCESS_Y + 35;
+                    props["Width"] = 160;
+                    props["Height"] = 340;
+                    props["LevelTag"] = item.BindTag ?? "";
+                    props["DisplayFillLevel"] = item.Behaviors.Contains("fill_level");
                     if (item.Behaviors.Contains("fill_level"))
                         props["FillLevelColor"] = "255, 161, 0";
                     break;
 
                 case "Valve":
                     props["LibraryPath"] = "IndustryGraphicLibrary/Valves";
-                    props["SubType"]     = item.SubType ?? "ControlValve";
-                    props["Left"]        = PROCESS_X + 40;
-                    props["Top"]         = PROCESS_Y - 25;
-                    props["Width"]       = 110;
-                    props["Height"]      = 90;
-                    props["StatusTag"]   = item.BindTag ?? "";
+                    props["SubType"] = item.SubType ?? "ControlValve";
+                    props["Left"] = PROCESS_X + 40;
+                    props["Top"] = PROCESS_Y - 25;
+                    props["Width"] = 110;
+                    props["Height"] = 90;
+                    props["StatusTag"] = item.BindTag ?? "";
                     AddColorScript(props, item);
                     break;
 
                 case "Motor":
                     props["LibraryPath"] = "IndustryGraphicLibrary/Motors";
-                    props["SubType"]     = item.SubType ?? "Motor2";
-                    props["Left"]        = PROCESS_X - 70;
-                    props["Top"]         = PROCESS_Y + 335;
-                    props["Width"]       = 145;
-                    props["Height"]      = 105;
-                    props["StatusTag"]   = item.BindTag ?? "";
+                    props["SubType"] = item.SubType ?? "Motor2";
+                    props["Left"] = PROCESS_X - 70;
+                    props["Top"] = PROCESS_Y + 335;
+                    props["Width"] = 145;
+                    props["Height"] = 105;
+                    props["StatusTag"] = item.BindTag ?? "";
                     AddColorScript(props, item);
                     break;
 
                 case "Pipe":
                     props["LibraryPath"] = "IndustryGraphicLibrary/Pipes";
-                    props["SubType"]     = item.SubType ?? "PipeHorizontal";
-                    props["Left"]        = PROCESS_X - 45;
-                    props["Top"]         = PROCESS_Y;
-                    props["Width"]       = (item.SubType == "PipeVertical") ? 15 : 245;
-                    props["Height"]      = (item.SubType == "PipeVertical") ? 315 : 15;
-                    props["BasicColor"]  = "238, 238, 238";
-                    props["StatusTag"]   = item.BindTag ?? "";
+                    props["SubType"] = item.SubType ?? "PipeHorizontal";
+                    props["Left"] = PROCESS_X - 45;
+                    props["Top"] = PROCESS_Y;
+                    props["Width"] = (item.SubType == "PipeVertical") ? 15 : 245;
+                    props["Height"] = (item.SubType == "PipeVertical") ? 315 : 15;
+                    props["BasicColor"] = "238, 238, 238";
+                    props["StatusTag"] = item.BindTag ?? "";
                     break;
 
                 // --- PRIMITIVE SHAPES ---
                 case "Rectangle":
-                    props["Left"]      = INDICATOR_X;
-                    props["Top"]       = INDICATOR_Y_START + (indicatorSlot * 35);
-                    props["Width"]     = 25;
-                    props["Height"]    = 25;
+                    props["Left"] = INDICATOR_X;
+                    props["Top"] = INDICATOR_Y_START + (indicatorSlot * 35);
+                    props["Width"] = 25;
+                    props["Height"] = 25;
                     props["StatusTag"] = item.BindTag ?? "";
                     AddColorScript(props, item);
                     indicatorSlot++;
@@ -654,40 +656,40 @@ namespace TIA_Copilot_CLI
                 case "Circle":
                     props["CenterX"] = INDICATOR_X + 12;
                     props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
-                    props["Radius"]  = 12;
-                    props["Tag"]     = item.BindTag ?? "";
+                    props["Radius"] = 12;
+                    props["Tag"] = item.BindTag ?? "";
                     AddColorScript(props, item);
                     indicatorSlot++;
                     break;
 
                 case "CircularArc":
-                    props["CenterX"]    = INDICATOR_X + 12;
-                    props["CenterY"]    = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
-                    props["Radius"]     = 12;
+                    props["CenterX"] = INDICATOR_X + 12;
+                    props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
+                    props["Radius"] = 12;
                     props["AngleStart"] = 270;
                     props["AngleRange"] = 90;
-                    props["Tag"]        = item.BindTag ?? "";
+                    props["Tag"] = item.BindTag ?? "";
                     indicatorSlot++;
                     break;
 
                 case "CircleSegment":
-                    props["CenterX"]    = INDICATOR_X + 12;
-                    props["CenterY"]    = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
-                    props["Radius"]     = 12;
+                    props["CenterX"] = INDICATOR_X + 12;
+                    props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
+                    props["Radius"] = 12;
                     props["AngleStart"] = 270;
                     props["AngleRange"] = 90;
-                    props["Tag"]        = item.BindTag ?? "";
+                    props["Tag"] = item.BindTag ?? "";
                     indicatorSlot++;
                     break;
 
                 // --- BUTTONS ---
                 case "Button":
                     int btnY = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
-                    props["Left"]   = SIDEBAR_X;
-                    props["Top"]    = btnY;
-                    props["Width"]  = SIDEBAR_BTN_W;
+                    props["Left"] = SIDEBAR_X;
+                    props["Top"] = btnY;
+                    props["Width"] = SIDEBAR_BTN_W;
                     props["Height"] = SIDEBAR_BTN_H;
-                    props["Text"]   = item.Label ?? item.Name;
+                    props["Text"] = item.Label ?? item.Name;
 
                     var scripts = new JObject();
                     if (!string.IsNullOrEmpty(item.NavigateTo))
@@ -709,137 +711,162 @@ namespace TIA_Copilot_CLI
 
                 // --- I/O CONTROLS ---
                 case "IOField":
-                    props["Left"]      = SIDEBAR_X;
-                    props["Top"]       = 50;
-                    props["Width"]     = 120;
-                    props["Height"]    = 40;
-                    props["Format"]    = item.Format ?? "{0}";
+                    props["Left"] = SIDEBAR_X;
+                    props["Top"] = 50;
+                    props["Width"] = 120;
+                    props["Height"] = 40;
+                    props["Format"] = item.Format ?? "{0}";
                     props["StatusTag"] = item.BindTag ?? "";
                     break;
 
                 case "Bar":
-                    props["Left"]     = PROCESS_X - 50;
-                    props["Top"]      = PROCESS_Y;
-                    props["Width"]    = 50;
-                    props["Height"]   = 200;
-                    props["Tag"]      = item.BindTag ?? "";
+                    props["Left"] = PROCESS_X - 50;
+                    props["Top"] = PROCESS_Y;
+                    props["Width"] = 50;
+                    props["Height"] = 200;
+                    props["Tag"] = item.BindTag ?? "";
                     props["MinValue"] = item.MinValue ?? 0;
                     props["MaxValue"] = item.MaxValue ?? 100;
                     break;
 
                 case "Gauge":
-                    props["Left"]     = PROCESS_X + 150;
-                    props["Top"]      = PROCESS_Y - 50;
-                    props["Width"]    = 150;
-                    props["Height"]   = 150;
-                    props["Tag"]      = item.BindTag ?? "";
+                    props["Left"] = PROCESS_X + 150;
+                    props["Top"] = PROCESS_Y - 50;
+                    props["Width"] = 150;
+                    props["Height"] = 150;
+                    props["Tag"] = item.BindTag ?? "";
                     props["MinValue"] = item.MinValue ?? 0;
                     props["MaxValue"] = item.MaxValue ?? 100;
                     break;
 
                 case "Clock":
-                    props["Left"]      = SIDEBAR_X;
-                    props["Top"]       = 20;
-                    props["Width"]     = 200;
-                    props["Height"]    = 50;
-                    props["Format"]    = item.Format ?? "{P, hh:mm:ss}";
+                    props["Left"] = SIDEBAR_X;
+                    props["Top"] = 20;
+                    props["Width"] = 200;
+                    props["Height"] = 50;
+                    props["Format"] = item.Format ?? "{P, hh:mm:ss}";
                     props["ClockMode"] = item.ClockMode ?? "LocalTime";
                     break;
 
                 case "TouchArea":
                     // Default: overlay over the process center — hint drives final tuning
-                    props["Left"]        = PROCESS_X + 160;
-                    props["Top"]         = PROCESS_Y + 35;
-                    props["Width"]       = 160;
-                    props["Height"]      = 340;
+                    props["Left"] = PROCESS_X + 160;
+                    props["Top"] = PROCESS_Y + 35;
+                    props["Width"] = 160;
+                    props["Height"] = 340;
                     props["ToolTipText"] = item.Tooltip ?? "";
-                    props["Tag"]         = item.BindTag ?? "";
+                    props["Tag"] = item.BindTag ?? "";
                     break;
 
                 case "CheckBoxGroup":
-                    props["Left"]   = SIDEBAR_X;
-                    props["Top"]    = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
-                    props["Width"]  = SIDEBAR_BTN_W;
+                    props["Left"] = SIDEBAR_X;
+                    props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
+                    props["Width"] = SIDEBAR_BTN_W;
                     props["Height"] = SIDEBAR_BTN_H;
-                    props["Text"]   = item.Label ?? item.Name;
-                    props["Tag"]    = item.BindTag ?? "";
+                    props["Text"] = item.Label ?? item.Name;
+                    props["Tag"] = item.BindTag ?? "";
                     buttonSlot++;
                     break;
 
                 case "RadioButtonGroup":
-                    props["Left"]   = SIDEBAR_X;
-                    props["Top"]    = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
-                    props["Width"]  = SIDEBAR_BTN_W;
+                    props["Left"] = SIDEBAR_X;
+                    props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
+                    props["Width"] = SIDEBAR_BTN_W;
                     props["Height"] = 80;
-                    props["Text"]   = item.Label ?? item.Name;
-                    props["Tag"]    = item.BindTag ?? "";
+                    props["Text"] = item.Label ?? item.Name;
+                    props["Tag"] = item.BindTag ?? "";
                     buttonSlot += 2; // taller slot
+                    break;
+
+                case "HmiToggleSwitch":
+                    props["Left"] = SIDEBAR_X;
+                    props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
+                    props["Width"] = 80;
+                    props["Height"] = 40;
+                    // BackColor: use AI-provided value or sensible industrial default (light gray-blue)
+                    props["BackColor"] = !string.IsNullOrEmpty(item.BackColor)
+                                                    ? item.BackColor
+                                                    : "242, 244, 255";
+                    // AlternateBackColor: the "ON" state color — use AI-provided value or green
+                    props["AlternateBackColor"] = !string.IsNullOrEmpty(item.AlternateBackColor)
+                                                    ? item.AlternateBackColor
+                                                    : "0, 200, 80";
+                    // TagColor links the switch state to the tag — always driven by bind_tag
+                    props["TagColor"] = item.BindTag ?? "";
+                    // Events nested object — script always generated from bind_tag, never written by AI
+                    props["Events"] = new JObject
+                    {
+                        ["OnStateChanged"] = !string.IsNullOrEmpty(item.BindTag)
+                            ? $"Tags(\"{item.BindTag}\").Write(item.IsAlternateState);"
+                            : ""
+                    };
+                    buttonSlot++;
                     break;
 
                 // --- DATA CONTROLS ---
                 case "TrendControl":
-                    props["Left"]      = DATACTL_X + (dataCtlSlot > 0 ? DATACTL_W + DATACTL_GAP : 0);
-                    props["Top"]       = DATACTL_Y_START;
-                    props["Width"]     = DATACTL_W;
-                    props["Height"]    = DATACTL_H;
+                    props["Left"] = DATACTL_X + (dataCtlSlot > 0 ? DATACTL_W + DATACTL_GAP : 0);
+                    props["Top"] = DATACTL_Y_START;
+                    props["Width"] = DATACTL_W;
+                    props["Height"] = DATACTL_H;
                     props["TrendName"] = item.TrendTag ?? item.BindTag ?? "";
                     props["ShowRuler"] = item.ShowRuler;
                     dataCtlSlot++;
                     break;
 
                 case "AlarmControl":
-                    props["Left"]   = DATACTL_X + (dataCtlSlot > 0 ? DATACTL_W + DATACTL_GAP : 0);
-                    props["Top"]    = DATACTL_Y_START;
-                    props["Width"]  = DATACTL_W;
+                    props["Left"] = DATACTL_X + (dataCtlSlot > 0 ? DATACTL_W + DATACTL_GAP : 0);
+                    props["Top"] = DATACTL_Y_START;
+                    props["Width"] = DATACTL_W;
                     props["Height"] = DATACTL_H;
                     dataCtlSlot++;
                     break;
 
                 case "FunctionTrendControl":
-                    props["Left"]   = DATACTL_X;
-                    props["Top"]    = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
-                    props["Width"]  = DATACTL_W - 100;
+                    props["Left"] = DATACTL_X;
+                    props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
+                    props["Width"] = DATACTL_W - 100;
                     props["Height"] = 250;
                     break;
 
                 case "SystemDiagnosisControl":
-                    props["Left"]   = DATACTL_X;
-                    props["Top"]    = DATACTL_Y_START;
-                    props["Width"]  = DATACTL_W;
+                    props["Left"] = DATACTL_X;
+                    props["Top"] = DATACTL_Y_START;
+                    props["Width"] = DATACTL_W;
                     props["Height"] = DATACTL_H;
                     break;
 
                 case "DetailedParameterControl":
-                    props["Left"]           = DATACTL_X + DATACTL_W + DATACTL_GAP;
-                    props["Top"]            = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
-                    props["Width"]          = DATACTL_W;
-                    props["Height"]         = 250;
+                    props["Left"] = DATACTL_X + DATACTL_W + DATACTL_GAP;
+                    props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
+                    props["Width"] = DATACTL_W;
+                    props["Height"] = 250;
                     props["ParameterSetID"] = item.ParameterSetId ?? 1;
                     break;
 
                 // --- MEDIA & WEB ---
                 case "MediaControl":
-                    props["Left"]   = DATACTL_X;
-                    props["Top"]    = DATACTL_Y_START;
-                    props["Width"]  = 300;
+                    props["Left"] = DATACTL_X;
+                    props["Top"] = DATACTL_Y_START;
+                    props["Width"] = 300;
                     props["Height"] = 200;
-                    props["Url"]    = item.Url ?? "";
+                    props["Url"] = item.Url ?? "";
                     break;
 
                 case "WebControl":
-                    props["Left"]   = DATACTL_X + 320;
-                    props["Top"]    = DATACTL_Y_START;
-                    props["Width"]  = 400;
+                    props["Left"] = DATACTL_X + 320;
+                    props["Top"] = DATACTL_Y_START;
+                    props["Width"] = 400;
                     props["Height"] = 300;
-                    props["Url"]    = item.Url ?? "";
+                    props["Url"] = item.Url ?? "";
                     break;
 
                 // --- CONTAINER ---
                 case "ScreenWindow":
-                    props["Left"]       = DATACTL_X;
-                    props["Top"]        = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
-                    props["Width"]      = 300;
-                    props["Height"]     = 200;
+                    props["Left"] = DATACTL_X;
+                    props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
+                    props["Width"] = 300;
+                    props["Height"] = 200;
                     props["ScreenName"] = item.ScreenName ?? "";
                     break;
 
@@ -853,8 +880,8 @@ namespace TIA_Copilot_CLI
 
             return new JObject
             {
-                ["Name"]       = item.Name,
-                ["Type"]       = type,
+                ["Name"] = item.Name,
+                ["Type"] = type,
                 ["Properties"] = props
             };
         }
@@ -891,7 +918,7 @@ namespace TIA_Copilot_CLI
 
                 // Address allocator — starts at MB100 to avoid colliding with existing PLC tags
                 int currentByte = 100;
-                int currentBit  = 0;
+                int currentBit = 0;
 
                 foreach (var tag in data.GlobalTags)
                 {
@@ -936,16 +963,16 @@ namespace TIA_Copilot_CLI
         {
             return plcType switch
             {
-                "BOOL"  => "Bool",
-                "INT"   => "Int",
-                "UINT"  => "UInt",
-                "DINT"  => "DInt",
-                "REAL"  => "Real",
-                "WORD"  => "Word",
+                "BOOL" => "Bool",
+                "INT" => "Int",
+                "UINT" => "UInt",
+                "DINT" => "DInt",
+                "REAL" => "Real",
+                "WORD" => "Word",
                 "DWORD" => "DWord",
-                "BYTE"  => "Byte",
-                "SINT"  => "SInt",
-                _       => "Int"  // Safe fallback
+                "BYTE" => "Byte",
+                "SINT" => "SInt",
+                _ => "Int"  // Safe fallback
             };
         }
 
@@ -1004,39 +1031,39 @@ namespace TIA_Copilot_CLI
 
     public class CwcPropertyInfo
     {
-        public string Name        { get; set; }
-        public string Type        { get; set; }   // "number" | "boolean" | "string"
-        public JToken Default     { get; set; }   // preserved as JToken to handle any JSON type
+        public string Name { get; set; }
+        public string Type { get; set; }   // "number" | "boolean" | "string"
+        public JToken Default { get; set; }   // preserved as JToken to handle any JSON type
         public string Description { get; set; }
     }
 
     public class CwcEventInfo
     {
-        public string Name                  { get; set; }
+        public string Name { get; set; }
         public List<CwcParamInfo> Arguments { get; set; } = new List<CwcParamInfo>();
-        public string Description           { get; set; }
+        public string Description { get; set; }
     }
 
     public class CwcMethodInfo
     {
-        public string Name                   { get; set; }
+        public string Name { get; set; }
         public List<CwcParamInfo> Parameters { get; set; } = new List<CwcParamInfo>();
-        public string Description            { get; set; }
+        public string Description { get; set; }
     }
 
     public class CwcScreenData
     {
-        public string Name           { get; set; }
-        public string DisplayName    { get; set; }
-        public string Description    { get; set; }
+        public string Name { get; set; }
+        public string DisplayName { get; set; }
+        public string Description { get; set; }
         public List<string> Keywords { get; set; } = new List<string>();
-        public List<CwcPropertyInfo> Properties    { get; set; } = new List<CwcPropertyInfo>();
-        public List<CwcEventInfo>    Events        { get; set; } = new List<CwcEventInfo>();
-        public List<CwcMethodInfo>   Methods       { get; set; } = new List<CwcMethodInfo>();
-        public List<string>          ThirdPartyLibs { get; set; } = new List<string>();
-        public string HtmlContent    { get; set; }
-        public string JsContent      { get; set; }   // complete code.js including WebCC.start()
-        public string CssContent     { get; set; }
+        public List<CwcPropertyInfo> Properties { get; set; } = new List<CwcPropertyInfo>();
+        public List<CwcEventInfo> Events { get; set; } = new List<CwcEventInfo>();
+        public List<CwcMethodInfo> Methods { get; set; } = new List<CwcMethodInfo>();
+        public List<string> ThirdPartyLibs { get; set; } = new List<string>();
+        public string HtmlContent { get; set; }
+        public string JsContent { get; set; }   // complete code.js including WebCC.start()
+        public string CssContent { get; set; }
     }
 
     // -----------------------------------------------------------------------
@@ -1051,7 +1078,7 @@ namespace TIA_Copilot_CLI
             var info = root["cwc_info"];
             if (info != null)
             {
-                data.Name        = info["name"]?.ToString()        ?? "AI_Control";
+                data.Name = info["name"]?.ToString() ?? "AI_Control";
                 data.DisplayName = info["displayname"]?.ToString() ?? data.Name;
                 data.Description = info["description"]?.ToString() ?? "";
 
@@ -1067,9 +1094,9 @@ namespace TIA_Copilot_CLI
                     if (!p.ContainsKey("name") || !p.ContainsKey("type")) continue;
                     data.Properties.Add(new CwcPropertyInfo
                     {
-                        Name        = p["name"]?.ToString(),
-                        Type        = p["type"]?.ToString()        ?? "number",
-                        Default     = p["default"],   // keep as JToken
+                        Name = p["name"]?.ToString(),
+                        Type = p["type"]?.ToString() ?? "number",
+                        Default = p["default"],   // keep as JToken
                         Description = p["description"]?.ToString() ?? ""
                     });
                 }
@@ -1083,7 +1110,7 @@ namespace TIA_Copilot_CLI
                     if (!e.ContainsKey("name")) continue;
                     var ev = new CwcEventInfo
                     {
-                        Name        = e["name"].ToString(),
+                        Name = e["name"].ToString(),
                         Description = e["description"]?.ToString() ?? ""
                     };
                     if (e["arguments"] is JArray args)
@@ -1105,7 +1132,7 @@ namespace TIA_Copilot_CLI
                     if (!m.ContainsKey("name")) continue;
                     var method = new CwcMethodInfo
                     {
-                        Name        = m["name"].ToString(),
+                        Name = m["name"].ToString(),
                         Description = m["description"]?.ToString() ?? ""
                     };
                     if (m["parameters"] is JArray parms)
@@ -1124,8 +1151,8 @@ namespace TIA_Copilot_CLI
                 foreach (var lib in libs) data.ThirdPartyLibs.Add(lib.ToString());
 
             data.HtmlContent = root["html_content"]?.ToString() ?? "";
-            data.JsContent   = root["js_content"]?.ToString()   ?? "";   // complete — no injection needed
-            data.CssContent  = root["css_content"]?.ToString()  ?? "";
+            data.JsContent = root["js_content"]?.ToString() ?? "";   // complete — no injection needed
+            data.CssContent = root["css_content"]?.ToString() ?? "";
 
             return data;
         }
@@ -1184,7 +1211,7 @@ namespace TIA_Copilot_CLI
             try
             {
                 // 1. Generate GUID — becomes both the zip filename and the manifest type field
-                string guidRaw  = Guid.NewGuid().ToString().ToUpper(); // XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+                string guidRaw = Guid.NewGuid().ToString().ToUpper(); // XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
                 string guidFull = $"{{{guidRaw}}}";                    // {XXXXXXXX-...} for zip name
                 string safeName = string.IsNullOrWhiteSpace(data.Name) ? "AI_Control" : data.Name;
 
@@ -1193,11 +1220,11 @@ namespace TIA_Copilot_CLI
 
                 // 3. Package zip
                 string zipFileName = $"{guidFull}.zip";
-                string outputDir   = OutputPaths.GetGeneratedDir();
-                string zipPath     = Path.Combine(outputDir, zipFileName);
+                string outputDir = OutputPaths.GetGeneratedDir();
+                string zipPath = Path.Combine(outputDir, zipFileName);
 
                 using (var zipStream = new FileStream(zipPath, FileMode.Create))
-                using (var archive   = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Create))
+                using (var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Create))
                 {
                     // Root files
                     WriteZipEntry(archive, "manifest.json", manifestJson);
@@ -1208,7 +1235,7 @@ namespace TIA_Copilot_CLI
 
                     // control/ — generated files
                     WriteZipEntry(archive, "control/index.html", data.HtmlContent);
-                    WriteZipEntry(archive, "control/code.js",    data.JsContent);
+                    WriteZipEntry(archive, "control/code.js", data.JsContent);
                     WriteZipEntry(archive, "control/styles.css", data.CssContent);
 
                     // control/ — static dev helpers
@@ -1305,29 +1332,29 @@ namespace TIA_Copilot_CLI
             var manifest = new JObject
             {
                 ["$schema"] = "./CWC_manifest_Schema.json",
-                ["mver"]    = "1.2.0",
+                ["mver"] = "1.2.0",
                 ["control"] = new JObject
                 {
                     ["identity"] = new JObject
                     {
-                        ["name"]        = safeName,
-                        ["version"]     = "1.0",
+                        ["name"] = safeName,
+                        ["version"] = "1.0",
                         ["displayname"] = string.IsNullOrWhiteSpace(data.DisplayName) ? safeName : data.DisplayName,
-                        ["icon"]        = "./assets/logo.ico",
-                        ["type"]        = $"guid://{guidRaw}",
-                        ["start"]       = "./control/index.html"
+                        ["icon"] = "./assets/logo.ico",
+                        ["type"] = $"guid://{guidRaw}",
+                        ["start"] = "./control/index.html"
                     },
                     ["metadata"] = new JObject
                     {
-                        ["author"]   = "TIA Copilot AI",
+                        ["author"] = "TIA Copilot AI",
                         ["keywords"] = keywordsArr
                     },
                     ["contracts"] = new JObject
                     {
                         ["api"] = new JObject
                         {
-                            ["methods"]    = methodsObj,
-                            ["events"]     = eventsObj,
+                            ["methods"] = methodsObj,
+                            ["events"] = eventsObj,
                             ["properties"] = propsObj
                         }
                     }
@@ -1365,7 +1392,7 @@ namespace TIA_Copilot_CLI
             }
 
             var entry = archive.CreateEntry(entryPath, System.IO.Compression.CompressionLevel.Optimal);
-            using var entryStream  = entry.Open();
+            using var entryStream = entry.Open();
             using var sourceStream = File.OpenRead(sourcePath);
             sourceStream.CopyTo(entryStream);
             Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -1386,7 +1413,7 @@ namespace TIA_Copilot_CLI
                 if (File.Exists(sourcePath))
                 {
                     var entry = archive.CreateEntry(entryPath, System.IO.Compression.CompressionLevel.Optimal);
-                    using var entryStream  = entry.Open();
+                    using var entryStream = entry.Open();
                     using var sourceStream = File.OpenRead(sourcePath);
                     sourceStream.CopyTo(entryStream);
                     Console.ForegroundColor = ConsoleColor.DarkGray;

@@ -183,6 +183,15 @@
       "type": "ScreenWindow",
       "screen_name": "Screen_Manual_Control",
       "hint": "embedded sub-screen, bottom-left"
+    },
+    {
+      "_comment_toggle": "TOGGLE SWITCH EXAMPLE — HmiToggleSwitch",
+      "name": "Switch_Bom_Chinh",
+      "type": "HmiToggleSwitch",
+      "bind_tag": "k1",
+      "back_color": "242, 244, 255",
+      "alternate_back_color": "0, 200, 80",
+      "hint": "left sidebar, toggle switch for pump on/off"
     }
   ],
   "global_tags": [

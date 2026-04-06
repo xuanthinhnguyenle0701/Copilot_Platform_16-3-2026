@@ -170,6 +170,22 @@ Describe rules for Clock objects:
 - Required fields: format string, clock_mode (LocalTime / SystemTime)
 METADATA_TYPE: LAYOUT
 
+## STRATEGY: INPUT/OUTPUT — HMITOGGLESWITCH
+Rules for HmiToggleSwitch objects:
+- Use when the user needs a toggle/flip switch that directly writes a boolean value to a PLC tag
+- Required fields: bind_tag (BOOL tag the switch controls)
+- Optional fields: back_color (default/OFF state background, R,G,B string), alternate_back_color (ON state color, R,G,B string)
+- DO NOT include TagColor or Events in the AI output — C# assembler always generates them from bind_tag:
+- TagColor = bind_tag value
+- Events.OnStateChanged = "Tags("<bind_tag>").Write(item.IsAlternateState);"
+- Default back_color if not specified: "242, 244, 255" (light gray-blue, inactive state)
+- Default alternate_back_color if not specified: "0, 200, 80" (green, active/ON state)
+- Use red alternate color "220, 50, 50" for stop/disable switches
+- Naming convention: Switch_<DeviceName> e.g. Switch_Bom_Chinh, Switch_Van_1
+- Placed in the left sidebar zone alongside buttons — shares buttonSlot counter
+- Behavior: toggle click writes IsAlternateState (true=ON, false=OFF) to the bound tag
+METADATA_TYPE: CONTROL
+
 ## STRATEGY: LAYOUT GUIDANCE — GENERAL SCREEN COMPOSITION
 [PLACEHOLDER — TO BE IMPLEMENTED]
 Describe general layout rules:
