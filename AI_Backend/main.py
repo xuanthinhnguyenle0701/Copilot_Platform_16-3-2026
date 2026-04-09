@@ -47,7 +47,7 @@ def get_cwc_system_prompt():
 def get_output_schema(target_block_type="AUTO"):
     if target_block_type == "HMI_SCREEN":
         schema_file = "data/siemenshmi_output_schema.json"
-        fallback = '{"screen_info": {"name": "AI_Screen", "width": 1024, "height": 600}, "items": [], "global_tags": []}'
+        fallback = '{"screen_info": {"name": "AI_Screen", "width": 1920, "height": 1080}, "items": [], "global_tags": []}'
     elif target_block_type == "CWC_SCREEN":
         schema_file = "data/cwc_output_schema.json"
         fallback = '{"cwc_info": {"name": "AI_Control", "displayname": "AI Control", "description": ""}, "properties": [], "events": [], "methods": [], "third_party_libs": [], "html_content": "", "js_content": "", "css_content": ""}'
@@ -504,7 +504,7 @@ def main():
            - If no new tags are needed, return "global_tags": [].
 
         9. **SCREEN INFO:**
-           - Always fill "screen_info" with a meaningful "name", and default width/height of 1024x600
+           - Always fill "screen_info" with a meaningful "name", and default width/height of 1920x1080
              unless the user specifies otherwise.
 
         ### USER REQUEST:
@@ -566,6 +566,8 @@ def main():
         
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
+            #model="gemini-2.5-pro",
+            #model="gemini-3.1-pro-preview",
             temperature=0.1,
             convert_system_message_to_human=True
         )

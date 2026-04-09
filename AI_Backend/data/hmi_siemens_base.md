@@ -239,9 +239,15 @@ Rules for generating a standard Device Control Faceplate (Motor/Pump/Actuator co
 METADATA_TYPE: CONTROL
 
 ## STRATEGY: LAYOUT GUIDANCE — GENERAL SCREEN COMPOSITION
-[PLACEHOLDER — TO BE IMPLEMENTED]
-Describe general layout rules:
-- Zone model: process area (center), control panel (left sidebar), status bar (top), navigation (bottom)
-- How to group related objects conceptually
-- Guidelines for screen naming (Main_, Data_, Diag_, etc.)
+Rules for general screen layout (Replaces Sidebar model):
+- **Primary Rule**: AI MUST calculate absolute 'Left' and 'Top' coordinates for every object.
+- **Cluster Model**: Related objects (e.g., within a Faceplate) must be grouped by proximity.
+- **Screen Zones**:
+  - Center/Main: For process widgets (Tanks, Pipes).
+  - Control Clusters: Grouped Faceplates, usually arranged horizontally.
+- **Coordinate Calculation**:
+  - Faceplate 1: Start at (100, 100).
+  - Faceplate 2: Start at (350, 100) — maintaining 50px gap.
+  - Faceplate 3: Start at (600, 100).
+- **Naming**: Use 'FP_' prefix for all elements inside a cluster to trigger grouping logic.
 METADATA_TYPE: LAYOUT

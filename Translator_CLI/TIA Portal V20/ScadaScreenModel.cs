@@ -36,6 +36,7 @@ namespace Middleware_console
         public Dictionary<string, string> Events { get; set; }
         // Đệ quy cho các vật thể con (Group/Container)
         public List<ScadaItemModel> Items { get; set; } 
+        public string BindTag { get; set; }
         public string TagName { get; set; }
         public LibraryModel Library { get; set; }
     }

@@ -1008,58 +1008,67 @@ namespace Middleware_console
                                 try { newItemPart.SetAttribute("Text", itemText); } catch { }
                             }
                             else if (typeId == "HmiToggleSwitch")
-                            {
-                                try 
-                                {
-                                    // 1. Ép Style ĐỂ PHÂN BIỆT THUẬN/ĐẢO
-                                    try { newItem.SetAttribute("StyleItem", item.Type); } catch { }
+{
+    try 
+    {
+        // Lấy tên Tag từ JSON (Ưu tiên BindTag, nếu không có thì lấy trong Properties)
+        string targetTag = !string.IsNullOrEmpty(item.BindTag) 
+                           ? item.BindTag 
+                           : (item.Properties.ContainsKey("TagColor") ? item.Properties["TagColor"].ToString() : "");
 
-                                    // 2. Tọa độ & Kích thước
-                                    newItem.SetAttribute("Left", Convert.ToInt32(item.Properties["Left"]));
-                                    newItem.SetAttribute("Top", Convert.ToInt32(item.Properties["Top"]));
-                                    newItem.SetAttribute("Width", (uint)Convert.ToInt32(item.Properties["Width"]));
-                                    newItem.SetAttribute("Height", (uint)Convert.ToUInt32(item.Properties["Height"]));
+        if (string.IsNullOrEmpty(targetTag))
+        {
+            Console.WriteLine($"      [!] Cảnh báo: {item.Name} không có BindTag trong JSON.");
+        }
 
-                                    // 3. Thiết lập trạng thái ban đầu
-                                    if (item.Properties.ContainsKey("SwitchState")) {
-                                        bool val = Convert.ToBoolean(item.Properties["SwitchState"]);
-                                        try { newItem.SetAttribute("SwitchState", val); } 
-                                        catch { try { newItem.SetAttribute("ProcessValue", val); } catch { } }
-                                    }
+        // 1. Ép Style
+        try { newItem.SetAttribute("StyleItem", item.Type); } catch { }
 
-                                    // 4. GẮN EVENT "STATUS CHANGED" (Dựa trên logic ProcessButtonScripts)
-                                    try {
-                                        // Chuẩn bị đoạn mã JS đúng như ảnh Otis chụp
-                                        string jsCode = $@"Tags(""k1"").Write(item.IsAlternateState);";
-                                        
-                                        // Dùng Dictionary để khớp với tham số 'dynamic scriptsJson' của hàm ProcessButtonScripts
-                                        // Lưu ý: Ta dùng key "OnStateChanged" vì nó thường khớp với Enum của Siemens cho 'Status changed'
-                                        var eventData = new System.Dynamic.ExpandoObject() as IDictionary<string, object>;
-                                        eventData.Add("StateChanged", jsCode); 
+        // 2. Tọa độ & Kích thước (Dùng Convert để an toàn)
+        newItem.SetAttribute("Left", Convert.ToInt32(item.Properties["Left"]));
+        newItem.SetAttribute("Top", Convert.ToInt32(item.Properties["Top"]));
+        newItem.SetAttribute("Width", Convert.ToUInt32(item.Properties["Width"]));
+        newItem.SetAttribute("Height", Convert.ToUInt32(item.Properties["Height"]));
 
-                                        // Gọi hàm xử lý script tổng quát mà Otis đã viết
-                                        ProcessStatusScripts(newItem, item.Name, eventData);
-                                    } 
-                                    catch (Exception ex) { 
-                                        Console.WriteLine($"      [!] Lỗi gắn Event cho {item.Name}: {ex.Message}"); 
-                                    }
+        // 3. Thiết lập trạng thái ban đầu
+        if (item.Properties.ContainsKey("SwitchState")) {
+            bool val = Convert.ToBoolean(item.Properties["SwitchState"]);
+            try { newItem.SetAttribute("SwitchState", val); } 
+            catch { try { newItem.SetAttribute("ProcessValue", val); } catch { } }
+        }
 
-                                    // 5. GẮN DYNAMIZATION ĐỔI MÀU (BackColor)
-                                    try {
-                                        // Bản đảo gạt sang xanh hiện đỏ, bản thuận gạt sang xanh hiện xanh (tùy ý Otis)
-                                        string colorOn = (item.Type == "HmiToggleSwitchInverted") ? "255, 0, 0" : "0, 255, 0";
-                                        
-                                        string colorScript = $@"var v = Tags(""k1"").Read();
-                            return v ? HMIRuntime.Math.RGB({colorOn}) : HMIRuntime.Math.RGB(242, 244, 255);";
-                                        
-                                        // Gọi hàm BindTagToBasicWithStates để nạp Script đổi màu
-                                        BindTagToBasicWithStates(newItem, "k1", "BackColor", colorScript);
-                                    } catch { }
+        // 4. GẮN EVENT "STATUS CHANGED" (Đọc động targetTag)
+        if (!string.IsNullOrEmpty(targetTag))
+        {
+            try {
+                // Thay "k1" bằng biến targetTag
+                string jsCode = $@"Tags(""{targetTag}"").Write(item.IsAlternateState);";
+                
+                var eventData = new System.Dynamic.ExpandoObject() as IDictionary<string, object>;
+                eventData.Add("StateChanged", jsCode); 
 
-                                    Console.WriteLine($"      [SUCCESS] Đã dựng & gán Logic cho {item.Name}");
-                                }
-                                catch (Exception ex) { Console.WriteLine($"      [!] Lỗi gán thuộc tính {item.Name}: {ex.Message}"); }
-                            }
+                ProcessStatusScripts(newItem, item.Name, eventData);
+            } 
+            catch (Exception ex) { 
+                Console.WriteLine($"      [!] Lỗi gắn Event cho {item.Name}: {ex.Message}"); 
+            }
+
+            // 5. GẮN DYNAMIZATION ĐỔI MÀU (BackColor - Đọc động targetTag)
+            try {
+                string colorOn = (item.Type == "HmiToggleSwitchInverted") ? "255, 0, 0" : "0, 200, 80";
+                
+                // Thay "k1" bằng biến targetTag
+                string colorScript = $@"var v = Tags(""{targetTag}"").Read();
+    return v ? HMIRuntime.Math.RGB({colorOn}) : HMIRuntime.Math.RGB(242, 244, 255);";
+                
+                BindTagToBasicWithStates(newItem, targetTag, "BackColor", colorScript);
+            } catch { }
+        }
+
+        Console.WriteLine($"      [SUCCESS] Đã dựng & gán Logic cho {item.Name} với Tag: {targetTag}");
+    }
+    catch (Exception ex) { Console.WriteLine($"      [!] Lỗi gán thuộc tính {item.Name}: {ex.Message}"); }
+}
                             
                             else if (typeId == "HmiText" || lowerType.Contains("button")) 
                             {

@@ -363,6 +363,7 @@ namespace TIA_Copilot_CLI
         public string Type { get; set; }         // Tank, Valve, Button, IOField, etc.
         public string SubType { get; set; }      // ControlValve, Motor2, PipeVertical, etc.
         public string BindTag { get; set; }      // Primary tag binding
+        public Dictionary<string, object> Properties { get; set; } = new Dictionary<string, object>();
         public List<string> Behaviors { get; set; } = new List<string>(); // fill_level, color_on_status
         public string Hint { get; set; }         // Layout hint for C# assembler
         public string Label { get; set; }        // Button label text
@@ -499,11 +500,11 @@ namespace TIA_Copilot_CLI
         private static int _connectionCounter = 0;
 
         // 
-        private static readonly int SIDEBAR_X = 30;
-        private static readonly int SIDEBAR_Y_START = 180;
-        private static readonly int SIDEBAR_BTN_W = 120;
-        private static readonly int SIDEBAR_BTN_H = 40;
-        private static readonly int SIDEBAR_GAP = 10;
+        // private static readonly int SIDEBAR_X = 30;
+        // private static readonly int SIDEBAR_Y_START = 180;
+        // private static readonly int SIDEBAR_BTN_W = 120;
+        // private static readonly int SIDEBAR_BTN_H = 40;
+        // private static readonly int SIDEBAR_GAP = 10;
 
         private static readonly int PROCESS_X = 300;
         private static readonly int PROCESS_Y = 100;
@@ -516,6 +517,11 @@ namespace TIA_Copilot_CLI
         private static readonly int DATACTL_W = 500;
         private static readonly int DATACTL_H = 280;
         private static readonly int DATACTL_GAP = 10;
+        private static readonly int FALLBACK_X = 20;
+        private static readonly int FALLBACK_Y = 700;
+        private static readonly int DEFAULT_W = 120;
+        private static readonly int DEFAULT_H = 40;
+        private static readonly int V_SPACING = 10;
 
         public static void GenerateAndSave(HmiScreenData data)
         {
@@ -585,307 +591,474 @@ namespace TIA_Copilot_CLI
             }
         }
 
-        private static JObject BuildPhysicalItem(
-            HmiItemData item,
-            ref int buttonSlot,
-            ref int indicatorSlot,
-            ref int dataCtlSlot)
-        {
-            var props = new JObject();
-            string type = item.Type ?? "";
+        // private static JObject BuildPhysicalItem(
+        //     HmiItemData item,
+        //     ref int buttonSlot,
+        //     ref int indicatorSlot,
+        //     ref int dataCtlSlot)
+        // {
+        //     var props = new JObject();
+        //     string type = item.Type ?? "";
 
-            switch (type)
-            {
-                // --- LIBRARY OBJECTS ---
-                case "Tank":
-                    props["LibraryPath"] = "IndustryGraphicLibrary/Tanks";
-                    props["SubType"] = item.SubType ?? "Tank";
-                    props["Left"] = PROCESS_X + 160;
-                    props["Top"] = PROCESS_Y + 35;
-                    props["Width"] = 160;
-                    props["Height"] = 340;
-                    props["LevelTag"] = item.BindTag ?? "";
-                    props["DisplayFillLevel"] = item.Behaviors.Contains("fill_level");
-                    if (item.Behaviors.Contains("fill_level"))
-                        props["FillLevelColor"] = "255, 161, 0";
-                    break;
+        //     switch (type)
+        //     {
+        //         // --- LIBRARY OBJECTS ---
+        //         case "Tank":
+        //             props["LibraryPath"] = "IndustryGraphicLibrary/Tanks";
+        //             props["SubType"] = item.SubType ?? "Tank";
+        //             props["Left"] = PROCESS_X + 160;
+        //             props["Top"] = PROCESS_Y + 35;
+        //             props["Width"] = 160;
+        //             props["Height"] = 340;
+        //             props["LevelTag"] = item.BindTag ?? "";
+        //             props["DisplayFillLevel"] = item.Behaviors.Contains("fill_level");
+        //             if (item.Behaviors.Contains("fill_level"))
+        //                 props["FillLevelColor"] = "255, 161, 0";
+        //             break;
 
-                case "Valve":
-                    props["LibraryPath"] = "IndustryGraphicLibrary/Valves";
-                    props["SubType"] = item.SubType ?? "ControlValve";
-                    props["Left"] = PROCESS_X + 40;
-                    props["Top"] = PROCESS_Y - 25;
-                    props["Width"] = 110;
-                    props["Height"] = 90;
-                    props["StatusTag"] = item.BindTag ?? "";
-                    AddColorScript(props, item);
-                    break;
+        //         case "Valve":
+        //             props["LibraryPath"] = "IndustryGraphicLibrary/Valves";
+        //             props["SubType"] = item.SubType ?? "ControlValve";
+        //             props["Left"] = PROCESS_X + 40;
+        //             props["Top"] = PROCESS_Y - 25;
+        //             props["Width"] = 110;
+        //             props["Height"] = 90;
+        //             props["StatusTag"] = item.BindTag ?? "";
+        //             AddColorScript(props, item);
+        //             break;
 
-                case "Motor":
-                    props["LibraryPath"] = "IndustryGraphicLibrary/Motors";
-                    props["SubType"] = item.SubType ?? "Motor2";
-                    props["Left"] = PROCESS_X - 70;
-                    props["Top"] = PROCESS_Y + 335;
-                    props["Width"] = 145;
-                    props["Height"] = 105;
-                    props["StatusTag"] = item.BindTag ?? "";
-                    AddColorScript(props, item);
-                    break;
+        //         case "Motor":
+        //             props["LibraryPath"] = "IndustryGraphicLibrary/Motors";
+        //             props["SubType"] = item.SubType ?? "Motor2";
+        //             props["Left"] = PROCESS_X - 70;
+        //             props["Top"] = PROCESS_Y + 335;
+        //             props["Width"] = 145;
+        //             props["Height"] = 105;
+        //             props["StatusTag"] = item.BindTag ?? "";
+        //             AddColorScript(props, item);
+        //             break;
 
-                case "Pipe":
-                    props["LibraryPath"] = "IndustryGraphicLibrary/Pipes";
-                    props["SubType"] = item.SubType ?? "PipeHorizontal";
-                    props["Left"] = PROCESS_X - 45;
-                    props["Top"] = PROCESS_Y;
-                    props["Width"] = (item.SubType == "PipeVertical") ? 15 : 245;
-                    props["Height"] = (item.SubType == "PipeVertical") ? 315 : 15;
-                    props["BasicColor"] = "238, 238, 238";
-                    props["StatusTag"] = item.BindTag ?? "";
-                    break;
+        //         case "Pipe":
+        //             props["LibraryPath"] = "IndustryGraphicLibrary/Pipes";
+        //             props["SubType"] = item.SubType ?? "PipeHorizontal";
+        //             props["Left"] = PROCESS_X - 45;
+        //             props["Top"] = PROCESS_Y;
+        //             props["Width"] = (item.SubType == "PipeVertical") ? 15 : 245;
+        //             props["Height"] = (item.SubType == "PipeVertical") ? 315 : 15;
+        //             props["BasicColor"] = "238, 238, 238";
+        //             props["StatusTag"] = item.BindTag ?? "";
+        //             break;
 
-                // --- PRIMITIVE SHAPES ---
-                case "Rectangle":
-                    props["Left"] = INDICATOR_X;
-                    props["Top"] = INDICATOR_Y_START + (indicatorSlot * 35);
-                    props["Width"] = 25;
-                    props["Height"] = 25;
-                    props["StatusTag"] = item.BindTag ?? "";
-                    AddColorScript(props, item);
-                    indicatorSlot++;
-                    break;
+        //         // --- PRIMITIVE SHAPES ---
+        //         case "Rectangle":
+        //             props["Left"] = INDICATOR_X;
+        //             props["Top"] = INDICATOR_Y_START + (indicatorSlot * 35);
+        //             props["Width"] = 25;
+        //             props["Height"] = 25;
+        //             props["StatusTag"] = item.BindTag ?? "";
+        //             AddColorScript(props, item);
+        //             indicatorSlot++;
+        //             break;
 
-                case "Circle":
-                    props["CenterX"] = INDICATOR_X + 12;
-                    props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
-                    props["Radius"] = 12;
-                    props["Tag"] = item.BindTag ?? "";
-                    AddColorScript(props, item);
-                    indicatorSlot++;
-                    break;
+        //         case "Circle":
+        //             props["CenterX"] = INDICATOR_X + 12;
+        //             props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
+        //             props["Radius"] = 12;
+        //             props["Tag"] = item.BindTag ?? "";
+        //             AddColorScript(props, item);
+        //             indicatorSlot++;
+        //             break;
 
-                case "CircularArc":
-                    props["CenterX"] = INDICATOR_X + 12;
-                    props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
-                    props["Radius"] = 12;
-                    props["AngleStart"] = 270;
-                    props["AngleRange"] = 90;
-                    props["Tag"] = item.BindTag ?? "";
-                    indicatorSlot++;
-                    break;
+        //         case "CircularArc":
+        //             props["CenterX"] = INDICATOR_X + 12;
+        //             props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
+        //             props["Radius"] = 12;
+        //             props["AngleStart"] = 270;
+        //             props["AngleRange"] = 90;
+        //             props["Tag"] = item.BindTag ?? "";
+        //             indicatorSlot++;
+        //             break;
 
-                case "CircleSegment":
-                    props["CenterX"] = INDICATOR_X + 12;
-                    props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
-                    props["Radius"] = 12;
-                    props["AngleStart"] = 270;
-                    props["AngleRange"] = 90;
-                    props["Tag"] = item.BindTag ?? "";
-                    indicatorSlot++;
-                    break;
+        //         case "CircleSegment":
+        //             props["CenterX"] = INDICATOR_X + 12;
+        //             props["CenterY"] = INDICATOR_Y_START + (indicatorSlot * 35) + 12;
+        //             props["Radius"] = 12;
+        //             props["AngleStart"] = 270;
+        //             props["AngleRange"] = 90;
+        //             props["Tag"] = item.BindTag ?? "";
+        //             indicatorSlot++;
+        //             break;
 
-                // --- BUTTONS ---
-                case "Button":
-                    int btnY = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
-                    props["Left"] = SIDEBAR_X;
-                    props["Top"] = btnY;
-                    props["Width"] = SIDEBAR_BTN_W;
-                    props["Height"] = SIDEBAR_BTN_H;
-                    props["Text"] = item.Label ?? item.Name;
+        //         // --- BUTTONS ---
+        //         case "Button":
+        //             int btnY = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
+        //             props["Left"] = SIDEBAR_X;
+        //             props["Top"] = btnY;
+        //             props["Width"] = SIDEBAR_BTN_W;
+        //             props["Height"] = SIDEBAR_BTN_H;
+        //             props["Text"] = item.Label ?? item.Name;
 
-                    var scripts = new JObject();
-                    if (!string.IsNullOrEmpty(item.NavigateTo))
-                    {
-                        // Navigation button
-                        scripts["KeyUp"] = $"HMIRuntime.UI.SysFct.ChangeScreen('{item.NavigateTo}', null);";
-                    }
-                    else
-                    {
-                        // Momentary write button
-                        if (item.KeydownWrite != null)
-                            scripts["KeyDown"] = $"Tags(\"{item.KeydownWrite.Tag}\").Write({item.KeydownWrite.Value});";
-                        if (item.KeyupWrite != null)
-                            scripts["KeyUp"] = $"Tags(\"{item.KeyupWrite.Tag}\").Write({item.KeyupWrite.Value});";
-                    }
-                    props["Scripts"] = scripts;
-                    buttonSlot++;
-                    break;
+        //             var scripts = new JObject();
+        //             if (!string.IsNullOrEmpty(item.NavigateTo))
+        //             {
+        //                 // Navigation button
+        //                 scripts["KeyUp"] = $"HMIRuntime.UI.SysFct.ChangeScreen('{item.NavigateTo}', null);";
+        //             }
+        //             else
+        //             {
+        //                 // Momentary write button
+        //                 if (item.KeydownWrite != null)
+        //                     scripts["KeyDown"] = $"Tags(\"{item.KeydownWrite.Tag}\").Write({item.KeydownWrite.Value});";
+        //                 if (item.KeyupWrite != null)
+        //                     scripts["KeyUp"] = $"Tags(\"{item.KeyupWrite.Tag}\").Write({item.KeyupWrite.Value});";
+        //             }
+        //             props["Scripts"] = scripts;
+        //             buttonSlot++;
+        //             break;
 
-                // --- I/O CONTROLS ---
-                case "IOField":
-                    props["Left"] = SIDEBAR_X;
-                    props["Top"] = 50;
-                    props["Width"] = 120;
-                    props["Height"] = 40;
-                    props["Format"] = item.Format ?? "{0}";
-                    props["StatusTag"] = item.BindTag ?? "";
-                    break;
+        //         // --- I/O CONTROLS ---
+        //         case "IOField":
+        //             props["Left"] = SIDEBAR_X;
+        //             props["Top"] = 50;
+        //             props["Width"] = 120;
+        //             props["Height"] = 40;
+        //             props["Format"] = item.Format ?? "{0}";
+        //             props["StatusTag"] = item.BindTag ?? "";
+        //             break;
 
-                case "Bar":
-                    props["Left"] = PROCESS_X - 50;
-                    props["Top"] = PROCESS_Y;
-                    props["Width"] = 50;
-                    props["Height"] = 200;
-                    props["Tag"] = item.BindTag ?? "";
-                    props["MinValue"] = item.MinValue ?? 0;
-                    props["MaxValue"] = item.MaxValue ?? 100;
-                    break;
+        //         case "Bar":
+        //             props["Left"] = PROCESS_X - 50;
+        //             props["Top"] = PROCESS_Y;
+        //             props["Width"] = 50;
+        //             props["Height"] = 200;
+        //             props["Tag"] = item.BindTag ?? "";
+        //             props["MinValue"] = item.MinValue ?? 0;
+        //             props["MaxValue"] = item.MaxValue ?? 100;
+        //             break;
 
-                case "Gauge":
-                    props["Left"] = PROCESS_X + 150;
-                    props["Top"] = PROCESS_Y - 50;
-                    props["Width"] = 150;
-                    props["Height"] = 150;
-                    props["Tag"] = item.BindTag ?? "";
-                    props["MinValue"] = item.MinValue ?? 0;
-                    props["MaxValue"] = item.MaxValue ?? 100;
-                    break;
+        //         case "Gauge":
+        //             props["Left"] = PROCESS_X + 150;
+        //             props["Top"] = PROCESS_Y - 50;
+        //             props["Width"] = 150;
+        //             props["Height"] = 150;
+        //             props["Tag"] = item.BindTag ?? "";
+        //             props["MinValue"] = item.MinValue ?? 0;
+        //             props["MaxValue"] = item.MaxValue ?? 100;
+        //             break;
 
-                case "Clock":
-                    props["Left"] = SIDEBAR_X;
-                    props["Top"] = 20;
-                    props["Width"] = 200;
-                    props["Height"] = 50;
-                    props["Format"] = item.Format ?? "{P, hh:mm:ss}";
-                    props["ClockMode"] = item.ClockMode ?? "LocalTime";
-                    break;
+        //         case "Clock":
+        //             props["Left"] = SIDEBAR_X;
+        //             props["Top"] = 20;
+        //             props["Width"] = 200;
+        //             props["Height"] = 50;
+        //             props["Format"] = item.Format ?? "{P, hh:mm:ss}";
+        //             props["ClockMode"] = item.ClockMode ?? "LocalTime";
+        //             break;
 
-                case "TouchArea":
-                    // Default: overlay over the process center — hint drives final tuning
-                    props["Left"] = PROCESS_X + 160;
-                    props["Top"] = PROCESS_Y + 35;
-                    props["Width"] = 160;
-                    props["Height"] = 340;
-                    props["ToolTipText"] = item.Tooltip ?? "";
-                    props["Tag"] = item.BindTag ?? "";
-                    break;
+        //         case "TouchArea":
+        //             // Default: overlay over the process center — hint drives final tuning
+        //             props["Left"] = PROCESS_X + 160;
+        //             props["Top"] = PROCESS_Y + 35;
+        //             props["Width"] = 160;
+        //             props["Height"] = 340;
+        //             props["ToolTipText"] = item.Tooltip ?? "";
+        //             props["Tag"] = item.BindTag ?? "";
+        //             break;
 
-                case "CheckBoxGroup":
-                    props["Left"] = SIDEBAR_X;
-                    props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
-                    props["Width"] = SIDEBAR_BTN_W;
-                    props["Height"] = SIDEBAR_BTN_H;
-                    props["Text"] = item.Label ?? item.Name;
-                    props["Tag"] = item.BindTag ?? "";
-                    buttonSlot++;
-                    break;
+        //         case "CheckBoxGroup":
+        //             props["Left"] = SIDEBAR_X;
+        //             props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
+        //             props["Width"] = SIDEBAR_BTN_W;
+        //             props["Height"] = SIDEBAR_BTN_H;
+        //             props["Text"] = item.Label ?? item.Name;
+        //             props["Tag"] = item.BindTag ?? "";
+        //             buttonSlot++;
+        //             break;
 
-                case "RadioButtonGroup":
-                    props["Left"] = SIDEBAR_X;
-                    props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
-                    props["Width"] = SIDEBAR_BTN_W;
-                    props["Height"] = 80;
-                    props["Text"] = item.Label ?? item.Name;
-                    props["Tag"] = item.BindTag ?? "";
-                    buttonSlot += 2; // taller slot
-                    break;
+        //         case "RadioButtonGroup":
+        //             props["Left"] = SIDEBAR_X;
+        //             props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
+        //             props["Width"] = SIDEBAR_BTN_W;
+        //             props["Height"] = 80;
+        //             props["Text"] = item.Label ?? item.Name;
+        //             props["Tag"] = item.BindTag ?? "";
+        //             buttonSlot += 2; // taller slot
+        //             break;
 
-                case "HmiToggleSwitch":
-                    props["Left"] = SIDEBAR_X;
-                    props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
-                    props["Width"] = 80;
-                    props["Height"] = 40;
-                    // BackColor: use AI-provided value or sensible industrial default (light gray-blue)
-                    props["BackColor"] = !string.IsNullOrEmpty(item.BackColor)
-                                                    ? item.BackColor
-                                                    : "242, 244, 255";
-                    // AlternateBackColor: the "ON" state color — use AI-provided value or green
-                    props["AlternateBackColor"] = !string.IsNullOrEmpty(item.AlternateBackColor)
-                                                    ? item.AlternateBackColor
-                                                    : "0, 200, 80";
-                    // TagColor links the switch state to the tag — always driven by bind_tag
-                    props["TagColor"] = item.BindTag ?? "";
-                    // Events nested object — script always generated from bind_tag, never written by AI
-                    props["Events"] = new JObject
-                    {
-                        ["OnStateChanged"] = !string.IsNullOrEmpty(item.BindTag)
-                            ? $"Tags(\"{item.BindTag}\").Write(item.IsAlternateState);"
-                            : ""
-                    };
-                    buttonSlot++;
-                    break;
+        //         case "HmiToggleSwitch":
+        //             props["Left"] = SIDEBAR_X;
+        //             props["Top"] = SIDEBAR_Y_START + buttonSlot * (SIDEBAR_BTN_H + SIDEBAR_GAP);
+        //             props["Width"] = 80;
+        //             props["Height"] = 40;
+        //             // BackColor: use AI-provided value or sensible industrial default (light gray-blue)
+        //             props["BackColor"] = !string.IsNullOrEmpty(item.BackColor)
+        //                                             ? item.BackColor
+        //                                             : "242, 244, 255";
+        //             // AlternateBackColor: the "ON" state color — use AI-provided value or green
+        //             props["AlternateBackColor"] = !string.IsNullOrEmpty(item.AlternateBackColor)
+        //                                             ? item.AlternateBackColor
+        //                                             : "0, 200, 80";
+        //             // TagColor links the switch state to the tag — always driven by bind_tag
+        //             props["TagColor"] = item.BindTag ?? "";
+        //             // Events nested object — script always generated from bind_tag, never written by AI
+        //             props["Events"] = new JObject
+        //             {
+        //                 ["OnStateChanged"] = !string.IsNullOrEmpty(item.BindTag)
+        //                     ? $"Tags(\"{item.BindTag}\").Write(item.IsAlternateState);"
+        //                     : ""
+        //             };
+        //             buttonSlot++;
+        //             break;
 
-                // --- DATA CONTROLS ---
-                case "TrendControl":
-                    props["Left"] = DATACTL_X + (dataCtlSlot > 0 ? DATACTL_W + DATACTL_GAP : 0);
-                    props["Top"] = DATACTL_Y_START;
-                    props["Width"] = DATACTL_W;
-                    props["Height"] = DATACTL_H;
-                    props["TrendName"] = item.TrendTag ?? item.BindTag ?? "";
-                    props["ShowRuler"] = item.ShowRuler;
-                    dataCtlSlot++;
-                    break;
+        //         // --- DATA CONTROLS ---
+        //         case "TrendControl":
+        //             props["Left"] = DATACTL_X + (dataCtlSlot > 0 ? DATACTL_W + DATACTL_GAP : 0);
+        //             props["Top"] = DATACTL_Y_START;
+        //             props["Width"] = DATACTL_W;
+        //             props["Height"] = DATACTL_H;
+        //             props["TrendName"] = item.TrendTag ?? item.BindTag ?? "";
+        //             props["ShowRuler"] = item.ShowRuler;
+        //             dataCtlSlot++;
+        //             break;
 
-                case "AlarmControl":
-                    props["Left"] = DATACTL_X + (dataCtlSlot > 0 ? DATACTL_W + DATACTL_GAP : 0);
-                    props["Top"] = DATACTL_Y_START;
-                    props["Width"] = DATACTL_W;
-                    props["Height"] = DATACTL_H;
-                    dataCtlSlot++;
-                    break;
+        //         case "AlarmControl":
+        //             props["Left"] = DATACTL_X + (dataCtlSlot > 0 ? DATACTL_W + DATACTL_GAP : 0);
+        //             props["Top"] = DATACTL_Y_START;
+        //             props["Width"] = DATACTL_W;
+        //             props["Height"] = DATACTL_H;
+        //             dataCtlSlot++;
+        //             break;
 
-                case "FunctionTrendControl":
-                    props["Left"] = DATACTL_X;
-                    props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
-                    props["Width"] = DATACTL_W - 100;
-                    props["Height"] = 250;
-                    break;
+        //         case "FunctionTrendControl":
+        //             props["Left"] = DATACTL_X;
+        //             props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
+        //             props["Width"] = DATACTL_W - 100;
+        //             props["Height"] = 250;
+        //             break;
 
-                case "SystemDiagnosisControl":
-                    props["Left"] = DATACTL_X;
-                    props["Top"] = DATACTL_Y_START;
-                    props["Width"] = DATACTL_W;
-                    props["Height"] = DATACTL_H;
-                    break;
+        //         case "SystemDiagnosisControl":
+        //             props["Left"] = DATACTL_X;
+        //             props["Top"] = DATACTL_Y_START;
+        //             props["Width"] = DATACTL_W;
+        //             props["Height"] = DATACTL_H;
+        //             break;
 
-                case "DetailedParameterControl":
-                    props["Left"] = DATACTL_X + DATACTL_W + DATACTL_GAP;
-                    props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
-                    props["Width"] = DATACTL_W;
-                    props["Height"] = 250;
-                    props["ParameterSetID"] = item.ParameterSetId ?? 1;
-                    break;
+        //         case "DetailedParameterControl":
+        //             props["Left"] = DATACTL_X + DATACTL_W + DATACTL_GAP;
+        //             props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
+        //             props["Width"] = DATACTL_W;
+        //             props["Height"] = 250;
+        //             props["ParameterSetID"] = item.ParameterSetId ?? 1;
+        //             break;
 
-                // --- MEDIA & WEB ---
-                case "MediaControl":
-                    props["Left"] = DATACTL_X;
-                    props["Top"] = DATACTL_Y_START;
-                    props["Width"] = 300;
-                    props["Height"] = 200;
-                    props["Url"] = item.Url ?? "";
-                    break;
+        //         // --- MEDIA & WEB ---
+        //         case "MediaControl":
+        //             props["Left"] = DATACTL_X;
+        //             props["Top"] = DATACTL_Y_START;
+        //             props["Width"] = 300;
+        //             props["Height"] = 200;
+        //             props["Url"] = item.Url ?? "";
+        //             break;
 
-                case "WebControl":
-                    props["Left"] = DATACTL_X + 320;
-                    props["Top"] = DATACTL_Y_START;
-                    props["Width"] = 400;
-                    props["Height"] = 300;
-                    props["Url"] = item.Url ?? "";
-                    break;
+        //         case "WebControl":
+        //             props["Left"] = DATACTL_X + 320;
+        //             props["Top"] = DATACTL_Y_START;
+        //             props["Width"] = 400;
+        //             props["Height"] = 300;
+        //             props["Url"] = item.Url ?? "";
+        //             break;
 
-                // --- CONTAINER ---
-                case "ScreenWindow":
-                    props["Left"] = DATACTL_X;
-                    props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
-                    props["Width"] = 300;
-                    props["Height"] = 200;
-                    props["ScreenName"] = item.ScreenName ?? "";
-                    break;
+        //         // --- CONTAINER ---
+        //         case "ScreenWindow":
+        //             props["Left"] = DATACTL_X;
+        //             props["Top"] = DATACTL_Y_START + DATACTL_H + DATACTL_GAP;
+        //             props["Width"] = 300;
+        //             props["Height"] = 200;
+        //             props["ScreenName"] = item.ScreenName ?? "";
+        //             break;
 
-                default:
-                    // [TO BE IMPLEMENTED] — unknown type, skip with warning
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"[HMI WARNING] Unknown item type '{type}' for '{item.Name}' — skipped.");
-                    Console.ResetColor();
-                    return null;
-            }
+        //         default:
+        //             // [TO BE IMPLEMENTED] — unknown type, skip with warning
+        //             Console.ForegroundColor = ConsoleColor.Yellow;
+        //             Console.WriteLine($"[HMI WARNING] Unknown item type '{type}' for '{item.Name}' — skipped.");
+        //             Console.ResetColor();
+        //             return null;
+        //     }
 
-            return new JObject
-            {
-                ["Name"] = item.Name,
-                ["Type"] = type,
-                ["Properties"] = props
-            };
-        }
+        //     return new JObject
+        //     {
+        //         ["Name"] = item.Name,
+        //         ["Type"] = type,
+        //         ["Properties"] = props
+        //     };
+        // }
+
+private static JObject BuildPhysicalItem(
+    HmiItemData item,
+    ref int buttonSlot,
+    ref int indicatorSlot,
+    ref int dataCtlSlot)
+{
+    var props = new JObject();
+    string type = item.Type ?? "";
+    string itemName = item.Name ?? "";
+
+    // 1. TỰ ĐỘNG PHÂN CỤM (CLUSTER LOGIC)
+    int clusterOffsetX = 0;
+    if (itemName.Contains("M1")) clusterOffsetX = 0;
+    else if (itemName.Contains("M2")) clusterOffsetX = 250;
+    else if (itemName.Contains("M3")) clusterOffsetX = 500;
+    else if (itemName.Contains("M4")) clusterOffsetX = 750;
+
+    int baseLeft = FALLBACK_X + clusterOffsetX;
+
+    // 2. LOGIC VỊ TRÍ NỘI BỘ (INTERNAL Y)
+    int internalY = 0;
+    if (itemName.ToUpper().Contains("Background")) internalY = 0;
+    else if (itemName.ToUpper().Contains("Display") || type == "Clock") internalY = 20;
+    else if (itemName.ToUpper().Contains("START")) internalY = 80;
+    else if (itemName.ToUpper().Contains("STOP")) internalY = 130;
+    else if (itemName.ToUpper().Contains("RESET")) internalY = 180;
+    else if (itemName.ToUpper().Contains("Mode") || type.Contains("Switch") || type.Contains("Group")) internalY = 230;
+
+    switch (type)
+    {
+        // --- LIBRARY OBJECTS ---
+        case "Tank":
+            props["LibraryPath"] = "IndustryGraphicLibrary/Tanks";
+            props["SubType"] = item.SubType ?? "Tank";
+            props["Left"] = baseLeft + 20;
+            props["Top"] = FALLBACK_Y + 50;
+            props["Width"] = 160u; props["Height"] = 340u;
+            props["LevelTag"] = item.BindTag ?? "";
+            break;
+
+        case "Valve":
+        case "Motor":
+            props["LibraryPath"] = (type == "Valve") ? "IndustryGraphicLibrary/Valves" : "IndustryGraphicLibrary/Motors";
+            props["SubType"] = item.SubType ?? (type == "Valve" ? "ControlValve" : "Motor2");
+            props["Left"] = baseLeft + 45;
+            props["Top"] = FALLBACK_Y + 60;
+            props["Width"] = 110u; props["Height"] = 90u;
+            props["StatusTag"] = item.BindTag ?? "";
+            AddColorScript(props, item);
+            break;
+
+        case "Pipe":
+            props["LibraryPath"] = "IndustryGraphicLibrary/Pipes";
+            props["SubType"] = item.SubType ?? "PipeHorizontal";
+            props["Left"] = baseLeft;
+            props["Top"] = FALLBACK_Y + 100;
+            props["Width"] = (item.SubType == "PipeVertical") ? 15u : 260u;
+            props["Height"] = (item.SubType == "PipeVertical") ? 315u : 15u;
+            props["BasicColor"] = "238, 238, 238";
+            break;
+
+        // --- PRIMITIVE SHAPES ---
+        case "Rectangle":
+            props["Left"] = baseLeft;
+            props["Top"] = FALLBACK_Y;
+            props["Width"] = 240u; // Tăng nhẹ Width để bao quát linh kiện
+            props["Height"] = 350u; // Tăng Height để không bị lòi Switch
+            break;
+
+        case "Circle":
+        case "CircularArc":
+        case "CircleSegment":
+            props["CenterX"] = baseLeft + 180;
+            props["CenterY"] = FALLBACK_Y + (itemName.ToLower().Contains("error") || itemName.ToLower().Contains("fault") ? 140 : 100);
+            props["Radius"] = 12u;
+            if (type != "Circle") { props["AngleStart"] = 270; props["AngleRange"] = 90; }
+            props["Tag"] = item.BindTag ?? "";
+            AddColorScript(props, item);
+            break;
+
+        // --- BUTTONS ---
+        case "Button":
+            props["Left"] = baseLeft + 15;
+            props["Top"] = FALLBACK_Y + internalY;
+            props["Width"] = 100u; props["Height"] = 40u;
+            props["Text"] = item.Label ?? itemName;
+            var scripts = new JObject();
+            if (item.KeydownWrite != null) scripts["KeyDown"] = $"Tags(\"{item.KeydownWrite.Tag}\").Write({item.KeydownWrite.Value});";
+            if (item.KeyupWrite != null) scripts["KeyUp"] = $"Tags(\"{item.KeyupWrite.Tag}\").Write({item.KeyupWrite.Value});";
+            props["Scripts"] = scripts;
+            break;
+
+        // --- I/O CONTROLS ---
+        case "IOField":
+            props["Left"] = baseLeft + 15;
+            props["Top"] = FALLBACK_Y + internalY;
+            props["Width"] = 160u; props["Height"] = 35u;
+            props["Format"] = item.Format ?? "{0}";
+            props["StatusTag"] = item.BindTag ?? "";
+            break;
+
+        case "Bar":
+        case "Gauge":
+            props["Left"] = baseLeft + 40;
+            props["Top"] = FALLBACK_Y + 50;
+            props["Width"] = (type == "Bar" ? 50u : 120u);
+            props["Height"] = (type == "Bar" ? 180u : 120u);
+            props["Tag"] = item.BindTag ?? "";
+            break;
+
+        case "Clock":
+            props["Left"] = baseLeft + 15;
+            props["Top"] = FALLBACK_Y + internalY;
+            props["Width"] = 160u; props["Height"] = 35u;
+            break;
+
+        case "TouchArea":
+            props["Left"] = baseLeft; props["Top"] = FALLBACK_Y;
+            props["Width"] = 240u; props["Height"] = 350u;
+            break;
+
+        case "CheckBoxGroup":
+        case "RadioButtonGroup":
+        case "HmiToggleSwitch":
+            props["Left"] = baseLeft + 15;
+            props["Top"] = FALLBACK_Y + internalY;
+            props["Width"] = (type.Contains("Switch") ? 80u : 150u);
+            props["Height"] = (type.Contains("Radio") ? 80u : 40u);
+            props["TagColor"] = item.BindTag ?? "";
+            if (type.Contains("Switch")) 
+                props["Events"] = new JObject { ["OnStateChanged"] = $"Tags(\"{item.BindTag}\").Write(item.IsAlternateState);" };
+            break;
+
+        // --- DATA CONTROLS ---
+        case "TrendControl":
+        case "AlarmControl":
+        case "FunctionTrendControl":
+        case "SystemDiagnosisControl":
+            props["Left"] = 10 + (dataCtlSlot * 510);
+            props["Top"] = 400; // Đặt ở nửa dưới màn hình
+            props["Width"] = 500u; props["Height"] = 180u;
+            dataCtlSlot++;
+            break;
+
+        case "DetailedParameterControl":
+            props["Left"] = 10; props["Top"] = 400;
+            props["Width"] = 1000u; props["Height"] = 180u;
+            break;
+
+        // --- MEDIA & WEB & CONTAINER ---
+        case "MediaControl":
+        case "WebControl":
+        case "ScreenWindow":
+            props["Left"] = baseLeft;
+            props["Top"] = 380;
+            props["Width"] = 240u; props["Height"] = 150u;
+            props["Url"] = item.Url ?? "";
+            props["ScreenName"] = item.ScreenName ?? "";
+            break;
+
+        default:
+            return null;
+    }
+
+    return new JObject { ["Name"] = itemName, ["Type"] = type, ["Properties"] = props };
+}
 
         /// <summary>
         /// Generates the WinCC ColorScript string for color_on_status behavior.

@@ -2,8 +2,8 @@
   "_comment": "LOGICAL HMI SCHEMA — AI returns this. C# assembler converts it to physical WinCC JSON. AI must NOT add coordinates, LibraryPaths, or script strings.",
   "screen_info": {
     "name": "Main_Process",
-    "width": 1024,
-    "height": 600
+    "width": 1920,
+    "height": 1080
   },
   "items": [
     {
