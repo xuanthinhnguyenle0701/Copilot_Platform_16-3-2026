@@ -993,6 +993,14 @@ private static JObject BuildPhysicalItem(
             props["Top"] = clusterOffsetTankY + 5;
             props["Width"] = 290u; props["Height"] = 520u;
             props["LevelTag"] = item.BindTag ?? "";
+            props["DisplayFillLevel"] = item.Properties.ContainsKey("DisplayFillLevel") 
+                                ? Newtonsoft.Json.Linq.JToken.FromObject(item.Properties["DisplayFillLevel"]) 
+                                : true;
+
+            props["DisplayFillMode"] = item.Properties.ContainsKey("DisplayFillMode") 
+                               ? Newtonsoft.Json.Linq.JToken.FromObject(item.Properties["DisplayFillMode"]) 
+                               : 0;
+            
             break;
 
         case "Valve":
