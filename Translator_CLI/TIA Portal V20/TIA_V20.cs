@@ -1243,6 +1243,37 @@ namespace Middleware_console
                 // 2. NHÓM WIDGET (Thư viện)
                 else if (item.Properties.ContainsKey("LibraryPath"))
                 {
+                    if (item.Type.Contains("Tank"))
+                    {
+                        foreach (dynamic m in dynItem.Interface)
+                        {
+                            // 1. Tick chọn DisplayFillLevel (True)
+                        if (m.PropertyName == "DisplayFillLevel")
+                            {
+                                // Nếu trong JSON có định nghĩa thì lấy giá trị đó, nếu không có thì mặc định là true
+                                bool displayLevel = item.Properties.ContainsKey("DisplayFillLevel") 
+                                                    ? Convert.ToBoolean(item.Properties["DisplayFillLevel"]) 
+                                                    : true;
+                                m.Value = displayLevel;
+                            }
+                            // 2. Kiểm tra DisplayFillMode
+                            else if (m.PropertyName == "DisplayFillMode")
+                            {
+                                // Nếu trong JSON có định nghĩa thì lấy, không thì mặc định là 0 (hoặc 1 tùy ý bạn)
+                                int fillMode = item.Properties.ContainsKey("DisplayFillMode") 
+                                                ? Convert.ToInt32(item.Properties["DisplayFillMode"]) 
+                                                : 0;
+                                m.Value = fillMode;
+                            }
+                            // 3. Gán giá trị FillLevelValue chạy theo Tag (Level)
+                            else if (m.PropertyName == "FillLevelValue")
+                            {
+                                BindTagToWidget(m, tag); // tag ở đây chính là LevelTag bạn đã trích xuất ở trên
+                                Console.WriteLine($"      => [DYNAMIC TANK] {item.Name} -> DisplayLevel: ON, Mode: 0, Tag: {tag}");
+                            }
+                        }
+                    }
+                    
                     string targetProp = item.Type.Contains("Tank") ? "FillLevelColor" : "BasicColor";
                     string customScript = item.Properties.ContainsKey("ColorScript") ? item.Properties["ColorScript"].ToString() : "";
                     foreach (dynamic m in dynItem.Interface)
