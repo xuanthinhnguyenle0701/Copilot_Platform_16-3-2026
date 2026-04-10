@@ -904,18 +904,80 @@ private static JObject BuildPhysicalItem(
     string itemName = item.Name ?? "";
 
     // 1. TỰ ĐỘNG PHÂN CỤM (CLUSTER LOGIC)
-    int clusterOffsetX = 0;
-    if (itemName.Contains("M1")) clusterOffsetX = 0;
-    else if (itemName.Contains("M2")) clusterOffsetX = 250;
-    else if (itemName.Contains("M3")) clusterOffsetX = 500;
-    else if (itemName.Contains("M4")) clusterOffsetX = 750;
-
+    int  clusterOffsetX = 0;
+    int  clusterOffsetmotorX = 0;
+    int  clusterOffsetmotorY = 0;
+    int  clusterOffsetTankX =0;
+    int  clusterOffsetTankY =0;
+    int  clusterOffsetPipeX =0;
+    int  clusterOffsetPipeY =0;
+    if (itemName.Contains("M1")) 
+    {
+        clusterOffsetX = 0;
+        clusterOffsetmotorX = 0;
+        clusterOffsetmotorY = 250;
+    }
+    else if (itemName.Contains("M2")) 
+    {
+        clusterOffsetX = 250;
+        clusterOffsetmotorX = 0;
+        clusterOffsetmotorY = 45;
+    }
+    else if (itemName.Contains("M3")) 
+    {
+        clusterOffsetX = 500;
+        clusterOffsetmotorX = 510;
+        clusterOffsetmotorY = 30;
+    }
+    else if (itemName.Contains("M4")) 
+    {
+        clusterOffsetX = 750;
+        clusterOffsetmotorX = 510;
+        clusterOffsetmotorY = 220;
+    }
+    else if (itemName.Contains("_01")) 
+    {
+       
+        clusterOffsetTankX = 300;     
+        clusterOffsetTankY =40;   
+    }
+    else if (itemName.Contains("_02")) 
+    {
+       
+        clusterOffsetTankX = 810;        
+        clusterOffsetTankY = 55;
+    }
+    else if (itemName.Contains("Pipe_1")) 
+    {
+       
+        clusterOffsetPipeX = 0;     
+        clusterOffsetPipeY = 0;   
+    }
+    else if (itemName.Contains("Pipe_2")) 
+    {
+       
+        clusterOffsetPipeX = 0;     
+        clusterOffsetPipeY = 203;   
+    }
+    else if (itemName.Contains("Pipe_3")) 
+    {
+       
+        clusterOffsetPipeX = 512;        
+        clusterOffsetPipeY = -14;
+    }
+    else if (itemName.Contains("Pipe_4")) 
+    {
+       
+        clusterOffsetPipeX = 512;        
+        clusterOffsetPipeY = 173;
+    }
     int baseLeft = FALLBACK_X + clusterOffsetX;
-
+    int baseLeftMotorX = FALLBACK_X + clusterOffsetmotorX;
+    int baseLeftTankX = FALLBACK_X + clusterOffsetTankX;
     // 2. LOGIC VỊ TRÍ NỘI BỘ (INTERNAL Y)
     int internalY = 0;
     if (itemName.ToUpper().Contains("Background")) internalY = 0;
-    else if (itemName.ToUpper().Contains("Display") || type == "Clock") internalY = 20;
+    else if (itemName.ToUpper().Contains("Display") || type == "Clock" || itemName.ToUpper().Contains("Thoi_Gian_Chay")|| type.Contains("IOField")) internalY = 20;
     else if (itemName.ToUpper().Contains("START")) internalY = 80;
     else if (itemName.ToUpper().Contains("STOP")) internalY = 130;
     else if (itemName.ToUpper().Contains("RESET")) internalY = 180;
@@ -927,33 +989,66 @@ private static JObject BuildPhysicalItem(
         case "Tank":
             props["LibraryPath"] = "IndustryGraphicLibrary/Tanks";
             props["SubType"] = item.SubType ?? "Tank";
-            props["Left"] = baseLeft + 20;
-            props["Top"] = FALLBACK_Y + 50;
-            props["Width"] = 160u; props["Height"] = 340u;
+            props["Left"] = baseLeftTankX;
+            props["Top"] = clusterOffsetTankY + 5;
+            props["Width"] = 290u; props["Height"] = 520u;
             props["LevelTag"] = item.BindTag ?? "";
             break;
 
         case "Valve":
+            props["LibraryPath"] = "IndustryGraphicLibrary/Valves";
+            props["SubType"] = item.SubType ?? "ControlValve"; // SubType mặc định cho Van
+            props["Left"] = baseLeftMotorX + 90;
+            props["Top"] = clusterOffsetmotorY + 60;
+            props["Width"] = 100u; // Van thường nhỏ gọn hơn Motor
+            props["Height"] = 100u;
+            props["StatusTag"] = item.BindTag ?? "";
+            AddColorScript(props, item);
+            break;
         case "Motor":
-            props["LibraryPath"] = (type == "Valve") ? "IndustryGraphicLibrary/Valves" : "IndustryGraphicLibrary/Motors";
-            props["SubType"] = item.SubType ?? (type == "Valve" ? "ControlValve" : "Motor2");
-            props["Left"] = baseLeft + 45;
-            props["Top"] = FALLBACK_Y + 60;
-            props["Width"] = 110u; props["Height"] = 90u;
+            props["LibraryPath"]  =  "IndustryGraphicLibrary/Motors";
+            props["SubType"] = item.SubType ??  "Motor2";
+            props["Left"] = baseLeftMotorX  + 90;
+            props["Top"] = clusterOffsetmotorY + 60;
+            props["Width"] = 115u; props["Height"] = 121u;
+            props["StatusTag"] = item.BindTag ?? "";
+            AddColorScript(props, item);
+            break;
+         case "Pump":
+            props["LibraryPath"]  =  "IndustryGraphicLibrary/Pumps";
+            props["SubType"] = item.SubType ??  "ClassicPump";
+            props["Left"] = baseLeftMotorX  + 90;
+            props["Top"] = clusterOffsetmotorY + 60;
+            props["Width"] = 134u; props["Height"] = 137u;
             props["StatusTag"] = item.BindTag ?? "";
             AddColorScript(props, item);
             break;
 
-        case "Pipe":
+        case "Pipe": // Dùng chữ thường cho đồng bộ searchType
             props["LibraryPath"] = "IndustryGraphicLibrary/Pipes";
-            props["SubType"] = item.SubType ?? "PipeHorizontal";
-            props["Left"] = baseLeft;
-            props["Top"] = FALLBACK_Y + 100;
-            props["Width"] = (item.SubType == "PipeVertical") ? 15u : 260u;
-            props["Height"] = (item.SubType == "PipeVertical") ? 315u : 15u;
+            string pipeSubType = item.SubType ?? "PipeHorizontal";
+            props["SubType"] = pipeSubType;
+
+            
+            if (pipeSubType == "PipeVertical")
+            {               
+            
+                props["Left"] = baseLeftMotorX + 147; 
+                props["Top"] = clusterOffsetmotorY - 250; 
+                props["Width"] = 15u; 
+                props["Height"] = 315u;
+            }
+            else if (pipeSubType == "PipeHorizontal")
+            {
+                
+                props["Left"] =  clusterOffsetPipeX  + 240;
+                props["Top"] = clusterOffsetPipeY + 112;
+                props["Width"] = 90u; 
+                props["Height"] = 35u;
+            }
+            
             props["BasicColor"] = "238, 238, 238";
             break;
-
         // --- PRIMITIVE SHAPES ---
         case "Rectangle":
             props["Left"] = baseLeft;
@@ -966,8 +1061,8 @@ private static JObject BuildPhysicalItem(
         case "CircularArc":
         case "CircleSegment":
             props["CenterX"] = baseLeft + 180;
-            props["CenterY"] = FALLBACK_Y + (itemName.ToLower().Contains("error") || itemName.ToLower().Contains("fault") ? 140 : 100);
-            props["Radius"] = 12u;
+            props["CenterY"] = FALLBACK_Y + (itemName.ToLower().Contains("error") || itemName.ToLower().Contains("fault")|| itemName.ToLower().Contains("Bao_Loi") ? 140 : 100);
+            props["Radius"] = (itemName.ToLower().Contains("error") || itemName.ToLower().Contains("fault") || itemName.ToLower().Contains("Bao_Loi") ? 12u : 40u);
             if (type != "Circle") { props["AngleStart"] = 270; props["AngleRange"] = 90; }
             props["Tag"] = item.BindTag ?? "";
             AddColorScript(props, item);
@@ -987,7 +1082,7 @@ private static JObject BuildPhysicalItem(
 
         // --- I/O CONTROLS ---
         case "IOField":
-            props["Left"] = baseLeft + 15;
+            props["Left"] = baseLeft + 30;
             props["Top"] = FALLBACK_Y + internalY;
             props["Width"] = 160u; props["Height"] = 35u;
             props["Format"] = item.Format ?? "{0}";
