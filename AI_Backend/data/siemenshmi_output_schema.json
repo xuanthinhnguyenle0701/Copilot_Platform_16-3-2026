@@ -192,6 +192,28 @@
       "back_color": "242, 244, 255",
       "alternate_back_color": "0, 200, 80",
       "hint": "left sidebar, toggle switch for pump on/off"
+    },
+    {
+      "_comment_text": "STATIC TEXT EXAMPLE — Header or Label",
+      "name": "Text_Tieu_De_He_Thong",
+      "type": "HmiText",
+      "text": "HỆ THỐNG GIÁM SÁT TRẠM BƠM",
+      "fore_color": "255, 255, 255",
+      "font_size": 48,
+      "font_name": "TimesNewRoman",
+      "font_bold": true,
+      "font_italic": false,
+      "hint": "top center, main screen title"
+    },
+    {
+      "_comment_graphic": "GRAPHIC VIEW EXAMPLE — Logo or Background",
+      "name": "Graphic_Logo_BK",
+      "type": "GraphicView",
+      "graphic": "01_logobachkhoasang",
+      "transparent": true,
+      "back_color": "0, 128, 128",
+      "border_color": "125, 125, 133",
+      "hint": "top left corner, university logo"
     }
   ],
   "global_tags": [
