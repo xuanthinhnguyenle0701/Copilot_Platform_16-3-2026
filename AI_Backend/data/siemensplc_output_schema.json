@@ -26,8 +26,8 @@
   ],
   "body_code": "#stat_Timer(IN := #i_Enable, PT := T#1s);\\n #q_Ready := #stat_Timer.Q;",
   "global_tags": [
-            { "name": "TAG_StartBtn_01", "type": "BOOL", "comment": "Input" },
-            { "name": "TAG_MotorSpeed_01", "type": "REAL", "comment": "Output" },
-            { "name": "TAG_SystemFlag", "type": "BOOL", "comment": "Memory" }
+            { "name": "TAG_StartBtn_01", "type": "BOOL", "address": "%I0.0" , "comment": "Input" },
+            { "name": "TAG_MotorSpeed_01", "type": "REAL", "address": "%Q0.0", "comment": "Output" },
+            { "name": "TAG_SystemFlag", "type": "BOOL", "address": "%M0.0", "comment": "Memory" }
           ]
 }

@@ -319,6 +319,7 @@ def main():
         The user has provided a specific list of physical I/O tags. 
         When you are writing code to call a Function Block (FB) or Function (FC) inside an OB, you MUST map the inputs/outputs ONLY to the tags listed below.
         DO NOT invent, fabricate, or guess new global tag names. Choose the most logically appropriate tag from this list based on its name and Data Type.
+        When you are writing OB code, the I/O tags provided should be your ONLY source of global variables to interact with the outside world. You MUST declare them again in 'global_tags' field in your JSON output, following the exact tag names, data types and addresses as provided in the list below. If you need new tags for OB, you MUST only declare inside 'global_tags' field in your JSON output, and those tags MUST follow the same naming convention and be clearly described in their comment.
         
         [AVAILABLE TAGS]:
         {user_tags}
@@ -429,7 +430,8 @@ def main():
         ### 🎯 AVAILABLE PLC TAGS — STRICT BINDING DICTIONARY:
         The following tags exist on the PLC. When you bind an HMI object to a tag, you MUST
         choose ONLY from this list. Do NOT invent or fabricate tag names.
-        Map each object to the most logically appropriate tag based on its name and data type.
+        Map each object to the most logically appropriate tag based on its name and data type and same address as much as possible. If no suitable tag exists, you can invent ONE new tag but it MUST follow the naming convention and be clearly described in its comment.
+        You have to define again all the used tags in the "global_tags" array in your JSON output, with their name, type, address and comment — even if they are already defined in the PLC tag list. This is necessary for the HMI assembler to know which tags to create on the HMI side and how to bind them.
 
         [AVAILABLE TAGS]:
         {user_tags}

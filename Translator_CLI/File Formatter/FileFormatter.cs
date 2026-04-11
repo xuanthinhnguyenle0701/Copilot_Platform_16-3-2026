@@ -166,61 +166,58 @@ namespace TIA_Copilot_CLI
 
                 int currentByte = 0;
                 int currentBit = 0;
-
+                // CSV FORMAT
                 foreach (var tag in data.GlobalTags)
                 {
                     string name = tag.Name;
-                    string dataType = tag.Type.ToUpper(); // Viết hoa để dễ IF/ELSE
-                    string address = "";
+                    string dataType = (tag.Type ?? "BOOL").ToUpper();
+                    
+                    // 1. ƯU TIÊN SỐ 1: Lấy địa chỉ do AI trả về từ JSON
+                    string address = tag.Address?.Trim() ?? "";
 
-                    if (dataType == "BOOL")
+                    // 2. BACKUP (BỌC LÓT): Nếu AI lười không sinh Address, C# tự động cấp phát
+                    if (string.IsNullOrEmpty(address))
                     {
-                        address = $"%M{currentByte}.{currentBit}";
-                        currentBit++;
-                        if (currentBit > 7)
+                        if (dataType == "BOOL")
                         {
-                            currentBit = 0;
-                            currentByte++;
+                            address = $"%M{currentByte}.{currentBit}";
+                            currentBit++;
+                            if (currentBit > 7) { currentBit = 0; currentByte++; }
                         }
-                    }
-                    else
-                    {
-                        if (currentBit > 0)
+                        else
                         {
-                            currentByte++;
-                            currentBit = 0;
-                        }
-
-                        if (dataType == "REAL" || dataType == "DINT" || dataType == "DWORD" || dataType == "TIME")
-                        {
-                            if (currentByte % 2 != 0) currentByte++;
-                            address = $"%MD{currentByte}";
-                            currentByte += 4;
-                        }
-                        else if (dataType == "INT" || dataType == "WORD" || dataType == "UINT")
-                        {
-                            if (currentByte % 2 != 0) currentByte++;
-                            address = $"%MW{currentByte}";
-                            currentByte += 2;
-                        }
-                        else if (dataType == "BYTE" || dataType == "SINT" || dataType == "USINT")
-                        {
-                            address = $"%MB{currentByte}";
-                            currentByte += 1;
+                            if (currentBit > 0) { currentByte++; currentBit = 0; }
+                            
+                            if (dataType == "REAL" || dataType == "DINT" || dataType == "DWORD" || dataType == "TIME")
+                            {
+                                if (currentByte % 2 != 0) currentByte++;
+                                address = $"%MD{currentByte}";
+                                currentByte += 4;
+                            }
+                            else if (dataType == "INT" || dataType == "WORD" || dataType == "UINT")
+                            {
+                                if (currentByte % 2 != 0) currentByte++;
+                                address = $"%MW{currentByte}";
+                                currentByte += 2;
+                            }
+                            else if (dataType == "BYTE" || dataType == "SINT" || dataType == "USINT")
+                            {
+                                address = $"%MB{currentByte}";
+                                currentByte += 1;
+                            }
                         }
                     }
 
-                    // Ép Data Type cho viết hoa chữ cái đầu cho chuẩn TIA (VD: Bool, Real, Int)
+                    // Ghi đè ngược lại Address chuẩn vào object tag để lát Vòng 2 dùng để cập nhật Cache
+                    tag.Address = address; 
+
                     string formattedDataType = char.ToUpper(dataType[0]) + dataType.Substring(1).ToLower();
-
-                    string finalComment = string.IsNullOrWhiteSpace(tag.Comment)
-                                          ? "AI Generated"
-                                          : $"[{tag.Comment}]";
+                    string finalComment = string.IsNullOrWhiteSpace(tag.Comment) ? "AI Generated" : $"[{tag.Comment}]";
 
                     csv.AppendLine($"{name},Default tag table,{formattedDataType},{address},{finalComment},True,True,True,,");
                 }
 
-                // ---> SỬ DỤNG data.Name ĐỂ ĐẶT TÊN FILE
+                // Xuất file CSV cho TIA Portal
                 string safeName = string.IsNullOrWhiteSpace(data.Name) ? "AI_Generated" : data.Name;
                 string fileName = $"{safeName}_Tags.csv";
                 string fullPath = Path.Combine(OutputPaths.GetGeneratedDir(), fileName);
@@ -230,6 +227,54 @@ namespace TIA_Copilot_CLI
                 Console.WriteLine($"\n[MEMORY ALLOCATOR] Đã cấp phát địa chỉ Siemens cho {data.GlobalTags.Count} Global Tags.");
                 Console.WriteLine($"[SUCCESS] Đã xuất file I/O List CSV: {fileName}");
                 Console.ResetColor();
+
+                // TAGS CACHE SYNC
+                string cacheFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tags_cache.txt");
+                
+                // Đọc danh sách Tag hiện có để quét trùng lặp
+                var existingTags = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (File.Exists(cacheFilePath))
+                {
+                    string[] existingLines = File.ReadAllLines(cacheFilePath);
+                    foreach (var line in existingLines)
+                    {
+                        // Dùng Regex lấy tên Tag ra để so sánh
+                        var match = Regex.Match(line, @"-\s+([^\s\(]+)");
+                        if (match.Success) existingTags.Add(match.Groups[1].Value);
+                    }
+                }
+
+                StringBuilder newCacheTags = new StringBuilder();
+                int appendedCount = 0;
+
+                foreach (var tag in data.GlobalTags)
+                {
+                    string tagName = tag.Name;
+                    if (existingTags.Contains(tagName)) continue; // Bỏ qua nếu Tag đã tồn tại do kỹ sư nạp từ trước
+
+                    string dataType = (tag.Type ?? "BOOL").ToUpper();
+                    string address = tag.Address ?? ""; // Đã lấy được Address siêu chuẩn từ Vòng 1
+
+                    // Phân loại I/O Memory dựa trên tiền tố địa chỉ
+                    string ioType = " [MEMORY]";
+                    if (address.StartsWith("%I") || address.StartsWith("I")) ioType = " [INPUT]";
+                    else if (address.StartsWith("%Q") || address.StartsWith("Q")) ioType = " [OUTPUT]";
+
+                    string addressStr = string.IsNullOrEmpty(address) ? "" : $" at {address}";
+
+                    // Gắn nhãn [AI GENERATED] và nối chuỗi Address vào Cache
+                    newCacheTags.AppendLine($"- {tagName} ({dataType}){ioType}{addressStr} [AI GENERATED]");
+                    appendedCount++;
+                }
+
+                // Ghi nối (Append) các Tag mới tinh vào file Cache
+                if (appendedCount > 0)
+                {
+                    File.AppendAllText(cacheFilePath, newCacheTags.ToString(), Encoding.UTF8);
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"[CACHE SYNC] Đã đồng bộ {appendedCount} Tag mới (Kèm Address) vào tags_cache.txt.");
+                    Console.ResetColor();
+                }
             }
             catch (Exception ex)
             {
@@ -306,6 +351,7 @@ namespace TIA_Copilot_CLI
                     {
                         Name = tag["name"]?.ToString() ?? "",
                         Type = tag["type"]?.ToString() ?? "BOOL",
+                        Address = tag["address"]?.ToString() ?? "",
                         Comment = tag["comment"]?.ToString() ?? "Auto-generated"
                     });
                 }
@@ -328,6 +374,7 @@ namespace TIA_Copilot_CLI
         public string Name { get; set; }
         public string Type { get; set; }
         public string Comment { get; set; }
+        public string Address { get; set; }
     }
 
     public class BlockData
@@ -407,8 +454,8 @@ namespace TIA_Copilot_CLI
             if (screenInfo != null)
             {
                 data.ScreenName = screenInfo["name"]?.ToString() ?? "AI_Generated_Screen";
-                data.Width = screenInfo["width"]?.ToObject<int>() ?? 1024;
-                data.Height = screenInfo["height"]?.ToObject<int>() ?? 600;
+                data.Width = screenInfo["width"]?.ToObject<int>() ?? 1920;
+                data.Height = screenInfo["height"]?.ToObject<int>() ?? 1080;
             }
 
             var items = root["items"] as JArray;
@@ -474,6 +521,7 @@ namespace TIA_Copilot_CLI
                     {
                         Name = tag["name"]?.ToString() ?? "",
                         Type = tag["type"]?.ToString() ?? "BOOL",
+                        Address = tag["address"]?.ToString() ?? "",
                         Comment = tag["comment"]?.ToString() ?? "HMI Tag"
                     });
                 }
@@ -1201,7 +1249,14 @@ private static JObject BuildPhysicalItem(
                 {
                     string rawType = (tag.Type ?? "BOOL").ToUpper().Trim();
                     string hmiType = ToHmiDataType(rawType);
-                    string address = AllocateHmiAddress(rawType, ref currentByte, ref currentBit);
+                    string address = tag.Address?.Trim() ?? "";
+
+                    // 2. BACKUP: Nếu AI không cung cấp, dùng hàm C# tự cấp phát (bắt đầu từ %M100.0)
+                    if (string.IsNullOrEmpty(address))
+                    {
+                        address = AllocateHmiAddress(rawType, ref currentByte, ref currentBit);
+                        tag.Address = address; // Ghi ngược lại object cho đồng bộ
+                    }
 
                     // Write-intent tags (marked in comment) use slower T1s cycle, rest use T100ms
                     string cycle = tag.Comment != null && tag.Comment.ToLower().Contains("write")

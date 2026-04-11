@@ -453,7 +453,7 @@ namespace TIA_Copilot_CLI
             try
             {
                 var backendTask = AiEngine.CallPythonBackendAsync("", sessionId, "check_spec");
-                string jsonResponse = await RunWithSpinner(backendTask, $"Đang gom dữ liệu từ Vector DB cho Session [{sessionId.ToUpper()}]...", 20);
+                string jsonResponse = await RunWithSpinner(backendTask, $"Đang gom dữ liệu từ Vector DB cho Session [{sessionId.ToUpper()}]...", 300);
 
                 dynamic obj = JsonConvert.DeserializeObject(jsonResponse);
                 if (obj.status == "success")

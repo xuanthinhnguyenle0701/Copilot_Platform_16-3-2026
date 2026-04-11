@@ -32,7 +32,8 @@ namespace TIA_Copilot_CLI
                     string h = headers[i].Trim().ToLower();
                     if (h == "name") nameIdx = i;
                     else if (h == "data type") dataTypeIdx = i;
-                    else if (h == "logical address") addressIdx = i;
+                    // BỔ SUNG: Nhận diện cả "logical address" và "address"
+                    else if (h == "logical address" || h == "address") addressIdx = i;
                 }
 
                 // Nếu thiếu cột Name hoặc Data Type thì báo lỗi ngay
@@ -69,13 +70,14 @@ namespace TIA_Copilot_CLI
                     else if (address.StartsWith("%Q") || address.StartsWith("Q")) ioType = " [OUTPUT]";
                     else if (address.StartsWith("%M") || address.StartsWith("M")) ioType = " [MEMORY]";
 
-                    // 4. Lắp ráp thành đạn: "- TAG_Name (BOOL) [INPUT]"
-                    tagListBuilder.AppendLine($"- {tagName} ({dataType}){ioType}");
+                    // 4. Lắp ráp thành đạn: "- TAG_Name (BOOL) [INPUT] at %I0.0"
+                    string addressStr = string.IsNullOrEmpty(address) ? "" : $" at {address}";
+                    tagListBuilder.AppendLine($"- {tagName} ({dataType}){ioType}{addressStr}");
                     tagCount++;
                 }
 
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\n[USER TAGS] Đã nạp thành công {tagCount} Tags từ file I/O List!");
+                Console.WriteLine($"\n[USER TAGS] Đã nạp thành công {tagCount} Tags từ file I/O List (CSV)!");
                 Console.ResetColor();
 
                 return tagListBuilder.ToString();
@@ -122,7 +124,8 @@ namespace TIA_Copilot_CLI
                         string h = firstRow.Cell(i).GetString().Trim().ToLower();
                         if (h == "name") nameCol = i;
                         else if (h == "data type") dataTypeCol = i;
-                        else if (h == "logical address") addressCol = i;
+                        // BỔ SUNG: Nhận diện cả "logical address" và "address"
+                        else if (h == "logical address" || h == "address") addressCol = i;
                     }
 
                     if (nameCol == -1 || dataTypeCol == -1)
@@ -151,7 +154,8 @@ namespace TIA_Copilot_CLI
                         else if (address.StartsWith("%M") || address.StartsWith("M")) ioType = " [MEMORY]";
 
                         // 4. Lắp ráp
-                        tagListBuilder.AppendLine($"- {tagName} ({dataType}){ioType}");
+                        string addressStr = string.IsNullOrEmpty(address) ? "" : $"{address}";
+                        tagListBuilder.AppendLine($"- {tagName} ({dataType}){ioType}{addressStr}");
                         tagCount++;
                     }
                 }
