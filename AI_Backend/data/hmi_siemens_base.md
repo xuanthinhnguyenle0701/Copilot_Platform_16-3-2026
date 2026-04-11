@@ -28,6 +28,7 @@ Your job is to analyze the user's request and generate a structured LOGICAL JSON
 - **Diagnostic Controls**: SystemDiagnosisControl
 - **Media Controls**: MediaControl, WebControl
 - **Container Controls**: ScreenWindow, Clock
+- **Static Displays**: HmiText (labels, headers), GraphicView (logos, background images)
 
 ## BEHAVIOR RULES:
 - A "color_on_status" behavior means the object changes fill/background color based on a boolean tag (TRUE = active color, FALSE = inactive color).
@@ -40,7 +41,7 @@ Your job is to analyze the user's request and generate a structured LOGICAL JSON
 # CHUNKED KNOWLEDGE BASE — DO NOT EDIT STRUCTURE BELOW THIS LINE
 # Each chunk begins with "## STRATEGY:" and is ingested individually into ChromaDB.
 # Metadata type assignment in ingest_hmi.py:
-#   WIDGET   → Tank, Valve, Motor, Pipe, Pump (library-backed objects)
+#   WIDGET   → Tank, Valve, Motor, Pipe, Pump , HmiText, GraphicView (library-backed objects)
 #   CONTROL  → TrendControl, AlarmControl, SystemDiagnosisControl, DetailedParameterControl (complex controls)
 #   SCREEN   → ScreenWindow, navigation, screen-level rules
 #   LAYOUT   → general positioning, grouping, and layout guidance
@@ -173,6 +174,34 @@ Describe rules for Clock objects:
 - No tag binding required
 - Required fields: format string, clock_mode (LocalTime / SystemTime)
 METADATA_TYPE: LAYOUT
+
+## STRATEGY: STATIC DISPLAY — HMITEXT
+Rules for HmiText (Text Box) objects:
+- Use cases: Labels, screen titles, headers, and descriptions.
+- Type: "HmiText"
+- Required fields:
+  - Text: The content to display (e.g., "ĐẠI HỌC BÁCH KHOA").
+- Formatting fields (Optional):
+  - ForeColor: Text color (R,G,B string, default "255, 255, 255").
+  - Font.Size: Font size (integer).
+  - Font.Name: Font family (e.g., "TimesNewRoman", "Arial").
+  - Font.Bold, Font.Italic: Boolean values.
+- Naming convention: Text_<Purpose> e.g., Text_Header_Main.
+METADATA_TYPE: WIDGET
+
+## STRATEGY: STATIC DISPLAY — GRAPHICVIEW
+Rules for GraphicView objects:
+- Use cases: Company logos, background decorations, process diagrams (static).
+- Type: "GraphicView" 
+- Required fields in AI output:
+  - graphic: The resource name of the image in TIA Portal (e.g., "01_logobachkhoasang").
+- Optional fields in AI output:
+  - back_color: R,G,B string (e.g., "0, 128, 128").
+  - border_color: R,G,B string (e.g., "125, 125, 133").
+  - transparent: Boolean (true/false).
+- Naming convention: Graphic_<Name> (e.g., Graphic_Logo_BK).
+- Layout Note: Usually placed in corners or as a large background.
+METADATA_TYPE: WIDGET
 
 ## STRATEGY: INPUT/OUTPUT — HMITOGGLESWITCH
 Rules for HmiToggleSwitch objects:

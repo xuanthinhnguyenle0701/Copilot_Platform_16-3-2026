@@ -429,7 +429,17 @@ namespace TIA_Copilot_CLI
         public string ScreenName { get; set; }   // ScreenWindow sub-screen name
         public string BindTagWrite { get; set; } // CheckBox / RadioButton write tag
         public string BackColor { get; set; } // HmiToggleSwitch default state color (R, G, B)
-        public string AlternateBackColor { get; set; } // HmiToggleSwitch alternate/active state color (R, G, B)
+        public string AlternateBackColor { get; set; } // HmiToggleSwitch alternate/active state color (R, G, B)       
+        public string Text { get; set; }   
+        public string ForeColor { get; set; }    
+        public int FontSize { get; set; }  
+        public string FontName { get; set; }
+        public bool FontBold { get; set; }    
+        public bool FontItalic { get; set; }     
+        public string Graphic { get; set; }
+        public bool Transparent { get; set; }    
+        public string BorderColor { get; set; }     
+
     }
 
     public class HmiScreenData
@@ -962,62 +972,69 @@ private static JObject BuildPhysicalItem(
     if (itemName.Contains("M1")) 
     {
         clusterOffsetX = 0;
-        clusterOffsetmotorX = 0;
-        clusterOffsetmotorY = 250;
+        clusterOffsetmotorX = 335;
+        clusterOffsetmotorY = 335;
     }
     else if (itemName.Contains("M2")) 
     {
         clusterOffsetX = 250;
-        clusterOffsetmotorX = 0;
-        clusterOffsetmotorY = 45;
+        clusterOffsetmotorX = 335;
+        clusterOffsetmotorY = 130;
     }
     else if (itemName.Contains("M3")) 
     {
         clusterOffsetX = 500;
-        clusterOffsetmotorX = 510;
-        clusterOffsetmotorY = 30;
+        clusterOffsetmotorX = 845;
+        clusterOffsetmotorY = 115;
     }
     else if (itemName.Contains("M4")) 
     {
         clusterOffsetX = 750;
-        clusterOffsetmotorX = 510;
-        clusterOffsetmotorY = 220;
+        clusterOffsetmotorX = 845;
+        clusterOffsetmotorY = 295;
     }
     else if (itemName.Contains("_01")) 
     {
        
-        clusterOffsetTankX = 300;     
-        clusterOffsetTankY =40;   
+        clusterOffsetTankX = 635;     
+        clusterOffsetTankY =125;   
     }
     else if (itemName.Contains("_02")) 
     {
        
-        clusterOffsetTankX = 810;        
-        clusterOffsetTankY = 55;
+        clusterOffsetTankX = 1145;        
+        clusterOffsetTankY = 142;
     }
     else if (itemName.Contains("Pipe_1")) 
     {
        
-        clusterOffsetPipeX = 0;     
-        clusterOffsetPipeY = 0;   
+        clusterOffsetPipeX = 335;     
+        clusterOffsetPipeY = 85;   
     }
     else if (itemName.Contains("Pipe_2")) 
     {
        
-        clusterOffsetPipeX = 0;     
-        clusterOffsetPipeY = 203;   
+        clusterOffsetPipeX = 335;     
+        clusterOffsetPipeY = 288;   
     }
     else if (itemName.Contains("Pipe_3")) 
     {
        
-        clusterOffsetPipeX = 512;        
-        clusterOffsetPipeY = -14;
+        clusterOffsetPipeX = 847;        
+        clusterOffsetPipeY = 71;
     }
     else if (itemName.Contains("Pipe_4")) 
     {
        
-        clusterOffsetPipeX = 512;        
-        clusterOffsetPipeY = 173;
+        clusterOffsetPipeX = 847;        
+        clusterOffsetPipeY = 253;
+    }
+    else if (itemName.Contains("Pipe_5")) 
+    {
+       
+        clusterOffsetPipeX = 650;        
+        clusterOffsetPipeY = 293;
+        props["Width"] = 70u;
     }
     int baseLeft = FALLBACK_X + clusterOffsetX;
     int baseLeftMotorX = FALLBACK_X + clusterOffsetmotorX;
@@ -1066,7 +1083,7 @@ private static JObject BuildPhysicalItem(
             props["SubType"] = item.SubType ??  "Motor2";
             props["Left"] = baseLeftMotorX  + 90;
             props["Top"] = clusterOffsetmotorY + 60;
-            props["Width"] = 115u; props["Height"] = 121u;
+            props["Width"] = 134u; props["Height"] = 137u;
             props["StatusTag"] = item.BindTag ?? "";
             AddColorScript(props, item);
             break;
@@ -1099,7 +1116,7 @@ private static JObject BuildPhysicalItem(
                 
                 props["Left"] =  clusterOffsetPipeX  + 240;
                 props["Top"] = clusterOffsetPipeY + 112;
-                props["Width"] = 90u; 
+                props["Width"] = (itemName.Contains("Pipe_5") ? 70u : 90u);
                 props["Height"] = 35u;
             }
             
@@ -1107,10 +1124,42 @@ private static JObject BuildPhysicalItem(
             break;
         // --- PRIMITIVE SHAPES ---
         case "Rectangle":
-            props["Left"] = baseLeft;
-            props["Top"] = FALLBACK_Y;
-            props["Width"] = 240u; // Tăng nhẹ Width để bao quát linh kiện
-            props["Height"] = 350u; // Tăng Height để không bị lòi Switch
+            if (itemName.Contains("Hi_1"))
+                {
+                    props["Left"] = 870;
+                    props["Top"] = 180;
+                    props["Width"] = 60u; 
+                    props["Height"] = 25u; 
+                }
+            else if (itemName.Contains("Hi_2"))
+                {
+                    props["Left"] = 1380;
+                    props["Top"] = 190;
+                    props["Width"] = 60u; 
+                    props["Height"] = 25u; 
+                }
+              else if (itemName.Contains("Lo_1"))
+                {
+                    props["Left"] = 870;
+                    props["Top"] = 370;
+                    props["Width"] = 60u; 
+                    props["Height"] = 25u; 
+                }
+            else if (itemName.Contains("Lo_2"))
+                {
+                    props["Left"] = 1380;
+                    props["Top"] = 380;
+                    props["Width"] = 60u; 
+                    props["Height"] = 25u; 
+                }
+            else
+                {
+                    props["Left"] = baseLeft;
+                    props["Top"] = FALLBACK_Y;
+                    props["Width"] = 240u; 
+                    props["Height"] = 350u; 
+                }            
+            
             break;
 
         case "Circle":
@@ -1202,6 +1251,59 @@ private static JObject BuildPhysicalItem(
             props["Width"] = 240u; props["Height"] = 150u;
             props["Url"] = item.Url ?? "";
             props["ScreenName"] = item.ScreenName ?? "";
+            break;
+
+        // --- STATIC DISPLAYS ---
+        case "HmiText":
+            // Nếu là Header (dựa vào hint hoặc tên), đặt ở vị trí mặc định trên cùng
+            if (itemName.Contains("Header") || (item.Hint ?? "").ToLower().Contains("title"))
+            {
+                props["Left"] = 285;
+                props["Top"] = 0;
+                props["Width"] = 1300u;
+                props["Height"] = 150u;
+            }
+            else
+            {
+                props["Left"] = baseLeft;
+                props["Top"] = 10; // Mặc định cho các label nhỏ
+                props["Width"] = 200u;
+                props["Height"] = 50u;
+            }
+
+            // Nạp nội dung và định dạng từ JSON
+            props["Text"] = item.Text ?? "Senior Design Project";
+            props["ForeColor"] = item.ForeColor ?? "255, 255, 255";
+            
+            // Xử lý Font lồng nhau (Nested Properties)
+            props["Font.Size"] = item.FontSize > 0 ? item.FontSize : 100;
+            props["Font.Name"] = item.FontName ?? "Times New Roman";
+            props["Font.Bold"] = item.FontBold ? true : true;
+            props["Font.Italic"] = item.FontItalic ? true : true;
+            break;
+
+        case "GraphicView":
+            // Thường dùng cho Logo
+            if (itemName.Contains("Graphic_Logo_BachKhoa")|| itemName.Contains("Logo_BachKhoa"))
+            {
+                props["Left"] = -115;
+                props["Top"] = -33;
+                props["Width"] = 500u;
+                props["Height"] = 415u;
+            }
+            else
+            {
+                props["Left"] = 0;
+                props["Top"] = 0;
+                props["Width"] = 100u;
+                props["Height"] = 100u;
+            }
+
+            // Thuộc tính quan trọng nhất để hiển thị hình ảnh
+            props["Graphic"] = item.Graphic ?? "Logo_BachKhoa"; 
+            props["Transparent"] = item.Transparent ? true : true;
+            props["BackColor"] = item.BackColor ?? "0, 128, 128";
+            props["BorderColor"] = item.BorderColor ?? "125, 125, 133";
             break;
 
         default:
