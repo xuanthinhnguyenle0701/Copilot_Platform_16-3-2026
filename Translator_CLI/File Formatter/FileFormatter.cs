@@ -1252,7 +1252,7 @@ private static JObject BuildPhysicalItem(
             }
 
             // Thuộc tính quan trọng nhất để hiển thị hình ảnh
-            props["Graphic"] = item.Graphic ?? " Logo_BachKhoa"; 
+            props["Graphic"] = item.Graphic ?? "Logo_BachKhoa"; 
             props["Transparent"] = item.Transparent ? true : true;
             props["BackColor"] = item.BackColor ?? "0, 128, 128";
             props["BorderColor"] = item.BorderColor ?? "125, 125, 133";
