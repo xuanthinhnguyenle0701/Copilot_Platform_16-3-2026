@@ -22,6 +22,8 @@ namespace TIA_Copilot_CLI
         // CWC-only fields
         private string _tempDir = null;   // temp extraction folder, cleaned up on close
         private string _zipPath = null;   // original zip path kept for toolbar actions
+        private bool _cwcIsDesignMode = false; // Mặc định mở lên là Runtime
+        private string _cwcInitScriptId = "";
 
         // =====================================================================
         // CONSTRUCTOR — standard file types (SCL, JSON, CSV)
@@ -105,40 +107,8 @@ namespace TIA_Copilot_CLI
         // =====================================================================
         private async System.Threading.Tasks.Task InitializeCwcAsync()
         {
-            // 1. Dùng sessionStorage để lưu trạng thái Mode. Mặc định mới mở lên là RUNTIME!
-            await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
-                var currentMode = sessionStorage.getItem('_tia_cwc_mode') || 'runtime';
-                var isDesign = (currentMode === 'design');
-
-                window.WebCC = {
-                    start: function(callback, contract, extensions, timeout) {
-                        if (contract && contract.properties) {
-                            window.WebCC._props = contract.properties;
-                        }
-                        setTimeout(function() { callback(true); }, 50);
-                    },
-                    Properties: new Proxy({}, {
-                        get: function(target, key) {
-                            if (window.WebCC._props && window.WebCC._props[key] !== undefined)
-                                return window.WebCC._props[key];
-                            return 0;
-                        },
-                        set: function(target, key, value) { return true; }
-                    }),
-                    _props: {},
-                    Events:             { fire: function() {} },
-                    onPropertyChanged:  { subscribe: function() {} },
-                    onLanguageChanged:  { subscribe: function() {} },
-                    
-                    // BÍ QUYẾT LÀ Ở ĐÂY:
-                    isDesignMode:       isDesign,
-                    
-                    language:           'en-US',
-                    Extensions:         { HMI: { Style: { Name: 'FlatStyle_Dark',
-                                         onchanged: { subscribe: function() {} } },
-                                         Properties: { onPropertyChanged: { subscribe: function() {} } } } }
-                };
-            ");
+            // Lần đầu tiên: Bơm script WebCC vào
+            await InjectWebCCScriptAsync();
 
             webView.CoreWebView2.WebMessageReceived += CwcToolbar_MessageReceived;
             webView.CoreWebView2.NavigationCompleted += CwcPage_NavigationCompleted;
@@ -146,19 +116,73 @@ namespace TIA_Copilot_CLI
             string indexPath = Path.Combine(_tempDir, "control", "index.html");
             if (File.Exists(indexPath))
                 webView.CoreWebView2.Navigate($"file:///{indexPath.Replace('\\', '/')}");
+            else
+                MessageBox.Show($"Cannot find control/index.html inside the zip.\nTemp path: {_tempDir}",
+                    "CWC Preview Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private async System.Threading.Tasks.Task InjectWebCCScriptAsync()
+        {
+            // Xóa script cũ đi để tránh chạy chồng chéo khi F5
+            if (!string.IsNullOrEmpty(_cwcInitScriptId))
+            {
+                webView.CoreWebView2.RemoveScriptToExecuteOnDocumentCreated(_cwcInitScriptId);
+            }
+
+            // Chuyển boolean của C# thành chữ 'true' hoặc 'false' cho JS
+            string modeString = _cwcIsDesignMode ? "true" : "false";
+
+            string script = $@"
+                window.WebCC = {{
+                    start: function(callback, contract, extensions, timeout) {{
+                        if (contract && contract.properties) {{
+                            window.WebCC._props = contract.properties;
+                        }}
+                        setTimeout(function() {{ callback(true); }}, 50);
+                    }},
+                    Properties: new Proxy({{}}, {{
+                        get: function(target, key) {{
+                            if (window.WebCC._props && window.WebCC._props[key] !== undefined)
+                                return window.WebCC._props[key];
+                            return 0;
+                        }},
+                        set: function(target, key, value) {{ return true; }}
+                    }}),
+                    _props: {{}},
+                    Events:             {{ fire: function() {{}} }},
+                    onPropertyChanged:  {{ subscribe: function() {{}} }},
+                    onLanguageChanged:  {{ subscribe: function() {{}} }},
+                    
+                    isDesignMode:       {modeString}, /* <--- GIÁ TRỊ ĐƯỢC C# KIỂM SOÁT */
+                    
+                    language:           'en-US',
+                    Extensions:         {{ HMI: {{ Style: {{ Name: 'FlatStyle_Dark',
+                                         onchanged: {{ subscribe: function() {{}} }} }},
+                                         Properties: {{ onPropertyChanged: {{ subscribe: function() {{}} }} }} }} }}
+                }};
+            ";
+            
+            // Ghi nhận lại ID của script này
+            _cwcInitScriptId = await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
         }
 
         // =====================================================================
         // CWC — inject floating toolbar after page loads
         // =====================================================================
+        // =====================================================================
+        // CWC — Bơm thanh Toolbar (Nội dung thay đổi theo biến C#)
+        // =====================================================================
         private async void CwcPage_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             if (!e.IsSuccess) return;
 
-            // Inject a floating toolbar overlay into the rendered CWC page
-            await webView.CoreWebView2.ExecuteScriptAsync(@"
-                (function() {
-                    if (document.getElementById('_cwc_toolbar')) return;
+            string modeBtnText = _cwcIsDesignMode ? "📐 Đang ở Design (Chuyển sang Runtime)" : "▶️ Đang ở Runtime (Chuyển sang Design)";
+            string modeBtnColor = _cwcIsDesignMode ? "#e67e22" : "#27ae60";
+            string currentModeLabel = _cwcIsDesignMode ? "DESIGN" : "RUNTIME";
+
+            await webView.CoreWebView2.ExecuteScriptAsync($@"
+                (function() {{
+                    if (document.getElementById('_cwc_toolbar')) document.getElementById('_cwc_toolbar').remove();
 
                     var bar = document.createElement('div');
                     bar.id = '_cwc_toolbar';
@@ -170,24 +194,17 @@ namespace TIA_Copilot_CLI
                         'font-size:13px', 'color:#ccc', 'border-bottom:1px solid #444'
                     ].join(';');
 
-                    function btn(label, color, msg) {
+                    function btn(label, color, msg) {{
                         var b = document.createElement('button');
                         b.textContent = label;
                         b.style.cssText = 'padding:4px 12px;border:none;border-radius:4px;cursor:pointer;' +
                                           'background:' + color + ';color:#fff;font-size:12px;font-weight:600;';
-                        
-                        // ĐÃ SỬA LỖI Ở DÒNG NÀY: Bỏ JSON.stringify đi
-                        b.onclick = function() { window.chrome.webview.postMessage({action: msg}); };
-                        
+                        b.onclick = function() {{ window.chrome.webview.postMessage({{action: msg}}); }};
                         return b;
-                    }
-
-                    var currentMode = sessionStorage.getItem('_tia_cwc_mode') || 'runtime';
-                    var modeBtnText = currentMode === 'design' ? '📐 Đang ở Design (Chuyển sang Runtime)' : '▶️ Đang ở Runtime (Chuyển sang Design)';
-                    var modeBtnColor = currentMode === 'design' ? '#e67e22' : '#27ae60';
+                    }}
 
                     bar.appendChild(document.createTextNode('🔍 CWC Preview  |  '));
-                    bar.appendChild(btn(modeBtnText, modeBtnColor, 'toggle_mode'));
+                    bar.appendChild(btn('{modeBtnText}', '{modeBtnColor}', 'toggle_mode'));
                     bar.appendChild(document.createTextNode('  |  '));
                     
                     bar.appendChild(btn('View code.js',      '#2a6099', 'open_codejs'));
@@ -196,31 +213,26 @@ namespace TIA_Copilot_CLI
                     bar.appendChild(btn('Open zip folder',   '#666',    'open_folder'));
 
                     var badge = document.createElement('span');
-                    badge.textContent = 'Mode: ' + currentMode.toUpperCase();
+                    badge.textContent = 'Mode: {currentModeLabel}';
                     badge.style.cssText = 'color:#f5a623;font-size:11px;margin-left:auto;font-weight:bold;';
                     bar.appendChild(badge);
 
                     document.body.insertBefore(bar, document.body.firstChild);
                     document.body.style.paddingTop = bar.offsetHeight + 'px';
-                })();
+                }})();
             ");
         }
 
         // =====================================================================
-        // CWC — handle toolbar button messages
+        // CWC — Xử lý khi bấm nút (C# ra lệnh Load lại)
         // =====================================================================
-        private void CwcToolbar_MessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        private async void CwcToolbar_MessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             try
             {
-                // Lấy chuỗi JSON từ Javascript
                 string json = e.WebMessageAsJson;
-                
-                // Cố gắng bắt cả trường hợp Javascript gửi String thô (Fallback an toàn)
                 if (json.StartsWith("\"") && json.EndsWith("\""))
-                {
-                    json = e.TryGetWebMessageAsString(); // <-- Sửa thành gán trực tiếp, không truyền tham số!
-                }
+                    json = e.TryGetWebMessageAsString(); 
 
                 dynamic data = JsonConvert.DeserializeObject(json);
                 string action = (string)data.action;
@@ -228,26 +240,23 @@ namespace TIA_Copilot_CLI
                 switch (action)
                 {
                     case "toggle_mode":
-                        webView.CoreWebView2.ExecuteScriptAsync(@"`
-                            var current = sessionStorage.getItem('_tia_cwc_mode') || 'runtime';
-                            sessionStorage.setItem('_tia_cwc_mode', current === 'runtime' ? 'design' : 'runtime');
-                            location.reload(); 
-                        ");
+                        // Đảo trạng thái trong não bộ C#
+                        _cwcIsDesignMode = !_cwcIsDesignMode;
+                        // Ép WebView2 nhận kịch bản mới
+                        await InjectWebCCScriptAsync();
+                        // C# tự tay F5 trang web (Sạch sẽ và an toàn 100%)
+                        webView.CoreWebView2.Reload(); 
                         break;
 
                     case "open_codejs":
                         OpenFileFromZipTemp("control/code.js", ReviewMode.Scl);
                         break;
-
                     case "open_manifest":
                         OpenFileFromZipTemp("manifest.json", ReviewMode.Json);
                         break;
-
                     case "open_css":
-                        // Mở file CSS bằng trình editor SCL (vì nó là file text, tô màu kiểu code là hợp lý)
                         OpenFileFromZipTemp("control/styles.css", ReviewMode.Scl); 
                         break;
-
                     case "open_folder":
                         if (Directory.Exists(_tempDir))
                             Process.Start(new ProcessStartInfo { FileName = _tempDir, UseShellExecute = true });
@@ -256,9 +265,8 @@ namespace TIA_Copilot_CLI
             }
             catch (Exception ex)
             {
-                // In lỗi ra Console thay vì nuốt âm thầm
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"[CWC PREVIEW ERROR] Lỗi khi nhận lệnh từ Toolbar: {ex.Message}");
+                Console.WriteLine($"[CWC PREVIEW ERROR] Lỗi: {ex.Message}");
                 Console.ResetColor();
             }
         }
