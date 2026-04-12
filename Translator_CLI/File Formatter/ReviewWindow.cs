@@ -144,7 +144,7 @@ namespace TIA_Copilot_CLI
                     }
                 }
                 
-                return; // XONG VIỆC, THOÁT HÀM! KHÔNG CHẠY XUỐNG WEBVIEW2 NỮA!
+                return;
             }
 
             Console.ForegroundColor = ConsoleColor.Green;

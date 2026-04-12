@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #1e1e1e; color: white; }
-        #header { height: 40px; background: #2d2d30; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #007acc; }
-        #title { font-size: 14px; font-weight: bold; }
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #1e1e1e; color: #d4d4d4; }
+        #header { height: 40px; background: #2d2d30; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #007acc; user-select: none; }
+        #title { font-size: 14px; font-weight: bold; color: #007acc; }
         #editor-container { width: 100%; height: calc(100% - 40px); }
-        .btn { background: #007acc; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 2px; font-weight: bold; }
+        .btn { background: #007acc; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 2px; font-weight: bold; transition: background 0.2s; }
         .btn:hover { background: #0098ff; }
     </style>
 </head>
 <body>
     <div id="header">
         <div id="title">📝 TIA Copilot Editor</div>
-        <button class="btn" onclick="saveCode()" id="saveBtn">💾 Cập nhật File</button>
+        <button class="btn" onclick="saveCode()" id="saveBtn">💾 Lưu xuống ổ cứng</button>
     </div>
     <div id="editor-container"></div>
 
@@ -24,29 +24,86 @@
         let editor;
 
         require(['vs/editor/editor.main'], function () {
-            // Định nghĩa cú pháp Siemens SCL
+            // Đăng ký ngôn ngữ SCL
             monaco.languages.register({ id: 'scl' });
+            
+            // ========================================================
+            // BƯỚC 1: ĐỊNH NGHĨA CÚ PHÁP THÔNG MINH (VS CODE STYLE)
+            // ========================================================
             monaco.languages.setMonarchTokensProvider('scl', {
+                // Danh sách từ khóa (Màu hồng)
+                keywords: [
+                    'IF', 'THEN', 'ELSE', 'ELSIF', 'END_IF', 'FOR', 'TO', 'BY', 'DO', 'END_FOR', 'WHILE', 'CASE', 'OF', 'END_CASE',
+                    'FUNCTION_BLOCK', 'FUNCTION', 'ORGANIZATION_BLOCK', 'DATA_BLOCK', 'END_FUNCTION_BLOCK', 'END_FUNCTION', 'END_ORGANIZATION_BLOCK', 'END_DATA_BLOCK',
+                    'VAR_INPUT', 'VAR_OUTPUT', 'VAR_IN_OUT', 'VAR', 'VAR_TEMP', 'END_VAR', 'BEGIN', 'END', 'AND', 'OR', 'NOT'
+                ],
+                // Kiểu dữ liệu (Màu xanh ngọc)
+                types: [
+                    'BOOL', 'INT', 'REAL', 'DINT', 'WORD', 'DWORD', 'BYTE', 'TIME', 'TON', 'TOF', 'CTU', 'STRING'
+                ],
+                // Hằng số logic (Màu xanh dương đậm)
+                constants: [
+                    'TRUE', 'FALSE'
+                ],
+                
                 tokenizer: {
                     root: [
-                        [/\b(IF|THEN|ELSE|ELSIF|END_IF|FOR|TO|BY|DO|END_FOR|WHILE|CASE|OF|END_CASE|FUNCTION_BLOCK|FUNCTION|ORGANIZATION_BLOCK|DATA_BLOCK|END_FUNCTION_BLOCK|END_FUNCTION|END_ORGANIZATION_BLOCK|END_DATA_BLOCK|VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR|VAR_TEMP|END_VAR|BEGIN|TRUE|FALSE)\b/, 'keyword'],
-                        [/\b(BOOL|INT|REAL|DINT|WORD|DWORD|BYTE|TON|TOF|CTU|STRING)\b/, 'type'],
-                        [/#([a-zA-Z0-9_]+)/, 'variable.name'],
-                        [/""[^""]*""/, 'string'],
-                        [/\/\/.*$/, 'comment']
+                        // Quét các từ tiếng Anh bình thường để phân loại
+                        [/[a-zA-Z_]\w*/, {
+                            cases: {
+                                '@keywords': 'custom-keyword',
+                                '@types': 'custom-type',
+                                '@constants': 'custom-constant',
+                                '@default': 'custom-variable' // Chữ bình thường -> Xanh lơ
+                            }
+                        }],
+                        // Quét biến số có dấu # đằng trước
+                        [/#\w+/, 'custom-variable'],
+                        // Quét con số (Ví dụ: 0.1)
+                        [/\d+(\.\d+)?/, 'custom-number'],
+                        // Quét chuỗi (Dấu ngoặc kép hoặc ngoặc đơn)
+                        [/"[^"]*"/, 'custom-string'],
+                        [/'[^']*'/, 'custom-string'],
+                        // Quét comment (//)
+                        [/\/\/.*$/, 'custom-comment']
                     ]
                 }
             });
 
+            // ========================================================
+            // BƯỚC 2: SAO CHÉP CHÍNH XÁC MÃ MÀU TỪ BỨC ẢNH CỦA BẠN
+            // ========================================================
+            monaco.editor.defineTheme('tia-dark-theme', {
+                base: 'vs-dark', 
+                inherit: true,
+                rules: [
+                    { token: 'custom-keyword', foreground: 'C586C0' }, // Hồng / Tím nhạt
+                    { token: 'custom-type', foreground: '4EC9B0' },    // Xanh ngọc
+                    { token: 'custom-constant', foreground: '569CD6' },// Xanh dương
+                    { token: 'custom-variable', foreground: '9CDCFE' },// Xanh lơ sáng (biến số)
+                    { token: 'custom-number', foreground: 'B5CEA8' },  // Xanh lá mạ (số)
+                    { token: 'custom-string', foreground: 'CE9178' },  // Cam đất
+                    { token: 'custom-comment', foreground: '6A9955', fontStyle: 'italic' } // Xanh lá mờ
+                ],
+                colors: {
+                    'editor.background': '#1e1e1e' // Nền chuẩn VS Code
+                }
+            });
+
+            // ========================================================
+            // BƯỚC 3: KHỞI TẠO EDITOR 
+            // ========================================================
             editor = monaco.editor.create(document.getElementById('editor-container'), {
                 value: "// Đang tải dữ liệu từ C#...",
                 language: 'scl',
-                theme: 'vs-dark',
+                theme: 'tia-dark-theme',
                 automaticLayout: true,
-                fontSize: 14
+                fontSize: 14, // Chỉnh cỡ chữ tương đương trong ảnh
+                fontFamily: "Consolas, 'Courier New', monospace",
+                minimap: { enabled: true }
             });
 
-            // LẮNG NGHE LỆNH TỪ C# (Nhận Code)
+            // LẮNG NGHE LỆNH TỪ C#
             window.chrome.webview.addEventListener('message', event => {
                 if (event.data.type === 'load') {
                     document.getElementById('title').innerText = "📝 " + event.data.filename;
@@ -60,7 +117,6 @@
             });
         });
 
-        // GỬI LỆNH VỀ C# (Lưu Code)
         function saveCode() {
             const btn = document.getElementById('saveBtn');
             btn.innerText = "⏳ Đang lưu...";
@@ -72,10 +128,10 @@
             });
 
             setTimeout(() => {
-                btn.innerText = "✅ Đã lưu thành công!";
+                btn.innerText = "✅ Đã lưu!";
                 btn.style.background = "#4CAF50";
                 setTimeout(() => {
-                    btn.innerText = "💾 Cập nhật File";
+                    btn.innerText = "💾 Lưu xuống ổ cứng";
                     btn.style.background = "#007acc";
                 }, 2000);
             }, 300);

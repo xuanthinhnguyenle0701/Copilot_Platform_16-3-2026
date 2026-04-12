@@ -7,28 +7,40 @@
     <script src="./jsoneditor/jsoneditor.min.js"></script>
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #1e1e1e; color: #eee; overflow: hidden; }
-        #header { height: 40px; background: #2d2d30; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #007acc; }
-        .tabs { display: flex; gap: 10px; }
-        .tab-btn { background: transparent; color: #aaa; border: none; padding: 5px 15px; cursor: pointer; font-size: 14px; font-weight: bold; border-bottom: 2px solid transparent; }
-        .tab-btn.active { color: #fff; border-bottom: 2px solid #007acc; }
-        .btn { background: #007acc; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 2px; font-weight: bold; }
+        
+        /* Header ToolBar */
+        #header { height: 40px; background: #2d2d30; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #007acc; user-select: none; }
+        .btn { background: #007acc; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 2px; font-weight: bold; transition: background 0.2s; }
         .btn:hover { background: #0098ff; }
         
-        #content { height: calc(100% - 40px); display: flex; position: relative; }
-        .panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
-        .panel.active { display: block; }
+        /* Layout Chia Đôi (Có Thanh Kéo) */
+        #content { height: calc(100% - 40px); display: flex; flex-direction: row; width: 100%; }
+        
+        /* Cột bên trái (Data Tree) - Mặc định 50% */
+        #panel-tree { width: 50%; flex: none; display: flex; flex-direction: column; height: 100%; }
+        
+        /* THANH KÉO (RESIZER) */
+        #resizer { width: 6px; background: #2d2d30; cursor: col-resize; z-index: 10; transition: background 0.2s; }
+        #resizer:hover, #resizer:active { background: #007acc; }
 
-        /* JSON Editor CSS Override cho Dark Mode */
-        #json-editor { width: 100%; height: 100%; }
+        /* Cột bên phải (Preview) - Tự động chiếm phần còn lại */
+        #panel-canvas { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100%; }
+        
+        .panel-header { background: #333; padding: 6px 15px; font-size: 13px; font-weight: bold; color: #ccc; border-bottom: 1px solid #444; user-select: none; }
+
+        /* JSON Editor Override */
+        #json-editor { flex: 1; width: 100%; height: 100%; }
         .jsoneditor { border: none !important; }
-        .jsoneditor-menu { background-color: #333 !important; border-bottom: 1px solid #444 !important; }
+        .jsoneditor-menu { background-color: #252526 !important; border-bottom: 1px solid #444 !important; }
+        /* Hiệu ứng chớp sáng khi nhảy tới Code */
+        .jsoneditor-selected { transition: background-color 0.5s ease !important; }
 
         /* Canvas SCADA Preview */
-        #scada-canvas { width: 100%; height: 100%; background: #252526; overflow: auto; position: relative; }
-        .hmi-item { position: absolute; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; box-sizing: border-box; cursor: pointer; transition: transform 0.1s; }
+        #scada-canvas { flex: 1; width: 100%; height: 100%; background: #1e1e1e; overflow: auto; position: relative; }
+        .hmi-item { position: absolute; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; box-sizing: border-box; cursor: pointer; transition: transform 0.1s, outline 0.1s; }
         .hmi-item:hover { outline: 2px dashed #007acc; transform: scale(1.02); z-index: 100; }
+        .hmi-selected { outline: 3px solid #e74c3c !important; z-index: 101; box-shadow: 0 0 10px rgba(231,76,60,0.5); }
         
-        /* Phối màu cho các linh kiện vật lý */
         .type-tank { background: rgba(52, 152, 219, 0.6); border: 2px solid #2980b9; border-radius: 5px; }
         .type-valve { background: rgba(230, 126, 34, 0.6); border: 2px solid #d35400; clip-path: polygon(0 0, 100% 100%, 100% 0, 0 100%); }
         .type-motor, .type-pump { background: rgba(46, 204, 113, 0.6); border: 2px solid #27ae60; border-radius: 50%; }
@@ -41,21 +53,23 @@
 </head>
 <body>
     <div id="header">
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('tree')">🌳 Data Tree</button>
-            <button class="tab-btn" onclick="switchTab('canvas')">🖥️ SCADA Preview</button>
+        <div>
+            <span style="font-weight: bold; color: #007acc;">⚙️ TIA SCADA STUDIO</span>
+            <span id="filename" style="font-size: 12px; color: #aaa; margin-left: 10px;"></span>
         </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
-            <span id="filename" style="font-size: 12px; color: #aaa;"></span>
-            <button class="btn" onclick="saveData()" id="saveBtn">💾 Cập nhật File</button>
-        </div>
+        <button class="btn" onclick="saveData()" id="saveBtn">💾 Lưu xuống ổ cứng</button>
     </div>
     
     <div id="content">
-        <div id="panel-tree" class="panel active">
+        <div id="panel-tree">
+            <div class="panel-header">🌳 Cấu trúc JSON</div>
             <div id="json-editor"></div>
         </div>
-        <div id="panel-canvas" class="panel">
+
+        <div id="resizer"></div>
+
+        <div id="panel-canvas">
+            <div class="panel-header">🖥️ Bản vẽ Trực quan (Live Preview)</div>
             <div id="scada-canvas"></div>
         </div>
     </div>
@@ -64,81 +78,105 @@
         let editor;
         let currentJsonData = {};
 
-        // Khởi tạo JSON Editor
+        // ==========================================
+        // TÍNH NĂNG 1: THANH KÉO (RESIZER)
+        // ==========================================
+        const resizer = document.getElementById('resizer');
+        const leftPanel = document.getElementById('panel-tree');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            e.preventDefault(); // Chống bôi đen chữ khi kéo
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const containerWidth = document.getElementById('content').clientWidth;
+            let newWidth = (e.clientX / containerWidth) * 100;
+            // Giới hạn kéo không bị lố (từ 10% đến 90%)
+            if (newWidth < 10) newWidth = 10;
+            if (newWidth > 90) newWidth = 90;
+            leftPanel.style.width = newWidth + '%';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+            }
+        });
+
+        // ==========================================
+        // KHỞI TẠO JSON EDITOR & LẮNG NGHE C#
+        // ==========================================
         const container = document.getElementById("json-editor");
-        const options = { mode: 'tree', search: true };
+        const options = { 
+            mode: 'tree', 
+            search: true,
+            onChange: function() {
+                try {
+                    currentJsonData = editor.get();
+                    renderScadaCanvas(currentJsonData);
+                } catch(e) {}
+            }
+        };
         editor = new JSONEditor(container, options);
 
-        // Chuyển Tab
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById('panel-' + tabId).classList.add('active');
-
-            // Nếu qua tab Canvas, cập nhật lại hình ảnh từ dữ liệu đang sửa
-            if (tabId === 'canvas') {
-                currentJsonData = editor.get();
-                renderScadaCanvas(currentJsonData);
-            }
-        }
-
-        // Lắng nghe C# nạp dữ liệu
         window.chrome.webview.addEventListener('message', event => {
             if (event.data.type === 'load') {
-                document.getElementById('filename').innerText = event.data.filename;
+                document.getElementById('filename').innerText = "— " + event.data.filename;
                 try {
                     currentJsonData = JSON.parse(event.data.content);
                     editor.set(currentJsonData);
-                    renderScadaCanvas(currentJsonData); // Vẽ ngay lập tức
+                    renderScadaCanvas(currentJsonData);
                 } catch (e) {
                     editor.set({ error: "Invalid JSON format from file" });
                 }
             }
         });
 
-        // Lưu dữ liệu gửi về C#
         function saveData() {
             const btn = document.getElementById('saveBtn');
             btn.innerText = "⏳ Đang lưu...";
-            
-            const updatedJson = editor.getText(); // Lấy raw text để C# ghi file
-            window.chrome.webview.postMessage({
-                type: 'save',
-                content: updatedJson
-            });
-
-            setTimeout(() => {
-                btn.innerText = "✅ Đã lưu!";
-                setTimeout(() => btn.innerText = "💾 Cập nhật File", 2000);
-            }, 300);
+            try {
+                const updatedJson = JSON.stringify(editor.get(), null, 2); 
+                window.chrome.webview.postMessage({ type: 'save', content: updatedJson });
+                setTimeout(() => {
+                    btn.innerText = "✅ Đã lưu!";
+                    btn.style.background = "#4CAF50";
+                    setTimeout(() => {
+                        btn.innerText = "💾 Lưu xuống ổ cứng";
+                        btn.style.background = "#007acc";
+                    }, 2000);
+                }, 300);
+            } catch(e) {
+                alert("Lỗi cú pháp JSON!");
+                btn.innerText = "💾 Lưu xuống ổ cứng";
+            }
         }
 
         // ==========================================
-        // SCADA RENDER ENGINE (WYSIWYG)
+        // SCADA RENDER ENGINE & AUTO-SCROLL
         // ==========================================
         function renderScadaCanvas(data) {
             const canvas = document.getElementById('scada-canvas');
-            canvas.innerHTML = ''; // Xóa bản vẽ cũ
+            canvas.innerHTML = ''; 
 
-            // Kiểm tra xem có đúng là JSON HMI không (Kiểm tra mảng Screens)
-            if (!data.Screens || !data.Screens[0] || !data.Screens[0].Items) {
-                canvas.innerHTML = '<div style="padding: 20px; color: #e74c3c;">⚠️ Đây không phải là file JSON SCADA chứa cấu trúc Screens/Items. Trình xem trước Canvas không khả dụng.</div>';
-                return;
-            }
-
+            if (!data.Screens || !data.Screens[0] || !data.Screens[0].Items) return;
             const items = data.Screens[0].Items;
             
-            items.forEach(item => {
+            items.forEach((item, index) => {
                 const props = item.Properties;
                 if (!props || props.Left === undefined) return;
 
                 const div = document.createElement('div');
                 div.className = 'hmi-item';
+                div.id = 'hmi-node-' + index;
                 
-                // Phân loại hình dáng dựa trên Type
                 const typeLow = (item.Type || "").toLowerCase();
+                
                 if (typeLow.includes("tank")) div.classList.add("type-tank");
                 else if (typeLow.includes("valve")) div.classList.add("type-valve");
                 else if (typeLow.includes("motor") || typeLow.includes("pump")) div.classList.add("type-motor");
@@ -146,24 +184,63 @@
                 else if (typeLow.includes("button")) div.classList.add("type-button");
                 else if (typeLow.includes("rectangle")) div.classList.add("type-rectangle");
                 else if (typeLow.includes("iofield")) div.classList.add("type-iofield");
-                else div.classList.add("type-generic");
+                else if (typeLow.includes("hmitext") || typeLow === "text") {
+                    div.style.background = "transparent"; div.style.border = "none";
+                    if (props.ForeColor) div.style.color = `rgb(${props.ForeColor})`;
+                    if (props["Font.Size"]) div.style.fontSize = props["Font.Size"] + 'px';
+                } else div.classList.add("type-generic");
 
-                // Áp dụng Tọa độ Absolute từ JSON C#
-                div.style.left = props.Left + 'px';
-                div.style.top = props.Top + 'px';
-                div.style.width = (props.Width || 50) + 'px';
-                div.style.height = (props.Height || 50) + 'px';
+                div.style.left = props.Left + 'px'; div.style.top = props.Top + 'px';
+                div.style.width = (props.Width || 50) + 'px'; div.style.height = (props.Height || 50) + 'px';
 
-                // Nếu có Text, hiển thị Text. Không thì hiển thị Name của Object
-                if (typeLow !== "pipe") { // Ống nước không cần hiện chữ
+                if (typeLow !== "pipe" && !typeLow.includes("hmitext") && typeLow !== "text") {
                     div.innerText = props.Text || item.Name || typeLow;
+                } else if (typeLow.includes("hmitext") || typeLow === "text") {
+                    div.innerText = props.Text || "";
                 }
 
-                // Gắn tooltip khi di chuột vào
-                div.title = `Name: ${item.Name}\nType: ${item.Type}\nTag: ${props.StatusTag || props.LevelTag || props.Tag || 'N/A'}`;
+                div.title = `Name: ${item.Name}\nType: ${item.Type}\n💡 Click để xem Code JSON!`;
+
+                // Sự kiện Click 2 Chiều
+                div.onclick = function() {
+                    jumpToJsonNode(index);
+                };
 
                 canvas.appendChild(div);
             });
+        }
+
+        // TÍNH NĂNG 2: JUMP & AUTO-SCROLL ĐỈNH CAO
+        function jumpToJsonNode(index) {
+            // Đổi viền đỏ bên Canvas
+            document.querySelectorAll('.hmi-item').forEach(el => el.classList.remove('hmi-selected'));
+            const selectedDiv = document.getElementById('hmi-node-' + index);
+            if (selectedDiv) selectedDiv.classList.add('hmi-selected');
+
+            const nodePath = ['Screens', 0, 'Items', index];
+
+            try {
+                // Bung thư mục và bôi đen
+                editor.expandAll();
+                editor.setSelection({ path: nodePath });
+
+                // DÙNG DOM ĐỂ ÉP CUỘN MÀN HÌNH XUỐNG DÒNG ĐƯỢC CHỌN
+                setTimeout(() => {
+                    const selectedNode = document.querySelector('.jsoneditor-selected');
+                    if (selectedNode) {
+                        // Trượt mượt mà đến giữa màn hình
+                        selectedNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Hiệu ứng chớp sáng nhấp nháy màu xanh dương để user dễ nhìn thấy
+                        selectedNode.style.backgroundColor = "#0e639c";
+                        setTimeout(() => {
+                            selectedNode.style.backgroundColor = ""; // Trả về màu gốc
+                        }, 800);
+                    }
+                }, 100); // Đợi 100ms cho JSON Editor render DOM xong
+            } catch (e) {
+                console.error("Không thể focus vào Node:", e);
+            }
         }
     </script>
 </body>
