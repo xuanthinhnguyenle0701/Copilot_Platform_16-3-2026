@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JSON & SCADA Preview</title>
+    <link href="./jsoneditor/jsoneditor.min.css" rel="stylesheet" type="text/css">
+    <script src="./jsoneditor/jsoneditor.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #1e1e1e; color: #eee; overflow: hidden; }
+        #header { height: 40px; background: #2d2d30; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #007acc; }
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn { background: transparent; color: #aaa; border: none; padding: 5px 15px; cursor: pointer; font-size: 14px; font-weight: bold; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: #fff; border-bottom: 2px solid #007acc; }
+        .btn { background: #007acc; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 2px; font-weight: bold; }
+        .btn:hover { background: #0098ff; }
+        
+        #content { height: calc(100% - 40px); display: flex; position: relative; }
+        .panel { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; }
+        .panel.active { display: block; }
+
+        /* JSON Editor CSS Override cho Dark Mode */
+        #json-editor { width: 100%; height: 100%; }
+        .jsoneditor { border: none !important; }
+        .jsoneditor-menu { background-color: #333 !important; border-bottom: 1px solid #444 !important; }
+
+        /* Canvas SCADA Preview */
+        #scada-canvas { width: 100%; height: 100%; background: #252526; overflow: auto; position: relative; }
+        .hmi-item { position: absolute; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; box-sizing: border-box; cursor: pointer; transition: transform 0.1s; }
+        .hmi-item:hover { outline: 2px dashed #007acc; transform: scale(1.02); z-index: 100; }
+        
+        /* Phối màu cho các linh kiện vật lý */
+        .type-tank { background: rgba(52, 152, 219, 0.6); border: 2px solid #2980b9; border-radius: 5px; }
+        .type-valve { background: rgba(230, 126, 34, 0.6); border: 2px solid #d35400; clip-path: polygon(0 0, 100% 100%, 100% 0, 0 100%); }
+        .type-motor, .type-pump { background: rgba(46, 204, 113, 0.6); border: 2px solid #27ae60; border-radius: 50%; }
+        .type-pipe { background: #7f8c8d; border: 1px solid #555; font-size: 0; }
+        .type-button { background: #ecf0f1; color: #333; border: 2px solid #bdc3c7; border-radius: 3px; text-shadow: none; box-shadow: 0 2px 0 #95a5a6; }
+        .type-rectangle { background: rgba(149, 165, 166, 0.3); border: 1px dashed #95a5a6; }
+        .type-iofield { background: #fff; color: #000; border: 1px solid #000; text-shadow: none; font-family: monospace; }
+        .type-generic { background: rgba(155, 89, 182, 0.6); border: 1px solid #8e44ad; }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('tree')">🌳 Data Tree</button>
+            <button class="tab-btn" onclick="switchTab('canvas')">🖥️ SCADA Preview</button>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <span id="filename" style="font-size: 12px; color: #aaa;"></span>
+            <button class="btn" onclick="saveData()" id="saveBtn">💾 Cập nhật File</button>
+        </div>
+    </div>
+    
+    <div id="content">
+        <div id="panel-tree" class="panel active">
+            <div id="json-editor"></div>
+        </div>
+        <div id="panel-canvas" class="panel">
+            <div id="scada-canvas"></div>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+        let currentJsonData = {};
+
+        // Khởi tạo JSON Editor
+        const container = document.getElementById("json-editor");
+        const options = { mode: 'tree', search: true };
+        editor = new JSONEditor(container, options);
+
+        // Chuyển Tab
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('panel-' + tabId).classList.add('active');
+
+            // Nếu qua tab Canvas, cập nhật lại hình ảnh từ dữ liệu đang sửa
+            if (tabId === 'canvas') {
+                currentJsonData = editor.get();
+                renderScadaCanvas(currentJsonData);
+            }
+        }
+
+        // Lắng nghe C# nạp dữ liệu
+        window.chrome.webview.addEventListener('message', event => {
+            if (event.data.type === 'load') {
+                document.getElementById('filename').innerText = event.data.filename;
+                try {
+                    currentJsonData = JSON.parse(event.data.content);
+                    editor.set(currentJsonData);
+                    renderScadaCanvas(currentJsonData); // Vẽ ngay lập tức
+                } catch (e) {
+                    editor.set({ error: "Invalid JSON format from file" });
+                }
+            }
+        });
+
+        // Lưu dữ liệu gửi về C#
+        function saveData() {
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = "⏳ Đang lưu...";
+            
+            const updatedJson = editor.getText(); // Lấy raw text để C# ghi file
+            window.chrome.webview.postMessage({
+                type: 'save',
+                content: updatedJson
+            });
+
+            setTimeout(() => {
+                btn.innerText = "✅ Đã lưu!";
+                setTimeout(() => btn.innerText = "💾 Cập nhật File", 2000);
+            }, 300);
+        }
+
+        // ==========================================
+        // SCADA RENDER ENGINE (WYSIWYG)
+        // ==========================================
+        function renderScadaCanvas(data) {
+            const canvas = document.getElementById('scada-canvas');
+            canvas.innerHTML = ''; // Xóa bản vẽ cũ
+
+            // Kiểm tra xem có đúng là JSON HMI không (Kiểm tra mảng Screens)
+            if (!data.Screens || !data.Screens[0] || !data.Screens[0].Items) {
+                canvas.innerHTML = '<div style="padding: 20px; color: #e74c3c;">⚠️ Đây không phải là file JSON SCADA chứa cấu trúc Screens/Items. Trình xem trước Canvas không khả dụng.</div>';
+                return;
+            }
+
+            const items = data.Screens[0].Items;
+            
+            items.forEach(item => {
+                const props = item.Properties;
+                if (!props || props.Left === undefined) return;
+
+                const div = document.createElement('div');
+                div.className = 'hmi-item';
+                
+                // Phân loại hình dáng dựa trên Type
+                const typeLow = (item.Type || "").toLowerCase();
+                if (typeLow.includes("tank")) div.classList.add("type-tank");
+                else if (typeLow.includes("valve")) div.classList.add("type-valve");
+                else if (typeLow.includes("motor") || typeLow.includes("pump")) div.classList.add("type-motor");
+                else if (typeLow.includes("pipe")) div.classList.add("type-pipe");
+                else if (typeLow.includes("button")) div.classList.add("type-button");
+                else if (typeLow.includes("rectangle")) div.classList.add("type-rectangle");
+                else if (typeLow.includes("iofield")) div.classList.add("type-iofield");
+                else div.classList.add("type-generic");
+
+                // Áp dụng Tọa độ Absolute từ JSON C#
+                div.style.left = props.Left + 'px';
+                div.style.top = props.Top + 'px';
+                div.style.width = (props.Width || 50) + 'px';
+                div.style.height = (props.Height || 50) + 'px';
+
+                // Nếu có Text, hiển thị Text. Không thì hiển thị Name của Object
+                if (typeLow !== "pipe") { // Ống nước không cần hiện chữ
+                    div.innerText = props.Text || item.Name || typeLow;
+                }
+
+                // Gắn tooltip khi di chuột vào
+                div.title = `Name: ${item.Name}\nType: ${item.Type}\nTag: ${props.StatusTag || props.LevelTag || props.Tag || 'N/A'}`;
+
+                canvas.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>

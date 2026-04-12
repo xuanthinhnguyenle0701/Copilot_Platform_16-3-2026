@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #1e1e1e; color: white; }
+        #header { height: 40px; background: #2d2d30; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #007acc; }
+        #title { font-size: 14px; font-weight: bold; }
+        #editor-container { width: 100%; height: calc(100% - 40px); }
+        .btn { background: #007acc; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 2px; font-weight: bold; }
+        .btn:hover { background: #0098ff; }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <div id="title">📝 TIA Copilot Editor</div>
+        <button class="btn" onclick="saveCode()" id="saveBtn">💾 Cập nhật File</button>
+    </div>
+    <div id="editor-container"></div>
+
+    <script src="./monaco-editor/vs/loader.js"></script>
+    <script>
+        require.config({ paths: { 'vs': './monaco-editor/vs' } });
+        let editor;
+
+        require(['vs/editor/editor.main'], function () {
+            // Định nghĩa cú pháp Siemens SCL
+            monaco.languages.register({ id: 'scl' });
+            monaco.languages.setMonarchTokensProvider('scl', {
+                tokenizer: {
+                    root: [
+                        [/\b(IF|THEN|ELSE|ELSIF|END_IF|FOR|TO|BY|DO|END_FOR|WHILE|CASE|OF|END_CASE|FUNCTION_BLOCK|FUNCTION|ORGANIZATION_BLOCK|DATA_BLOCK|END_FUNCTION_BLOCK|END_FUNCTION|END_ORGANIZATION_BLOCK|END_DATA_BLOCK|VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR|VAR_TEMP|END_VAR|BEGIN|TRUE|FALSE)\b/, 'keyword'],
+                        [/\b(BOOL|INT|REAL|DINT|WORD|DWORD|BYTE|TON|TOF|CTU|STRING)\b/, 'type'],
+                        [/#([a-zA-Z0-9_]+)/, 'variable.name'],
+                        [/""[^""]*""/, 'string'],
+                        [/\/\/.*$/, 'comment']
+                    ]
+                }
+            });
+
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: "// Đang tải dữ liệu từ C#...",
+                language: 'scl',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                fontSize: 14
+            });
+
+            // LẮNG NGHE LỆNH TỪ C# (Nhận Code)
+            window.chrome.webview.addEventListener('message', event => {
+                if (event.data.type === 'load') {
+                    document.getElementById('title').innerText = "📝 " + event.data.filename;
+                    editor.setValue(event.data.content);
+                }
+            });
+
+            // Phím tắt Ctrl + S
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
+                saveCode();
+            });
+        });
+
+        // GỬI LỆNH VỀ C# (Lưu Code)
+        function saveCode() {
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = "⏳ Đang lưu...";
+            btn.style.background = "#d7ba7d";
+
+            window.chrome.webview.postMessage({
+                type: 'save',
+                content: editor.getValue()
+            });
+
+            setTimeout(() => {
+                btn.innerText = "✅ Đã lưu thành công!";
+                btn.style.background = "#4CAF50";
+                setTimeout(() => {
+                    btn.innerText = "💾 Cập nhật File";
+                    btn.style.background = "#007acc";
+                }, 2000);
+            }, 300);
+        }
+    </script>
+</body>
+</html>

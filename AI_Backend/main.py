@@ -325,7 +325,7 @@ def main():
         {user_tags}
             """
 
-        chat_history_str = memory.get_sliding_window_context(session_id, window_size=5)
+        chat_history_str = memory.get_sliding_window_context(session_id, window_size=10)
         system_rules = get_system_prompt_part1()
         target_schema = get_output_schema(target_block_type)
 
@@ -600,6 +600,7 @@ def main():
         output_bytes = (final_json_str + "\n").encode('utf-8')
         sys.stdout.buffer.write(output_bytes)
         sys.stdout.buffer.flush()
+        os._exit(0)
 
     except Exception as e:
         error_res = {"status": "error", "message": str(e)}

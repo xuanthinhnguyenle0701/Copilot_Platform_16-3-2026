@@ -14,7 +14,7 @@ def get_session_history(session_id):
         connection_string=DB_PATH
     )
 
-def get_sliding_window_context(session_id, window_size=3):
+def get_sliding_window_context(session_id, window_size=10):
     """
     KỸ THUẬT SLIDING WINDOW:
     Chỉ lấy K cặp (User-AI) cuối cùng để tiết kiệm Token.

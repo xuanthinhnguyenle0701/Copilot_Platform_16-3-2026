@@ -6,11 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <PlatformTarget>x64</PlatformTarget>
     <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>    
+    <LangVersion>latest</LangVersion>
+    <UseWindowsForms>true</UseWindowsForms>    
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3856.49" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
    <ItemGroup>
@@ -39,7 +41,10 @@
   <ItemGroup>    
     <None Update="PLcCatalog.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>   
+    </None>
+    <None Update="review_assets\**\*">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>   
   </ItemGroup>
 
 

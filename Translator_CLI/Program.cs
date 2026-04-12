@@ -25,7 +25,7 @@ namespace TIA_Copilot_CLI
         private static string _lastGeneratedFilePath = "";
         public static string _currentSessionId = "default";
 
-        [STAThread] // Bắt buộc để chạy OpenFileDialog
+        [STAThread]
         static async Task Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
@@ -154,6 +154,8 @@ namespace TIA_Copilot_CLI
                                 string tagFile = GetPathOrOpenDialog(args, 2, "Excel Files (*.xlsx;*.xls)|*.xlsx;*.xls|CSV Files (*.csv)|*.csv|All Files (*.*)|*.*");
                                 if (!string.IsNullOrEmpty(tagFile))
                                     await CommandHandler.HandleLoadTagsAsync(tagFile);
+                                else PrintIcon("×", "No selected file to load.", ConsoleColor.Yellow);
+
                                 break;
 
                             case "load-spec":
@@ -167,6 +169,18 @@ namespace TIA_Copilot_CLI
                                 if (args.Length > 2) sessionId = args[2];
                                 await CommandHandler.HandleClearDataAsync(sessionId);
                                 break;
+
+                            case "view":
+                                string reviewFile = GetPathOrOpenDialog(args, 2, "FB/FC/OB (*.scl)|*.scl|Scada Screen (*.json)|*.json|PLC-HMI tags (*.csv)|*.csv|All Files (*.*)|*.*");
+                                if (!string.IsNullOrEmpty(reviewFile))
+                                {
+                                    ReviewWindow.OpenReviewer(reviewFile);
+                                }
+                                else
+                                {
+                                    PrintIcon("×", "No selected file to load.", ConsoleColor.Yellow);
+                                }
+                                break; 
 
 
                             default:
@@ -479,7 +493,12 @@ namespace TIA_Copilot_CLI
             string selectedPath = "";
             Thread t = new Thread(() =>
             {
-                using (OpenFileDialog ofd = new OpenFileDialog { Filter = filter, Title = "Chọn file dữ liệu" })
+                using (OpenFileDialog ofd = new OpenFileDialog 
+                { 
+                    Filter = filter, 
+                    Title = "Chọn file dữ liệu",
+                    InitialDirectory = OutputPaths.GetGeneratedDir()
+                    })
                     if (ofd.ShowDialog(new Form { TopMost = true }) == DialogResult.OK) selectedPath = ofd.FileName;
             });
             t.SetApartmentState(ApartmentState.STA); t.Start(); t.Join();
@@ -524,7 +543,7 @@ namespace TIA_Copilot_CLI
                 if (int.TryParse(inputArg, out int idx) && idx > 0 && idx <= adapters.Count)
                     selectedAdapter = adapters[idx - 1];
                 else
-                    selectedAdapter = adapters.FirstOrDefault(a => a.Contains(inputArg, StringComparison.OrdinalIgnoreCase));
+                    selectedAdapter = adapters.FirstOrDefault(a => a.IndexOf(inputArg, StringComparison.OrdinalIgnoreCase) >= 0);
             }
 
             // 3. Nếu chưa có card, hiện bảng chọn ID
@@ -641,6 +660,7 @@ namespace TIA_Copilot_CLI
             Console.ResetColor();
 
             Console.WriteLine("  chat <FB/FC/OB/SCADA/CWC> \"<Query>\" [SessionID]  : Calling AI");
+            Console.WriteLine("  chat view \"<Đường_dẫn_File>\"                   : Xem lại FB/FC/OB/Screens/Tags đã tạo");
             Console.WriteLine("  chat load-tags \"<Đường_dẫn_File_Excel/CSV>\"  : Upload desire tags");
             Console.WriteLine("  chat load-spec \"<Đường_dẫn_File_Spec.txt>\"   : Upload system spec");
             Console.WriteLine("  chat clear-data                                : clear uploaded tags/system spec");
@@ -705,7 +725,7 @@ namespace TIA_Copilot_CLI
             var ads = TIA_V20.GetSystemNetworkAdapters();
             if (ads == null || ads.Count == 0) return null;
             if (int.TryParse(inputArg, out int idx) && idx > 0 && idx <= ads.Count) return ads[idx - 1];
-            var match = ads.FirstOrDefault(a => a.Contains(inputArg, StringComparison.OrdinalIgnoreCase));
+            var match = ads.FirstOrDefault(a => a.IndexOf(inputArg, StringComparison.OrdinalIgnoreCase) >= 0);
             if (!string.IsNullOrEmpty(match)) return match;
 
             Console.WriteLine("\n" + new string('-', 45) + "\n ID | NETWORK INTERFACE (PG/PC)\n" + new string('-', 45));
