@@ -171,10 +171,13 @@ namespace TIA_Copilot_CLI
                                 break;
 
                             case "view":
-                                string reviewFile = GetPathOrOpenDialog(args, 2, "FB/FC/OB (*.scl)|*.scl|Scada Screen (*.json)|*.json|PLC-HMI tags (*.csv)|*.csv|All Files (*.*)|*.*");
+                                string reviewFile = GetPathOrOpenDialog(args, 2, "FB/FC/OB (*.scl)|*.scl|Custom Web Control (.zip)|*.zip|Scada Screen (*.json)|*.json|PLC-HMI tags (*.csv)|*.csv|All Files (*.*)|*.*");
                                 if (!string.IsNullOrEmpty(reviewFile))
                                 {
-                                    ReviewWindow.OpenReviewer(reviewFile);
+                                    if (reviewFile.EndsWith(".scl", StringComparison.OrdinalIgnoreCase) || reviewFile.EndsWith(".json", StringComparison.OrdinalIgnoreCase) || reviewFile.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                                        ReviewWindow.OpenReviewer(reviewFile);
+                                    else if (reviewFile.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                                        ReviewWindow.OpenCwcPreview(reviewFile);
                                 }
                                 else
                                 {
