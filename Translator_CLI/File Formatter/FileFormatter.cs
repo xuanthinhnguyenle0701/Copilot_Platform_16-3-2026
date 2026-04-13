@@ -1195,8 +1195,24 @@ private static JObject BuildPhysicalItem(
 
         // --- BUTTONS ---
         case "Button":
-            props["Left"] = baseLeft + 15;
-            props["Top"] = FALLBACK_Y + internalY;
+                if (itemName.Contains("Start_Auto"))
+                {
+                    props["Left"] = 30;
+                    props["Top"] = 370;                   
+                }
+                else if (itemName.Contains("Stop_Auto"))
+                {
+                    props["Left"] = 160;
+                    props["Top"] = 370;
+                   
+                }
+                else
+                {
+                    props["Left"] = baseLeft + 15;
+                    props["Top"] = FALLBACK_Y + internalY;
+                  
+                }            
+          
             props["Width"] = 100u; props["Height"] = 40u;
             props["Text"] = item.Label ?? itemName;
             var scripts = new JObject();
