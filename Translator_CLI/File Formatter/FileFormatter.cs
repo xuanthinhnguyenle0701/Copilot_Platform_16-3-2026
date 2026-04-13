@@ -1036,6 +1036,18 @@ private static JObject BuildPhysicalItem(
         clusterOffsetPipeY = 293;
         props["Width"] = 70u;
     }
+    else if (itemName.Contains("Pipe_6")) 
+    {
+       
+        clusterOffsetPipeX = 1210;        
+        clusterOffsetPipeY = 71;
+    }
+    else if (itemName.Contains("Pipe_7")) 
+    {
+       
+        clusterOffsetPipeX = 1210;        
+        clusterOffsetPipeY = 293;
+    }
     int baseLeft = FALLBACK_X + clusterOffsetX;
     int baseLeftMotorX = FALLBACK_X + clusterOffsetmotorX;
     int baseLeftTankX = FALLBACK_X + clusterOffsetTankX;
@@ -1071,10 +1083,18 @@ private static JObject BuildPhysicalItem(
         case "Valve":
             props["LibraryPath"] = "IndustryGraphicLibrary/Valves";
             props["SubType"] = item.SubType ?? "ControlValve"; // SubType mặc định cho Van
-            props["Left"] = baseLeftMotorX + 90;
-            props["Top"] = clusterOffsetmotorY + 60;
-            props["Width"] = 100u; // Van thường nhỏ gọn hơn Motor
-            props["Height"] = 100u;
+            if (itemName.Contains("Valve_1"))
+                {
+                    props["Left"] = 1536;
+                    props["Top"] = 98;                     
+                }
+            else if (itemName.Contains("Valve_2"))
+                {
+                    props["Left"] = 1536;
+                    props["Top"] = 320;                    
+                }            
+            props["Width"] = 200u; // Van thường nhỏ gọn hơn Motor
+            props["Height"] = 140u;
             props["StatusTag"] = item.BindTag ?? "";
             AddColorScript(props, item);
             break;
