@@ -8,39 +8,52 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: #1e1e1e; color: #eee; overflow: hidden; }
         
-        /* Header ToolBar */
-        #header { height: 40px; background: #2d2d30; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #007acc; user-select: none; }
+        /* 💥 ĐÓNG ĐINH HEADER BẰNG POSITION: FIXED */
+        #header { position: fixed; top: 0; left: 0; right: 0; height: 40px; background: #2d2d30; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #007acc; user-select: none; z-index: 10000; box-sizing: border-box; }
         .btn { background: #007acc; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 2px; font-weight: bold; transition: background 0.2s; }
-        .btn:hover { background: #0098ff; }
+        .btn:hover:not(:disabled) { background: #0098ff; }
+        .btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+        .btn-icon { font-size: 16px; padding: 3px 12px; }
         
-        /* Layout Chia Đôi (Có Thanh Kéo) */
-        #content { height: calc(100% - 40px); display: flex; flex-direction: row; width: 100%; }
-        
-        /* Cột bên trái (Data Tree) - Mặc định 50% */
+        /* 💥 ĐÓNG ĐINH CONTENT BÊN DƯỚI HEADER */
+        #content { position: fixed; top: 40px; bottom: 0; left: 0; right: 0; display: flex; flex-direction: row; }
         #panel-tree { width: 50%; flex: none; display: flex; flex-direction: column; height: 100%; }
         
-        /* THANH KÉO (RESIZER) */
         #resizer { width: 6px; background: #2d2d30; cursor: col-resize; z-index: 10; transition: background 0.2s; }
         #resizer:hover, #resizer:active { background: #007acc; }
 
-        /* Cột bên phải (Preview) - Tự động chiếm phần còn lại */
         #panel-canvas { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100%; }
-        
         .panel-header { background: #333; padding: 6px 15px; font-size: 13px; font-weight: bold; color: #ccc; border-bottom: 1px solid #444; user-select: none; }
 
-        /* JSON Editor Override */
         #json-editor { flex: 1; width: 100%; height: 100%; }
         .jsoneditor { border: none !important; }
         .jsoneditor-menu { background-color: #252526 !important; border-bottom: 1px solid #444 !important; }
-        /* Hiệu ứng chớp sáng khi nhảy tới Code */
         .jsoneditor-selected { transition: background-color 0.5s ease !important; }
 
-        /* Canvas SCADA Preview */
         #scada-canvas { flex: 1; width: 100%; height: 100%; background: #1e1e1e; overflow: auto; position: relative; }
-        .hmi-item { position: absolute; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; box-sizing: border-box; cursor: pointer; transition: transform 0.1s, outline 0.1s; }
-        .hmi-item:hover { outline: 2px dashed #007acc; transform: scale(1.02); z-index: 100; }
-        .hmi-selected { outline: 3px solid #e74c3c !important; z-index: 101; box-shadow: 0 0 10px rgba(231,76,60,0.5); }
         
+        /* KHUNG CHỌN (MARQUEE) */
+        #selection-box { 
+            position: absolute; 
+            border: 1px dashed #0098ff; 
+            background-color: rgba(0, 152, 255, 0.15); 
+            background-image: linear-gradient(rgba(0, 152, 255, 0.3) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 152, 255, 0.3) 1px, transparent 1px);
+            background-size: 15px 15px;
+            pointer-events: none; 
+            display: none; 
+            z-index: 9999; 
+        }
+
+        /* CSS LINH KIỆN */
+        .hmi-item { position: absolute; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; box-sizing: border-box; cursor: grab; transition: outline 0.1s; user-select: none; }
+        .hmi-item:hover { outline: 2px dashed #007acc; z-index: 100; }
+        .hmi-selected { outline: 3px solid #e74c3c !important; z-index: 101; box-shadow: 0 0 10px rgba(231,76,60,0.5); }
+        .hmi-item.is-dragging { cursor: grabbing; opacity: 0.8; }
+        
+        .resize-handle { position: absolute; right: -5px; bottom: -5px; width: 12px; height: 12px; background: #007acc; border: 2px solid #fff; border-radius: 50%; cursor: nwse-resize; display: none; z-index: 105; }
+        .hmi-item:hover .resize-handle, .hmi-selected .resize-handle { display: block; }
+
         .type-tank { background: rgba(52, 152, 219, 0.6); border: 2px solid #2980b9; border-radius: 5px; }
         .type-valve { background: rgba(230, 126, 34, 0.6); border: 2px solid #d35400; clip-path: polygon(0 0, 100% 100%, 100% 0, 0 100%); }
         .type-motor, .type-pump { background: rgba(46, 204, 113, 0.6); border: 2px solid #27ae60; border-radius: 50%; }
@@ -48,6 +61,8 @@
         .type-button { background: #ecf0f1; color: #333; border: 2px solid #bdc3c7; border-radius: 3px; text-shadow: none; box-shadow: 0 2px 0 #95a5a6; }
         .type-rectangle { background: rgba(149, 165, 166, 0.3); border: 1px dashed #95a5a6; }
         .type-iofield { background: #fff; color: #000; border: 1px solid #000; text-shadow: none; font-family: monospace; }
+        .type-graphicview { background: rgba(255, 255, 255, 0.1); border: 1px dashed #aaa; color: #aaa; }
+        .type-circle { background: rgba(241, 196, 15, 0.6); border: 2px solid #f39c12; border-radius: 50%; }
         .type-generic { background: rgba(155, 89, 182, 0.6); border: 1px solid #8e44ad; }
     </style>
 </head>
@@ -57,7 +72,11 @@
             <span style="font-weight: bold; color: #007acc;">⚙️ TIA SCADA STUDIO</span>
             <span id="filename" style="font-size: 12px; color: #aaa; margin-left: 10px;"></span>
         </div>
-        <button class="btn" onclick="saveData()" id="saveBtn">💾 Lưu xuống ổ cứng</button>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-icon" onclick="undo()" id="btnUndo" disabled title="Quay lại (Ctrl + Z)">↩</button>
+            <button class="btn btn-icon" onclick="redo()" id="btnRedo" disabled title="Đi tiếp (Ctrl + Y)">↪</button>
+            <button class="btn" onclick="saveData()" id="saveBtn" title="Ctrl + S">💾 Lưu xuống ổ cứng</button>
+        </div>
     </div>
     
     <div id="content">
@@ -69,8 +88,10 @@
         <div id="resizer"></div>
 
         <div id="panel-canvas">
-            <div class="panel-header">🖥️ Bản vẽ Trực quan (Live Preview)</div>
-            <div id="scada-canvas"></div>
+            <div class="panel-header">🖥️ Bản vẽ Trực quan (Kéo chuột chọn vùng lưới)</div>
+            <div id="scada-canvas">
+                <div id="selection-box"></div>
+            </div>
         </div>
     </div>
 
@@ -79,46 +100,86 @@
         let currentJsonData = {};
 
         // ==========================================
-        // TÍNH NĂNG 1: THANH KÉO (RESIZER)
+        // QUẢN LÝ LỊCH SỬ (UNDO / REDO)
         // ==========================================
-        const resizer = document.getElementById('resizer');
-        const leftPanel = document.getElementById('panel-tree');
-        let isResizing = false;
+        let historyStack = [];
+        let historyIndex = -1;
+        let isHistoryAction = false; 
 
-        resizer.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            document.body.style.cursor = 'col-resize';
-            e.preventDefault(); // Chống bôi đen chữ khi kéo
-        });
+        function saveHistory(data) {
+            if (historyIndex < historyStack.length - 1) {
+                historyStack = historyStack.slice(0, historyIndex + 1);
+            }
+            historyStack.push(JSON.stringify(data));
+            if (historyStack.length > 50) historyStack.shift(); 
+            else historyIndex++;
+            updateUndoRedoUI();
+        }
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            const containerWidth = document.getElementById('content').clientWidth;
-            let newWidth = (e.clientX / containerWidth) * 100;
-            // Giới hạn kéo không bị lố (từ 10% đến 90%)
-            if (newWidth < 10) newWidth = 10;
-            if (newWidth > 90) newWidth = 90;
-            leftPanel.style.width = newWidth + '%';
-        });
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                applyHistory();
+            }
+        }
 
-        document.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                document.body.style.cursor = 'default';
+        function redo() {
+            if (historyIndex < historyStack.length - 1) {
+                historyIndex++;
+                applyHistory();
+            }
+        }
+
+        function applyHistory() {
+            isHistoryAction = true; 
+            const dataStr = historyStack[historyIndex];
+            currentJsonData = JSON.parse(dataStr);
+            editor.set(currentJsonData); 
+            renderScadaCanvas(currentJsonData); 
+            isHistoryAction = false; 
+            updateUndoRedoUI();
+        }
+
+        function updateUndoRedoUI() {
+            document.getElementById('btnUndo').disabled = (historyIndex <= 0);
+            document.getElementById('btnRedo').disabled = (historyIndex >= historyStack.length - 1);
+        }
+
+        // ==========================================
+        // PHÍM TẮT BÀN PHÍM (ĐÃ BỔ SUNG CTRL+S)
+        // ==========================================
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                if (e.key.toLowerCase() === 'z') {
+                    e.preventDefault(); undo();
+                } else if (e.key.toLowerCase() === 'y') {
+                    e.preventDefault(); redo();
+                } else if (e.key.toLowerCase() === 's') {
+                    e.preventDefault(); saveData(); // KÍCH HOẠT LƯU FILE
+                }
             }
         });
 
         // ==========================================
-        // KHỞI TẠO JSON EDITOR & LẮNG NGHE C#
+        // VÁCH NGĂN MÀN HÌNH
+        // ==========================================
+        const resizer = document.getElementById('resizer');
+        const leftPanel = document.getElementById('panel-tree');
+        let isResizingPanel = false;
+        resizer.addEventListener('mousedown', (e) => { isResizingPanel = true; document.body.style.cursor = 'col-resize'; e.preventDefault(); });
+        
+        // ==========================================
+        // KHỞI TẠO JSON EDITOR
         // ==========================================
         const container = document.getElementById("json-editor");
         const options = { 
-            mode: 'tree', 
-            search: true,
+            mode: 'tree', search: true,
             onChange: function() {
+                if (isHistoryAction) return; 
                 try {
                     currentJsonData = editor.get();
                     renderScadaCanvas(currentJsonData);
+                    saveHistory(currentJsonData); 
                 } catch(e) {}
             }
         };
@@ -131,116 +192,293 @@
                     currentJsonData = JSON.parse(event.data.content);
                     editor.set(currentJsonData);
                     renderScadaCanvas(currentJsonData);
-                } catch (e) {
-                    editor.set({ error: "Invalid JSON format from file" });
-                }
+                    
+                    historyStack = []; historyIndex = -1;
+                    saveHistory(currentJsonData);
+                } catch (e) { editor.set({ error: "Invalid JSON format from file" }); }
             }
         });
 
         function saveData() {
             const btn = document.getElementById('saveBtn');
-            btn.innerText = "⏳ Đang lưu...";
+            btn.innerText = "⏳ Saving...";
             try {
-                const updatedJson = JSON.stringify(editor.get(), null, 2); 
-                window.chrome.webview.postMessage({ type: 'save', content: updatedJson });
+                window.chrome.webview.postMessage({ type: 'save', content: JSON.stringify(editor.get(), null, 2) });
                 setTimeout(() => {
-                    btn.innerText = "✅ Đã lưu!";
-                    btn.style.background = "#4CAF50";
-                    setTimeout(() => {
-                        btn.innerText = "💾 Lưu xuống ổ cứng";
-                        btn.style.background = "#007acc";
-                    }, 2000);
+                    btn.innerText = "✅ Saved!"; btn.style.background = "#4CAF50";
+                    setTimeout(() => { btn.innerText = "💾 Save to Disk"; btn.style.background = "#007acc"; }, 2000);
                 }, 300);
-            } catch(e) {
-                alert("Lỗi cú pháp JSON!");
-                btn.innerText = "💾 Lưu xuống ổ cứng";
-            }
+            } catch(e) {}
         }
 
         // ==========================================
-        // SCADA RENDER ENGINE & AUTO-SCROLL
+        // BIẾN TOÀN CỤC CHO MULTI-SELECT, DRAG & RESIZE
+        // ==========================================
+        let selectedIndices = new Set();
+        let dragStartStates = new Map();
+
+        let isDragging = false;
+        let isResizingItem = false;
+        let isMarqueeSelection = false;
+
+        let dragStartX = 0, dragStartY = 0;
+
+        const scadaCanvas = document.getElementById('scada-canvas');
+        const selectionBox = document.getElementById('selection-box');
+        let marqueeStartX = 0, marqueeStartY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            if (isResizingPanel) {
+                let newWidth = (e.clientX / document.getElementById('content').clientWidth) * 100;
+                if (newWidth < 10) newWidth = 10; if (newWidth > 90) newWidth = 90;
+                leftPanel.style.width = newWidth + '%';
+                return;
+            }
+
+            const rect = scadaCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left + scadaCanvas.scrollLeft;
+            const mouseY = e.clientY - rect.top + scadaCanvas.scrollTop;
+
+            if (isMarqueeSelection) {
+                const boxLeft = Math.min(mouseX, marqueeStartX);
+                const boxTop = Math.min(mouseY, marqueeStartY);
+                const boxWidth = Math.abs(mouseX - marqueeStartX);
+                const boxHeight = Math.abs(mouseY - marqueeStartY);
+
+                selectionBox.style.left = boxLeft + 'px';
+                selectionBox.style.top = boxTop + 'px';
+                selectionBox.style.width = boxWidth + 'px';
+                selectionBox.style.height = boxHeight + 'px';
+
+                document.querySelectorAll('.hmi-item').forEach(el => {
+                    const idx = parseInt(el.id.replace('hmi-node-', ''));
+                    const eLeft = parseInt(el.style.left);
+                    const eTop = parseInt(el.style.top);
+                    const eRight = eLeft + parseInt(el.style.width);
+                    const eBottom = eTop + parseInt(el.style.height);
+
+                    if (!(boxLeft > eRight || boxLeft + boxWidth < eLeft || boxTop > eBottom || boxTop + boxHeight < eTop)) {
+                        selectedIndices.add(idx); el.classList.add('hmi-selected');
+                    } else if (!e.shiftKey) { 
+                        selectedIndices.delete(idx); el.classList.remove('hmi-selected');
+                    }
+                });
+                return;
+            }
+
+            if (isDragging && selectedIndices.size > 0) {
+                let dx = e.clientX - dragStartX;
+                let dy = e.clientY - dragStartY;
+
+                selectedIndices.forEach(idx => {
+                    const el = document.getElementById('hmi-node-' + idx);
+                    const state = dragStartStates.get(idx);
+                    if (el && state) {
+                        el.classList.add('is-dragging');
+                        el.style.left = Math.round(state.left + dx) + 'px';
+                        el.style.top = Math.round(state.top + dy) + 'px';
+                    }
+                });
+            }
+
+            if (isResizingItem && selectedIndices.size > 0) {
+                let dx = e.clientX - dragStartX;
+                let dy = e.clientY - dragStartY;
+
+                selectedIndices.forEach(idx => {
+                    const el = document.getElementById('hmi-node-' + idx);
+                    const state = dragStartStates.get(idx);
+                    if (el && state) {
+                        el.style.width = Math.max(10, Math.round(state.width + dx)) + 'px';
+                        el.style.height = Math.max(10, Math.round(state.height + dy)) + 'px';
+                    }
+                });
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            isResizingPanel = false; document.body.style.cursor = 'default';
+
+            if (isMarqueeSelection) {
+                isMarqueeSelection = false;
+                selectionBox.style.display = 'none';
+            }
+
+            if ((isDragging || isResizingItem) && selectedIndices.size > 0) {
+                let hasChanges = false;
+
+                selectedIndices.forEach(idx => {
+                    const el = document.getElementById('hmi-node-' + idx);
+                    el.classList.remove('is-dragging');
+                    
+                    if (currentJsonData.Screens && currentJsonData.Screens[0].Items[idx].Properties) {
+                        let targetItem = currentJsonData.Screens[0].Items[idx];
+                        let tType = (targetItem.Type || "").toLowerCase();
+                        
+                        let newLeft = parseInt(el.style.left, 10);
+                        let newTop = parseInt(el.style.top, 10);
+                        let newWidth = parseInt(el.style.width, 10);
+                        let newHeight = parseInt(el.style.height, 10);
+
+                        if (tType === 'circle') {
+                            let newRadius = Math.round(Math.max(newWidth, newHeight) / 2);
+                            targetItem.Properties.Radius = newRadius;
+                            targetItem.Properties.CenterX = newLeft + newRadius;
+                            targetItem.Properties.CenterY = newTop + newRadius;
+                        } else {
+                            targetItem.Properties.Left = newLeft; targetItem.Properties.Top = newTop;
+                            targetItem.Properties.Width = newWidth; targetItem.Properties.Height = newHeight;
+                        }
+                        hasChanges = true;
+                    }
+                });
+
+                if (hasChanges) {
+                    editor.update(currentJsonData);
+                    saveHistory(currentJsonData); 
+                    
+                    if (selectedIndices.size === 1) jumpToJsonNode([...selectedIndices][0]);
+                }
+                
+                isDragging = false; isResizingItem = false;
+            }
+        });
+
+        scadaCanvas.addEventListener('mousedown', function(e) {
+            if (e.target === scadaCanvas) {
+                if (!e.shiftKey) clearSelection();
+                
+                isMarqueeSelection = true;
+                const rect = scadaCanvas.getBoundingClientRect();
+                marqueeStartX = e.clientX - rect.left + scadaCanvas.scrollLeft;
+                marqueeStartY = e.clientY - rect.top + scadaCanvas.scrollTop;
+
+                selectionBox.style.left = marqueeStartX + 'px';
+                selectionBox.style.top = marqueeStartY + 'px';
+                selectionBox.style.width = '0px';
+                selectionBox.style.height = '0px';
+                selectionBox.style.display = 'block';
+            }
+        });
+
+        function clearSelection() {
+            selectedIndices.clear();
+            document.querySelectorAll('.hmi-item').forEach(el => el.classList.remove('hmi-selected'));
+        }
+
+        // ==========================================
+        // SCADA RENDER ENGINE
         // ==========================================
         function renderScadaCanvas(data) {
-            const canvas = document.getElementById('scada-canvas');
-            canvas.innerHTML = ''; 
+            Array.from(scadaCanvas.children).forEach(child => {
+                if (child.id !== 'selection-box') child.remove();
+            });
 
             if (!data.Screens || !data.Screens[0] || !data.Screens[0].Items) return;
             const items = data.Screens[0].Items;
             
             items.forEach((item, index) => {
                 const props = item.Properties;
-                if (!props || props.Left === undefined) return;
+                if (!props) return;
+
+                const typeLow = (item.Type || "").toLowerCase();
+                let left, top, width, height;
+
+                if (typeLow === 'circle') {
+                    if (props.CenterX === undefined || props.CenterY === undefined) return;
+                    let r = props.Radius || 20;
+                    left = props.CenterX - r; top = props.CenterY - r;
+                    width = r * 2; height = r * 2;
+                } else {
+                    if (props.Left === undefined || props.Top === undefined) return;
+                    left = props.Left; top = props.Top;
+                    width = props.Width || 50; height = props.Height || 50;
+                }
 
                 const div = document.createElement('div');
                 div.className = 'hmi-item';
                 div.id = 'hmi-node-' + index;
                 
-                const typeLow = (item.Type || "").toLowerCase();
+                if (selectedIndices.has(index)) div.classList.add('hmi-selected');
                 
-                if (typeLow.includes("tank")) div.classList.add("type-tank");
+                if (typeLow === "circle") div.classList.add("type-circle");
+                else if (typeLow.includes("tank")) div.classList.add("type-tank");
                 else if (typeLow.includes("valve")) div.classList.add("type-valve");
                 else if (typeLow.includes("motor") || typeLow.includes("pump")) div.classList.add("type-motor");
                 else if (typeLow.includes("pipe")) div.classList.add("type-pipe");
                 else if (typeLow.includes("button")) div.classList.add("type-button");
                 else if (typeLow.includes("rectangle")) div.classList.add("type-rectangle");
                 else if (typeLow.includes("iofield")) div.classList.add("type-iofield");
+                else if (typeLow.includes("graphicview")) div.classList.add("type-graphicview");
                 else if (typeLow.includes("hmitext") || typeLow === "text") {
                     div.style.background = "transparent"; div.style.border = "none";
                     if (props.ForeColor) div.style.color = `rgb(${props.ForeColor})`;
                     if (props["Font.Size"]) div.style.fontSize = props["Font.Size"] + 'px';
                 } else div.classList.add("type-generic");
 
-                div.style.left = props.Left + 'px'; div.style.top = props.Top + 'px';
-                div.style.width = (props.Width || 50) + 'px'; div.style.height = (props.Height || 50) + 'px';
+                div.style.left = left + 'px'; div.style.top = top + 'px';
+                div.style.width = width + 'px'; div.style.height = height + 'px';
 
-                if (typeLow !== "pipe" && !typeLow.includes("hmitext") && typeLow !== "text") {
-                    div.innerText = props.Text || item.Name || typeLow;
-                } else if (typeLow.includes("hmitext") || typeLow === "text") {
-                    div.innerText = props.Text || "";
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                resizeHandle.onmousedown = function(e) {
+                    e.stopPropagation(); e.preventDefault();
+                    if (!selectedIndices.has(index)) {
+                        clearSelection(); selectedIndices.add(index); div.classList.add('hmi-selected');
+                    }
+                    isResizingItem = true;
+                    dragStartX = e.clientX; dragStartY = e.clientY;
+                    dragStartStates.clear();
+                    selectedIndices.forEach(idx => {
+                        const el = document.getElementById('hmi-node-' + idx);
+                        if(el) dragStartStates.set(idx, { width: parseInt(el.style.width, 10), height: parseInt(el.style.height, 10) });
+                    });
+                };
+                div.appendChild(resizeHandle);
+
+                if (typeLow !== "pipe" && !typeLow.includes("hmitext") && typeLow !== "text" && typeLow !== "graphicview") {
+                    const textSpan = document.createElement('span'); textSpan.innerText = props.Text || item.Name || typeLow; div.appendChild(textSpan);
+                } else if (typeLow.includes("hmitext") || typeLow === "text" || typeLow === "graphicview") {
+                    const textSpan = document.createElement('span'); textSpan.innerText = props.Text || (typeLow === "graphicview" ? "Logo" : ""); div.appendChild(textSpan);
                 }
 
-                div.title = `Name: ${item.Name}\nType: ${item.Type}\n💡 Click để xem Code JSON!`;
+                div.onmousedown = function(e) {
+                    if (e.button !== 0) return; 
+                    e.stopPropagation(); e.preventDefault(); 
+                    if (e.shiftKey) {
+                        if (selectedIndices.has(index)) { selectedIndices.delete(index); div.classList.remove('hmi-selected'); return; } 
+                        else { selectedIndices.add(index); div.classList.add('hmi-selected'); }
+                    } else {
+                        if (!selectedIndices.has(index)) { clearSelection(); selectedIndices.add(index); div.classList.add('hmi-selected'); }
+                    }
 
-                // Sự kiện Click 2 Chiều
-                div.onclick = function() {
-                    jumpToJsonNode(index);
+                    isDragging = true;
+                    dragStartX = e.clientX; dragStartY = e.clientY;
+                    dragStartStates.clear();
+                    selectedIndices.forEach(idx => {
+                        const el = document.getElementById('hmi-node-' + idx);
+                        if(el) dragStartStates.set(idx, { left: parseInt(el.style.left, 10), top: parseInt(el.style.top, 10) });
+                    });
+                    if (selectedIndices.size === 1) jumpToJsonNode(index);
                 };
 
-                canvas.appendChild(div);
+                scadaCanvas.appendChild(div);
             });
         }
 
-        // TÍNH NĂNG 2: JUMP & AUTO-SCROLL ĐỈNH CAO
         function jumpToJsonNode(index) {
-            // Đổi viền đỏ bên Canvas
-            document.querySelectorAll('.hmi-item').forEach(el => el.classList.remove('hmi-selected'));
-            const selectedDiv = document.getElementById('hmi-node-' + index);
-            if (selectedDiv) selectedDiv.classList.add('hmi-selected');
-
             const nodePath = ['Screens', 0, 'Items', index];
-
             try {
-                // Bung thư mục và bôi đen
-                editor.expandAll();
-                editor.setSelection({ path: nodePath });
-
-                // DÙNG DOM ĐỂ ÉP CUỘN MÀN HÌNH XUỐNG DÒNG ĐƯỢC CHỌN
+                editor.expandAll(); editor.setSelection({ path: nodePath });
                 setTimeout(() => {
                     const selectedNode = document.querySelector('.jsoneditor-selected');
                     if (selectedNode) {
-                        // Trượt mượt mà đến giữa màn hình
                         selectedNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
-                        // Hiệu ứng chớp sáng nhấp nháy màu xanh dương để user dễ nhìn thấy
                         selectedNode.style.backgroundColor = "#0e639c";
-                        setTimeout(() => {
-                            selectedNode.style.backgroundColor = ""; // Trả về màu gốc
-                        }, 800);
+                        setTimeout(() => { selectedNode.style.backgroundColor = ""; }, 800);
                     }
-                }, 100); // Đợi 100ms cho JSON Editor render DOM xong
-            } catch (e) {
-                console.error("Không thể focus vào Node:", e);
-            }
+                }, 50); 
+            } catch (e) {}
         }
     </script>
 </body>

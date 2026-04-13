@@ -1083,12 +1083,12 @@ private static JObject BuildPhysicalItem(
         case "Valve":
             props["LibraryPath"] = "IndustryGraphicLibrary/Valves";
             props["SubType"] = item.SubType ?? "ControlValve"; // SubType mặc định cho Van
-            if (itemName.Contains("Valve_1"))
+            if (itemName.Contains("Valve_01") || itemName.Contains("Valve_1"))
                 {
                     props["Left"] = 1536;
                     props["Top"] = 98;                     
                 }
-            else if (itemName.Contains("Valve_2"))
+            else if (itemName.Contains("Valve_02") || itemName.Contains("Valve_2"))
                 {
                     props["Left"] = 1536;
                     props["Top"] = 320;                    
