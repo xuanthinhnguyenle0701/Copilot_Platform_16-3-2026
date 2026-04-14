@@ -159,7 +159,7 @@ namespace TIA_Copilot_CLI
                                 break;
 
                             case "load-spec":
-                                string specFile = GetPathOrOpenDialog(args, 2, "Spec Files (*.md;*.txt;*.json)|*.md;*.txt;*.json|All Files (*.*)|*.*");
+                                string specFile = GetPathOrOpenDialog(args, 2, "Spec Files (*.docx;*.md;*.txt)|*.docx;*.md;*.txt|All Files (*.*)|*.*");
                                 if (args.Length > 3) sessionId = args[3];
                                 if (!string.IsNullOrEmpty(specFile))
                                     await CommandHandler.HandleLoadSpecAsync(specFile, sessionId);
@@ -171,7 +171,7 @@ namespace TIA_Copilot_CLI
                                 break;
 
                             case "view":
-                                string reviewFile = GetPathOrOpenDialog(args, 2, "FB/FC/OB (*.scl)|*.scl|Custom Web Control (.zip)|*.zip|Scada Screen (*.json)|*.json|PLC-HMI tags (*.csv)|*.csv|All Files (*.*)|*.*");
+                                string reviewFile = GetPathOrOpenDialog(args, 2, "Supported Files (*.scl;.zip;*.json;*.csv)|*.scl;.zip;*.json;*.csv| FB/FC/OB (*.scl)|*.scl|Custom Web Control (*.zip)|*.zip|Scada Screen (*.json)|*.json|PLC-HMI tags (*.csv)|*.csv|All Files (*.*)|*.*");
                                 if (!string.IsNullOrEmpty(reviewFile))
                                 {
                                     if (reviewFile.EndsWith(".scl", StringComparison.OrdinalIgnoreCase) || reviewFile.EndsWith(".json", StringComparison.OrdinalIgnoreCase) || reviewFile.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))

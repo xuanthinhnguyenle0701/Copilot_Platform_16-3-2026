@@ -6,6 +6,9 @@ using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Xml;
+using System.Collections.Generic;
 
 namespace TIA_Copilot_CLI
 {
@@ -97,7 +100,6 @@ namespace TIA_Copilot_CLI
 
         public static async Task HandleLoadSpecAsync(string specPath, string sessionId)
         {
-            // ... (Copy nguyên ruột hàm HandleLoadSpecAsync từ phiên bản trước vào đây) ...
             Console.WriteLine($"\n🚀 [START] Nạp Yêu cầu vận hành vào Vector DB...");
             if (!File.Exists(specPath))
             {
@@ -106,8 +108,31 @@ namespace TIA_Copilot_CLI
                 Console.ResetColor();
                 return;
             }
-            string rawSpec = File.ReadAllText(specPath, Encoding.UTF8);
-            string specText = rawSpec.TrimStart('\uFEFF');
+
+            // --- BẮT ĐẦU: ĐỌC VÀ CHẮT LỌC TEXT TỪ FILE ---
+            string specText = "";
+            if (specPath.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+            {
+                // Nếu là file Word, dùng dao mổ XML để lấy chữ và bảng
+                specText = ExtractTextFromDocx(specPath);
+            }
+            else
+            {
+                // Nếu là file txt, md, scl thông thường
+                string rawSpec = File.ReadAllText(specPath, Encoding.UTF8);
+                specText = rawSpec.TrimStart('\uFEFF');
+            }
+            // --- KẾT THÚC: ĐỌC FILE ---
+
+            if (specText.StartsWith("[ERROR]"))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(specText);
+                Console.ResetColor();
+                return;
+            }
+
+            // Gửi toàn bộ text sạch sẽ sang Python để băm nhỏ và nạp vào ChromaDB
             var backendTask = AiEngine.CallPythonBackendAsync("", sessionId, "update_spec", "", specText);
             string jsonResponse = await RunWithSpinner(backendTask, "Đang băm nhỏ file và nạp vào ChromaDB...");
 
@@ -212,14 +237,12 @@ namespace TIA_Copilot_CLI
                     string msg = obj.message.ToString();
 
                     // BỘ LỌC THÔNG MINH: Đọc hiểu câu trả lời của Python
-                    if (msg.Contains("No current spec found") || msg.Contains("empty"))
+                    if (msg.StartsWith("No current"))
                     {
                         specStatus = "❌ CHƯA NẠP (Trống)";
                     }
                     else
                     {
-                        // Nếu có Spec, Python sẽ trả về 1 cục text rất dài. Ta chỉ lấy dòng đầu tiên in ra cho gọn!
-                        // VD: "Found 15 chunks in current Spec."
                         string briefMsg = msg.Split('\n')[0];
                         specStatus = $"✅ ĐÃ NẠP | {briefMsg} | Trạng thái: Sẵn sàng";
                     }
@@ -459,13 +482,15 @@ namespace TIA_Copilot_CLI
                 if (obj.status == "success")
                 {
                     string msg = obj.message.ToString();
-                    if (msg.Contains("No current spec found") || msg.Contains("empty"))
+                    
+                    // BỘ LỌC THÔNG MINH ĐÃ SỬA
+                    if (msg.StartsWith("No current"))
                     {
                         dumpData.AppendLine("(Trống - Hệ thống chưa nạp tài liệu Spec nào)");
                     }
                     else
                     {
-                        dumpData.AppendLine(msg);
+                        dumpData.AppendLine(msg); // In toàn bộ nội dung Spec ra Notepad
                     }
                 }
                 else
@@ -650,6 +675,64 @@ namespace TIA_Copilot_CLI
                     Console.ResetColor();
                 }
             }
+        }
+        // =====================================================================
+        // HÀM HELPER: ĐỌC FILE WORD (.DOCX) BẰNG C# NATIVE (KHÔNG CẦN THƯ VIỆN BÊN THỨ 3)
+        // =====================================================================
+        public static string ExtractTextFromDocx(string filePath)
+        {
+            StringBuilder sb = new StringBuilder();
+            try
+            {
+                using (ZipArchive zip = ZipFile.OpenRead(filePath))
+                {
+                    ZipArchiveEntry entry = zip.GetEntry("word/document.xml");
+                    if (entry == null) return "";
+
+                    using (Stream stream = entry.Open())
+                    {
+                        XmlDocument xmlDoc = new XmlDocument();
+                        xmlDoc.Load(stream);
+
+                        XmlNamespaceManager nsmgr = new XmlNamespaceManager(xmlDoc.NameTable);
+                        nsmgr.AddNamespace("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+
+                        XmlNode body = xmlDoc.SelectSingleNode("//w:body", nsmgr);
+                        if (body != null)
+                        {
+                            foreach (XmlNode node in body.ChildNodes)
+                            {
+                                if (node.Name == "w:p") // Đọc đoạn văn bình thường
+                                {
+                                    string text = node.InnerText;
+                                    if (!string.IsNullOrWhiteSpace(text))
+                                        sb.AppendLine(text);
+                                }
+                                else if (node.Name == "w:tbl") // Đọc Bảng biểu (Cực kỳ quan trọng cho I/O List)
+                                {
+                                    sb.AppendLine("\n[START TABLE]");
+                                    foreach (XmlNode row in node.SelectNodes(".//w:tr", nsmgr))
+                                    {
+                                        List<string> cellTexts = new List<string>();
+                                        foreach (XmlNode cell in row.SelectNodes(".//w:tc", nsmgr))
+                                        {
+                                            cellTexts.Add(cell.InnerText.Trim());
+                                        }
+                                        sb.AppendLine(string.Join(" | ", cellTexts)); 
+                                    }
+                                    sb.AppendLine("[END TABLE]\n");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return $"[ERROR] C# không thể đọc file Word: {ex.Message}";
+            }
+            
+            return sb.ToString();
         }
 
     }
