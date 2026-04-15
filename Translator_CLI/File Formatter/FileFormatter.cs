@@ -1206,6 +1206,29 @@ private static JObject BuildPhysicalItem(
                     props["Top"] = 370;
                    
                 }
+                else if (itemName.Contains("On_Valve_01") || itemName.Contains("On_Valve_01_Btn"))
+                {
+                    props["Left"] = 1755;
+                    props["Top"] = 100;                   
+                }
+                else if (itemName.Contains("Off_Valve_01") || itemName.Contains("Off_Valve_01_Btn"))
+                {
+                    props["Left"] = 1755;
+                    props["Top"] = 150;
+                   
+                }
+                else if (itemName.Contains("On_Valve_02") || itemName.Contains("On_Valve_02_Btn"))
+                {
+                    props["Left"] = 1755;
+                    props["Top"] = 340;                   
+                }
+                else if (itemName.Contains("Off_Valve_02") || itemName.Contains("Off_Valve_02_Btn"))
+                {
+                    props["Left"] = 1755;
+                    props["Top"] = 390;
+                   
+                }
+
                 else
                 {
                     props["Left"] = baseLeft + 15;

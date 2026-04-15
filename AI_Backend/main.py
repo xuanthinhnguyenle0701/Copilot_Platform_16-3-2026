@@ -556,7 +556,11 @@ def main():
            - **GLOBAL TAG WIRING RULE:** When wiring inputs/outputs to the FB in an OB, if you create new global tags, you MUST prefix them with `TAG_` and put them in double quotes (e.g., `"TAG_StartBtn_1"`, `"TAG_MainConveyor_Out"`).
         5. **STATE MACHINE & TIMERS (CRITICAL):** NEVER call the same Timer (TON/TOF) or Counter (CTU/CTD) multiple times inside IF or CASE statements. You MUST call them EXACTLY ONCE at the end of the "body_code". Use internal flags to trigger their inputs.
         6. **MATH & ANALOG RULE (CRITICAL):** NORM_X, SCALE_X, ABS, MIN, MAX are built-in functions. DO NOT declare them in the interface (VAR). Call them directly and assign their return value (e.g., `#temp_Real := SCALE_X(MIN:=0.0, VALUE:=#temp_Norm, MAX:=100.0);`). ALWAYS use 'VALUE' parameter, NOT 'IN'.
-        7. **GLOBAL TAG DECLARATION:** If you generate an OB and create any global tags (with `TAG_` prefix), you MUST list ALL of them inside the `"global_tags"` JSON array along with their inferred "type" (e.g., "BOOL", "REAL", "INT").
+        7. **GLOBAL TAG DECLARATION:** If you generate an OB and create any global tags (with `TAG_` prefix), 
+           you MUST list ALL of them inside the `"global_tags"` JSON array with their "type" and "comment".
+           FORBIDDEN types in global_tags: TON, TOF, TP, TONR, R_TRIG, F_TRIG, CTU, CTD, CTUD, or any FB type.
+           ONLY use plain data types: BOOL, INT, REAL, DINT, WORD, DWORD, BYTE, STRING, TIME.
+           Timers and triggers exist ONLY inside FB VAR sections, accessed via Instance DB in OB body_code.
         8. **GLOBAL TAG COMMENT:** Inside the "global_tags" array, you MUST add a "comment" field for each tag. Evaluate how the tag is wired in the OB: if it's wired to an input, label it "Input"; if to an output, label it "Output"; otherwise label it "Memory".
         
         ### USER REQUEST:
@@ -568,10 +572,10 @@ def main():
         
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
-            #model="gemini-2.5-pro",
-            #model="gemini-3.1-pro-preview",
+            #model="gemini-2.5-flash",
+            #model="gemini-3.1-flash-lite-preview",
             temperature=0.1,
-            convert_system_message_to_human=True
+            convert_system_message_to_human=True,
         )
         
         # Cấu hình API Key cho thư viện gốc

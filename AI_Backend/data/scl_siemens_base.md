@@ -438,3 +438,47 @@ BEGIN
    // Values initialization (Optional)
 END_DATA_BLOCK
 ```
+## STRATEGY: GLOBAL TAG DECLARATION RULES (OB ONLY)
+Global tags are physical memory tags declared in the TIA Portal global tag table.
+They are output by AI inside the `"global_tags"` JSON array when generating an OB.
+
+**ALLOWED data types for global_tags:**
+- Boolean: `BOOL`
+- Integer: `INT`, `UINT`, `DINT`, `UDINT`, `SINT`, `USINT`
+- Floating point: `REAL`, `LREAL`
+- Word-level: `BYTE`, `WORD`, `DWORD`, `LWORD`
+- String: `STRING`, `CHAR`
+- Time: `TIME`, `DATE`, `TIME_OF_DAY`, `DATE_AND_TIME`
+
+**STRICTLY FORBIDDEN data types for global_tags:**
+The following are FB/FC-internal block types that belong to logic memory only.
+They CANNOT exist in the global tag table and MUST NEVER appear in `"global_tags"`:
+- Timer blocks: `TON`, `TOF`, `TP`, `TONR`
+- Edge triggers: `R_TRIG`, `F_TRIG`
+- Counter blocks: `CTU`, `CTD`, `CTUD`
+- Any user-defined UDT or FB type
+
+**RULE — Where these blocks belong:**
+- Timers, triggers, and counters are Multi-Instance variables.
+- They MUST be declared inside `VAR` (Static) of a FUNCTION_BLOCK, not in any global tag.
+- In an OB, they are accessed via the FB's Instance DB (e.g., `"Inst_FB_Pump_01".stat_Timer.Q`).
+- If a timer output needs to be visible globally, declare a plain `BOOL` global tag and wire it
+  from the timer's `Q` output inside the OB body_code.
+
+**Example — CORRECT:**
+```json
+"global_tags": [
+  { "name": "TAG_MotorRunning", "type": "BOOL",  "comment": "Output" },
+  { "name": "TAG_CurrentSpeed",  "type": "REAL",  "comment": "Memory" },
+  { "name": "TAG_CycleCount",    "type": "INT",   "comment": "Memory" }
+]
+```
+
+**Example — WRONG (will cause TIA Portal import error):**
+```json
+"global_tags": [
+  { "name": "TAG_DelayTimer",   "type": "TON",    "comment": "Memory" },
+  { "name": "TAG_RisingEdge",   "type": "R_TRIG", "comment": "Memory" },
+  { "name": "TAG_PartCounter",  "type": "CTU",    "comment": "Memory" }
+]
+```

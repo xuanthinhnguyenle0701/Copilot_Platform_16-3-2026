@@ -1,0 +1,3 @@
+Step 2.3: When water reaches Sensor_Hi_2 = True -> Immediately stop filling (Pump_3 and Pump_4 stop). Wait for a manual discharge signal from the valves.
+Step 2.4: When Valve_1 or Valve_2 is manually opened, the water level in Tank 2 decreases.
+Step 2.5: When Tank 2 water level drops to Sensor_Lo_2 = True -> Reset the Tank 2 cycle and repeat (Allowing Pump_3 to run again assuming Tank 1 has wate
